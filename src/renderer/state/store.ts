@@ -38,6 +38,7 @@ export type Dialog =
   | { kind: 'pdf-password'; file: OpenedFile; wrong: boolean }
   | { kind: 'history' }
   | { kind: 'sources'; insert: boolean }
+  | { kind: 'equation'; pos?: number }
   | { kind: 'export-warnings'; tabId: string; format: FormatId; warnings: FormatWarning[]; resolve: (ok: boolean) => void }
 
 export interface Toast {

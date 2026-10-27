@@ -177,6 +177,9 @@ export function App() {
     const openComment = () => get().rightPanel !== 'comments' && set({ rightPanel: 'comments' })
     const newC = () => runCommand('review.comment')
     window.addEventListener('sd:open-comment', openComment)
+    const editEq = (e: Event) => set({ dialog: { kind: 'equation', pos: (e as CustomEvent<number>).detail } })
+    window.addEventListener('sd:edit-equation', editEq)
+    offs.push(() => window.removeEventListener('sd:edit-equation', editEq))
     document.addEventListener('sd:new-comment', newC)
     offs.push(() => window.removeEventListener('sd:open-comment', openComment), () => document.removeEventListener('sd:new-comment', newC))
     // Test/automation hook (renderer-only; exposes nothing the page could not already reach).

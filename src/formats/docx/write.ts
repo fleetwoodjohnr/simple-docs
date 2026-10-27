@@ -7,6 +7,7 @@ import { HIGHLIGHT_NAMES, type DocxCarry } from './read'
 import type { CommentMap } from '@/editor/comments'
 import { itemPropsXml, sourcesXml } from './sources'
 import type { CitationStyle, SourceMap } from '@/editor/citations'
+import { latexToOmml } from '@/editor/math/omml'
 import { escXml as x, extFromMime, imageSize, parseDataUrl } from './xml'
 
 // Editor JSON → DOCX. Element order inside pPr/rPr follows the OOXML schema
@@ -181,6 +182,14 @@ class Writer {
         this.notes[kind].push(`<w:${kind} w:id="${id}">${body}</w:${kind}>`)
         this.usedNotes.add(kind)
         return `<w:r><w:rPr><w:rStyle w:val="${refStyle}"/></w:rPr><w:${kind}Reference w:id="${id}"/></w:r>`
+      }
+      case 'equation': {
+        const a = n.attrs ?? {}
+        if (a.omml && a.latex === a.ommlLatex) return String(a.omml)
+        const omml = latexToOmml(String(a.latex ?? ''), !!a.display)
+        if (omml) return omml
+        this.w.add('loss', 'Some equations use LaTeX that Word cannot represent; they are saved as linear text')
+        return `<m:oMath><m:r><m:t xml:space="preserve">${x(String(a.latex ?? ''))}</m:t></m:r></m:oMath>`
       }
       case 'mergeField': {
         const name = String(n.attrs?.name ?? '')

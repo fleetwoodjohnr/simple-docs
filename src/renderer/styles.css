@@ -601,6 +601,30 @@ body {
   padding: 0;
 }
 
+/* ================= equations ================= */
+.sd-doc .sd-equation {
+  cursor: default;
+  border-radius: 3px;
+}
+.sd-doc .sd-equation .katex {
+  font-size: 1.1em;
+}
+.sd-doc .sd-equation.display {
+  display: block;
+  text-align: center;
+  margin: 4pt 0;
+}
+.sd-doc .sd-equation.display .katex-display {
+  margin: 0;
+}
+.sd-doc .sd-equation.ProseMirror-selectednode,
+.sd-doc .sd-equation:hover {
+  background: var(--accent-soft);
+}
+.print-page .sd-equation {
+  background: none !important;
+}
+
 /* ================= mail merge ================= */
 .sd-doc .sd-merge-field {
   border-radius: 3px;

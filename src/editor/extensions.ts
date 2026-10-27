@@ -18,6 +18,7 @@ import { Deletion, Insertion, TrackChanges } from './track'
 import { TableStyles } from './tables'
 import { Protection } from './protection'
 import { Bibliography, Citation } from './citations'
+import { Equation } from './math/equation'
 import { MergeField, MergePreview } from './mailmerge'
 
 // ---------- helpers ----------
@@ -481,6 +482,7 @@ export function createExtensions(opts: ExtensionOptions = {}): Extensions {
     Bibliography,
     MergeField,
     MergePreview,
+    Equation,
     TabKey,
     Numbering,
     ...(opts.placeholder ? [Placeholder.configure({ placeholder: opts.placeholder, showOnlyWhenEditable: true })] : [])

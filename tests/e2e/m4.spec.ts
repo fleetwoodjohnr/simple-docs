@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { doc, launch, quit, settle, stubDialogs, tempDir, withEditor } from './helpers'
 
 test('accessibility checker finds issues and fixes them in place', async () => {
@@ -182,6 +184,50 @@ test('mail merge: CSV recipients, insert fields, preview, merge into a new docum
     await expect(page.getByRole('tab', { name: /merged/ })).toBeVisible()
     await expect(page.locator('[data-doc-scroll]:visible .page-sheet')).toHaveCount(3)
     await expect(doc(page)).toContainText('Dear Grace Hopper of Arlington')
+  } finally {
+    await quit(app)
+  }
+})
+
+test('equations: insert, edit by double-click, survive DOCX and appear in the PDF', async () => {
+  const { app, page } = await launch()
+  const dir = tempDir()
+  const file = path.join(dir, 'math.docx')
+  const pdfFile = path.join(dir, 'math.pdf')
+  try {
+    await page.keyboard.press('Control+n')
+    await doc(page).click()
+    await page.keyboard.type('Pythagoras:')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Alt+=')
+    await page.getByLabel('LaTeX').fill('a^2 + b^2 = c^2')
+    await expect(page.getByTestId('equation-preview').locator('.katex')).toBeVisible()
+    await expect(page.getByText('Saved to DOCX as an editable Word equation.')).toBeVisible()
+    await page.getByTestId('equation-save').click()
+    const eq = doc(page).locator('.sd-equation')
+    await expect(eq.locator('.katex')).toBeVisible()
+    await eq.dblclick()
+    await expect(page.getByLabel('LaTeX')).toHaveValue('a^2 + b^2 = c^2')
+    await page.getByLabel('LaTeX').fill('a^2 + b^2 = c^2 + \\frac{1}{2}')
+    await page.getByTestId('equation-save').click()
+    await expect(eq).toHaveAttribute('data-latex', 'a^2 + b^2 = c^2 + \\frac{1}{2}')
+
+    await stubDialogs(app, { save: file })
+    await page.keyboard.press('Control+s')
+    await expect(page.getByTestId('save-status')).toHaveText(/Saved/)
+    await page.keyboard.press('Control+w')
+    await stubDialogs(app, { open: [file] })
+    await page.keyboard.press('Control+o')
+    await expect(doc(page).locator('.sd-equation .katex')).toBeVisible()
+    expect(await doc(page).locator('.sd-equation').getAttribute('data-latex')).toBe('a^2+b^2=c^2+\\frac{1}{2}')
+
+    await stubDialogs(app, { save: pdfFile })
+    await page.keyboard.press('Control+Shift+e')
+    await expect.poll(() => existsSync(pdfFile), { timeout: 15_000 }).toBe(true)
+    await settle(page, 500)
+    const txt = execFileSync('pdftotext', [pdfFile, '-']).toString()
+    expect(txt).toContain('Pythagoras:')
+    expect(txt.replace(/\s+/g, '')).toMatch(/a2\+b2=c2\+/)
   } finally {
     await quit(app)
   }

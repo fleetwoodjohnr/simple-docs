@@ -210,6 +210,9 @@ class OdtWriter {
         return '<text:line-break/>'
       case 'image':
         return this.image(n)
+      case 'equation':
+        this.w.add('loss', 'Equations are saved as LaTeX text in ODT')
+        return odfText(String(n.attrs?.latex ?? ''))
       case 'mergeField':
         this.w.add('loss', 'Mail-merge fields are saved as «name» text in ODT')
         return odfText(`«${n.attrs?.name ?? ''}»`)

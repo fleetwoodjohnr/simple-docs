@@ -79,6 +79,7 @@ export function eventToShortcut(e: KeyboardEvent): string {
   let key = e.key
   // Use the physical key for letters/digits with modifiers so Shift/Alt/layouts don't change it.
   if ((mod || e.altKey) && /^(Key[A-Z]|Digit\d)$/.test(e.code)) key = e.code.replace(/^(Key|Digit)/, '').toLowerCase()
+  else if ((mod || e.altKey) && e.code === 'Equal') key = '=' // Alt+= types ≠ on macOS
   else if (key === ' ') key = 'Space'
   else if (key.length === 1) key = key.toLowerCase()
   const symbol = key.length === 1 && !/[a-z0-9]/.test(key)
@@ -472,6 +473,7 @@ def({ id: 'review.comment', label: 'New comment', shortcut: 'Mod-Alt-m', run: ()
 def({ id: 'review.nextComment', label: 'Next comment', run: () => stepComment(1) })
 def({ id: 'review.prevComment', label: 'Previous comment', run: () => stepComment(-1) })
 def({ id: 'references.updateCitations', label: 'Update citations and bibliography', run: () => void bodyEditor()?.view.dispatch(refreshCitations(bodyEditor()!)) })
+def({ id: 'insert.equation', label: 'Equation', shortcut: 'Alt-=', run: () => set({ dialog: { kind: 'equation' } }) })
 def({ id: 'review.compare', label: 'Compare with another document…', run: () => docs.compareWithFile() })
 def({ id: 'review.a11y', label: 'Check accessibility', needsEditor: false, run: () => set((s) => ({ rightPanel: s.rightPanel === 'a11y' ? null : 'a11y' })), isActive: () => get().rightPanel === 'a11y' })
 def({ id: 'review.showComments', label: 'Show comments', needsEditor: false, run: () => set((s) => ({ rightPanel: s.rightPanel === 'comments' ? null : 'comments' })), isActive: () => get().rightPanel === 'comments' })

@@ -7,6 +7,29 @@ import { Warnings, type ExportResult, type ImportResult } from './types'
 
 const md = new MarkdownIt({ html: false, linkify: true, typographer: false })
 
+// Math: $…$ inline and $$…$$ display (Pandoc rules: no space just inside the dollars, no digit right after
+// the closing one, so "$5 and $10" stays text).
+md.inline.ruler.after('escape', 'math', (state, silent) => {
+  const src = state.src
+  const start = state.pos
+  if (src[start] !== '$') return false
+  const display = src[start + 1] === '$'
+  const open = display ? 2 : 1
+  if (!display && /\s/.test(src[start + 1] ?? ' ')) return false
+  const end = src.indexOf(display ? '$$' : '$', start + open)
+  if (end < 0) return false
+  const body = src.slice(start + open, end)
+  if (!body.trim() || (!display && (/\s$/.test(body) || /\d/.test(src[end + 1] ?? '')))) return false
+  if (!silent) {
+    const t = state.push('math', 'span', 0)
+    t.content = body.trim()
+    t.meta = { display }
+  }
+  state.pos = end + open
+  return true
+})
+md.renderer.rules.math = (tokens, i) => `<span data-latex="${md.utils.escapeHtml(tokens[i].content)}" data-display="${!!tokens[i].meta?.display}"></span>`
+
 /** Turn GFM task-list items into the editor's taskList markup. */
 function taskLists(html: string): string {
   const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html')
@@ -142,6 +165,9 @@ class Serializer {
           const n = this.notes.length + 1
           this.notes.push(node.attrs?.content as JSONContent[])
           out += `[^${n}]`
+        } else if (node.type === 'equation') {
+          const latex = String(node.attrs?.latex ?? '')
+          out += node.attrs?.display ? `$$${latex}$$` : `$${latex}$`
         } else if (node.type === 'mergeField') {
           this.w.add('loss', 'Mail-merge fields are saved as «name» text in Markdown')
           out += escapeText(`«${node.attrs?.name ?? ''}»`)

@@ -12,6 +12,7 @@ import { FORMAT_LABELS } from '@/formats/types'
 import type { Settings } from '@/shared/ipc-types'
 import { refreshSpelling, resetSpelling } from '../spell/client'
 import { HistoryDialog } from './History'
+import { EquationDialog } from './EquationDialog'
 import { SourcesDialog } from './Citations'
 
 const close = () => set({ dialog: null })
@@ -42,6 +43,8 @@ export function Dialogs() {
       return <HistoryDialog />
     case 'sources':
       return <SourcesDialog insert={d.insert} />
+    case 'equation':
+      return <EquationDialog pos={d.pos} />
     default:
       return null
   }

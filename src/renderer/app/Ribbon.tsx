@@ -605,6 +605,9 @@ function InsertTab({ editor }: { editor: Editor }) {
       </Group>
       <Sep />
       <Group label="Text">
+        <TextBtn icon={<Sigma />} label="Insert an equation (double-click one to edit it)" shortcut={shortcutFor('insert.equation')} onClick={() => runCommand('insert.equation')}>
+          Equation
+        </TextBtn>
         <SymbolPicker editor={editor} />
         <TextBtn icon={<CalendarDays />} onClick={() => runCommand('insert.date')}>
           Date

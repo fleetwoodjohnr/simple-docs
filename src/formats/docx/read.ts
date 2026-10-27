@@ -4,6 +4,7 @@ import { makePageSetup, PAGE_SIZES, type DocMeta, type HeadersFooters, type Page
 import { Warnings, type ImportResult } from '../types'
 import type { CommentMap } from '@/editor/comments'
 import { parseSources } from './sources'
+import { ommlToLatex } from '@/editor/math/omml'
 import { NS, attr, child, children, elements, find, findAll, is, mimeFromExt, num, onOff, parseXml, serialize, textOf, toBase64, wval, type El } from './xml'
 
 // DOCX (WordprocessingML) → editor JSON. Unsupported elements are kept verbatim as
@@ -716,8 +717,13 @@ class Reader {
         }
       }
       if (is(e, NS.m, 'oMath') || is(e, NS.m, 'oMathPara')) {
-        push(this.preservedInline(e, 'Equation'))
-        this.w.add('loss', 'Equations are preserved but not editable yet')
+        // Editable when every construct converts; the original OMML is kept for an unedited round trip.
+        const conv = ommlToLatex(e as unknown as Element)
+        if (conv) push({ type: 'equation', attrs: { latex: conv.latex, display: conv.display, omml: serialize(e), ommlLatex: conv.latex } })
+        else {
+          push(this.preservedInline(e, 'Equation'))
+          this.w.add('loss', 'Some equations use constructs the editor cannot show; they are preserved unchanged')
+        }
         continue
       }
       if (is(e, NS.mc, 'AlternateContent')) {
