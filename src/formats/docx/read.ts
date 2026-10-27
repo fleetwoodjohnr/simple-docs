@@ -103,6 +103,32 @@ class Reader {
   /** Parsing a header/footer: page-number style fields become live field nodes. */
   inHF = false
   tocLevel = new Map<string, number>()
+  notes = { footnote: new Map<string, JSONContent[]>(), endnote: new Map<string, JSONContent[]>() }
+  noteParts: string[] = []
+
+  /** Read footnotes.xml / endnotes.xml into editable content keyed by note id. */
+  loadNotes() {
+    for (const kind of ['footnote', 'endnote'] as const) {
+      const rel = [...this.rels.values()].find((x) => x.type.endsWith(`/${kind}s`))
+      const xml = rel && !rel.external ? this.text(rel.target) : null
+      if (!rel || !xml) continue
+      this.noteParts.push(rel.target)
+      const saved = this.rels
+      this.rels = this.relsFor(rel.target)
+      for (const n of children(parseXml(xml).documentElement, NS.w, kind)) {
+        const type = attr(n, NS.w, 'type')
+        if (type && type !== 'normal') continue
+        const blocks = this.blocks(n)
+        // Drop the leading space Word puts after the note mark.
+        const first = blocks[0]?.content?.[0]
+        if (first?.type === 'text' && first.text) first.text = first.text.replace(/^\s+/, '')
+        if (first?.type === 'text' && !first.text) blocks[0].content!.shift()
+        for (const b of blocks) if (b.attrs?.styleId && /^(FootnoteText|EndnoteText)$/i.test(String(b.attrs.styleId))) b.attrs.styleId = null
+        this.notes[kind].set(attr(n, NS.w, 'id') ?? '', blocks)
+      }
+      this.rels = saved
+    }
+  }
 
   /** A Word TOC content control → our toc node (entries keep their text and cached page numbers). */
   tocBlock(sdt: El): JSONContent[] {
@@ -727,10 +753,14 @@ class Reader {
             return
           case 'footnoteReference':
           case 'endnoteReference': {
-            const kind = e.localName === 'footnoteReference' ? 'Footnote' : 'Endnote'
-            push(this.preservedInline(r, kind))
-            this.w.add('loss', 'Footnotes and endnotes are preserved but not editable yet')
-            return
+            const kind = e.localName === 'footnoteReference' ? 'footnote' : 'endnote'
+            const content = this.notes[kind].get(attr(e, NS.w, 'id') ?? '')
+            if (content) push({ type: 'footnote', attrs: { kind, content } })
+            else {
+              push(this.preservedInline(r, kind === 'footnote' ? 'Footnote' : 'Endnote'))
+              this.w.add('loss', 'A footnote or endnote could not be read and is preserved as-is')
+            }
+            continue
           }
         }
       }
@@ -1090,6 +1120,7 @@ export function importDocx(data: Uint8Array): ImportResult {
   r.loadTheme()
   r.loadStyles()
   r.loadNumbering()
+  r.loadNotes()
 
   const doc = parseXml(strFromU8(files[docPath]))
   const body = find(doc.documentElement, NS.w, 'body')
@@ -1117,7 +1148,7 @@ export function importDocx(data: Uint8Array): ImportResult {
   const ct = files['[Content_Types].xml']
   if (ct) for (const o of children(parseXml(strFromU8(ct)).documentElement, NS.ct, 'Override')) overrides[(attr(o, null, 'PartName') ?? '').replace(/^\//, '')] = attr(o, null, 'ContentType') ?? ''
 
-  const carry: DocxCarry = { parts: files, rels: [...r.rels.values()], sectPrExtra: extra, overrides, converted: hfResult?.parts ?? [] }
+  const carry: DocxCarry = { parts: files, rels: [...r.rels.values()], sectPrExtra: extra, overrides, converted: [...(hfResult?.parts ?? []), ...r.noteParts] }
   return {
     doc: { type: 'doc', attrs: { page, styles: r.styles, meta: r.meta(), hf: hfResult?.hf ?? null }, content: content.length ? content : [{ type: 'paragraph' }] },
     warnings: r.w.list(),

@@ -132,6 +132,9 @@ export function App() {
     const api = window.simpleDocs
     window.addEventListener('keydown', handleKeydown, true)
     const offs = [api.onOpenFiles((f) => void docs.openFiles(f)), api.onCloseRequest(() => docs.requestQuit()), api.onMenuCommand((id) => runCommand(id))]
+    const openNote = (e: Event) => set({ note: { tabId: get().active, pos: (e as CustomEvent<number>).detail } })
+    window.addEventListener('sd:open-note', openNote)
+    offs.push(() => window.removeEventListener('sd:open-note', openNote))
     // Test/automation hook (renderer-only; exposes nothing the page could not already reach).
     ;(window as unknown as Record<string, unknown>).__sd = { get, set, editors, docs, runCommand }
     return () => {

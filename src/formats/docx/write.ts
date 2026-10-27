@@ -152,6 +152,22 @@ class Writer {
         return this.image(n)
       case 'preservedInline':
         return this.preserved(n, false)
+      case 'footnote': {
+        const kind = n.attrs?.kind === 'endnote' ? 'endnote' : 'footnote'
+        const id = this.notes[kind].length + 1
+        const docRels = this.rels
+        this.rels = this.noteRels[kind]
+        const style = kind === 'footnote' ? 'FootnoteText' : 'EndnoteText'
+        const refStyle = kind === 'footnote' ? 'FootnoteReference' : 'EndnoteReference'
+        let body = this.blocks(((n.attrs?.content as JSONContent[]) ?? []).length ? (n.attrs!.content as JSONContent[]) : [{ type: 'paragraph' }])
+        this.rels = docRels
+        // Style every note paragraph and put the note mark at the start of the first one.
+        body = body.replace(/<w:p>(<w:pPr>(.*?)<\/w:pPr>)?/g, (_m, _pp, inner) => `<w:p><w:pPr><w:pStyle w:val="${style}"/>${(inner ?? '').replace(/<w:pStyle [^>]*\/>/, '')}</w:pPr>`)
+        body = body.replace(/(<w:p><w:pPr>.*?<\/w:pPr>)/, `$1<w:r><w:rPr><w:rStyle w:val="${refStyle}"/></w:rPr><w:${kind}Ref/></w:r><w:r><w:t xml:space="preserve"> </w:t></w:r>`)
+        this.notes[kind].push(`<w:${kind} w:id="${id}">${body}</w:${kind}>`)
+        this.usedNotes.add(kind)
+        return `<w:r><w:rPr><w:rStyle w:val="${refStyle}"/></w:rPr><w:${kind}Reference w:id="${id}"/></w:r>`
+      }
       case 'field': {
         const instr = ({ page: 'PAGE', pages: 'NUMPAGES', date: 'DATE \\@ "MMMM d, yyyy"', title: 'TITLE', author: 'AUTHOR' } as Record<string, string>)[String(n.attrs?.kind)] ?? 'PAGE'
         const rpr = this.rPr(n.marks as Mark[])
@@ -273,6 +289,14 @@ class Writer {
   }
   usedCode = false
   tocLevels = new Set<number>()
+  notes = { footnote: [] as string[], endnote: [] as string[] }
+  noteRels = { footnote: [] as Writer['rels'], endnote: [] as Writer['rels'] }
+  usedNotes = new Set<'footnote' | 'endnote'>()
+
+  notesPart(kind: 'footnote' | 'endnote'): string {
+    const sep = (type: string, id: number, el: string) => `<w:${kind} w:type="${type}" w:id="${id}"><w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:${el}/></w:r></w:p></w:${kind}>`
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:${kind}s ${NSDECL}>${sep('separator', -1, 'separator')}${sep('continuationSeparator', 0, 'continuationSeparator')}${this.notes[kind].join('')}</w:${kind}s>`
+  }
 
   /** TOC as Word's content control + TOC field, with the current entries as the cached result. */
   toc(n: JSONContent): string {
@@ -438,7 +462,7 @@ class Writer {
         const tag = kind === 'header' ? 'hdr' : 'ftr'
         const name = `${kind}${n}.xml`
         this.hfFiles[`word/${name}`] = strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:${tag} ${NSDECL}>${body}</w:${tag}>`)
-        if (partRels.length) this.hfFiles[`word/_rels/${name}.rels`] = strToU8(relsXml(partRels))
+        if (partRels.length) this.hfFiles[`word/_rels/${name}.rels`] = strToU8(relationshipsXml(partRels))
         const id = this.rel(`http://schemas.openxmlformats.org/officeDocument/2006/relationships/${kind}`, name)
         this.hfRefs += `<w:${kind}Reference w:type="${variant}" r:id="${id}"/>`
       }
@@ -501,12 +525,16 @@ class Writer {
       if (h) return `heading ${h[1]}`
       const toc = /^TOC([1-9])$/.exec(id)
       if (toc) return `toc ${toc[1]}`
-      return ({ Caption: 'caption', NoSpacing: 'No Spacing', ListParagraph: 'List Paragraph', TOCHeading: 'TOC Heading' } as Record<string, string>)[id] ?? name
+      return ({ Caption: 'caption', NoSpacing: 'No Spacing', ListParagraph: 'List Paragraph', TOCHeading: 'TOC Heading', FootnoteText: 'footnote text', EndnoteText: 'endnote text' } as Record<string, string>)[id] ?? name
     }
     let out = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="w14">`
     out += `<w:docDefaults><w:rPrDefault>${runXml({ fontFamily: normal.run.fontFamily ?? 'Calibri', fontSize: normal.run.fontSize ?? 11 }) || '<w:rPr/>'}</w:rPrDefault><w:pPrDefault>${paraXml({ spaceAfter: normal.para.spaceAfter ?? 8, lineHeight: normal.para.lineHeight ?? 1.15 }) || '<w:pPr/>'}</w:pPrDefault></w:docDefaults>`
     const ids = Object.keys(this.styles)
     if (!ids.includes('ListParagraph')) this.styles.ListParagraph = { id: 'ListParagraph', name: 'List Paragraph', type: 'paragraph', basedOn: 'Normal', para: { contextual: true } as ParaProps }
+    for (const kind of this.usedNotes) {
+      const T = kind === 'footnote' ? 'Footnote' : 'Endnote'
+      if (!this.styles[`${T}Text`] || this.styles[`${T}Text`].hidden) this.styles[`${T}Text`] = { id: `${T}Text`, name: `${kind} text`, type: 'paragraph', basedOn: 'Normal', run: { fontSize: 9 }, para: { spaceAfter: 0, lineHeight: 1 } }
+    }
     for (const lvl of this.tocLevels) if (!ids.includes(`TOC${lvl}`)) this.styles[`TOC${lvl}`] = { id: `TOC${lvl}`, name: `toc ${lvl}`, type: 'paragraph', basedOn: 'Normal', next: 'Normal', para: { spaceAfter: 4, indentLeft: (lvl - 1) * 14 }, run: lvl === 1 ? { bold: true } : {} }
     if (this.usedCode && !ids.includes('Code')) this.styles.Code = { id: 'Code', name: 'Code', type: 'paragraph', basedOn: 'Normal', run: { fontFamily: 'Courier New', fontSize: 9.5 }, para: { spaceAfter: 0, lineHeight: 1 } }
     for (const s of Object.values(this.styles)) {
@@ -521,6 +549,10 @@ class Writer {
       out += '</w:style>'
     }
     out += `<w:style w:type="character" w:default="1" w:styleId="DefaultParagraphFont"><w:name w:val="Default Paragraph Font"/><w:uiPriority w:val="1"/><w:semiHidden/></w:style>`
+    for (const kind of this.usedNotes) {
+      const T = kind === 'footnote' ? 'Footnote' : 'Endnote'
+      out += `<w:style w:type="character" w:styleId="${T}Reference"><w:name w:val="${kind} reference"/><w:basedOn w:val="DefaultParagraphFont"/><w:rPr><w:vertAlign w:val="superscript"/></w:rPr></w:style>`
+    }
     out += `<w:style w:type="character" w:styleId="Hyperlink"><w:name w:val="Hyperlink"/><w:basedOn w:val="DefaultParagraphFont"/><w:rPr><w:color w:val="1F5BD8"/><w:u w:val="single"/></w:rPr></w:style>`
     out += `<w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/><w:semiHidden/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style>`
     out += `<w:style w:type="table" w:styleId="TableGrid"><w:name w:val="Table Grid"/><w:basedOn w:val="TableNormal"/><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/></w:tblBorders></w:tblPr><w:tblStylePr w:type="firstRow"><w:rPr><w:b/><w:bCs/></w:rPr><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="F4F4F7"/></w:tcPr></w:tblStylePr></w:style>`
@@ -554,7 +586,7 @@ class Writer {
   }
 }
 
-function relsXml(rels: { id: string; type: string; target: string; external?: boolean }[]): string {
+function relationshipsXml(rels: { id: string; type: string; target: string; external?: boolean }[]): string {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels
     .map((r) => `<Relationship Id="${r.id}" Type="${r.type}" Target="${x(r.target)}"${r.external ? ' TargetMode="External"' : ''}/>`)
     .join('')}</Relationships>`
@@ -599,7 +631,7 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
     const skip = (path: string) => GENERATED.has(path) || converted.has(path) || [...converted].some((c) => path === c.replace(/([^/]+)$/, '_rels/$1.rels')) || path.startsWith('customXml/') || path === 'docProps/custom.xml'
     for (const [path, data] of Object.entries(carry.parts)) if (!skip(path)) files[path] = data
     for (const r of carry.rels) {
-      if (/\/(styles|numbering|header|footer)$/.test(r.type)) continue
+      if (/\/(styles|numbering|header|footer|footnotes|endnotes)$/.test(r.type)) continue
       if (r.type.endsWith('/hyperlink') || r.type.endsWith('/image') || !r.external) {
         const target = r.external ? r.target : r.target.startsWith('word/') ? r.target.slice(5) : `../${r.target}`
         if (!r.external && !files[r.target]) continue
@@ -618,6 +650,12 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
 
   files['word/document.xml'] = strToU8(documentXml)
   Object.assign(files, wr.hfFiles)
+  for (const kind of wr.usedNotes) {
+    files[`word/${kind}s.xml`] = strToU8(wr.notesPart(kind))
+    if (wr.noteRels[kind].length) files[`word/_rels/${kind}s.xml.rels`] = strToU8(relationshipsXml(wr.noteRels[kind]))
+    wr.rels.push({ id: `sdR${kind}s`, type: `http://schemas.openxmlformats.org/officeDocument/2006/relationships/${kind}s`, target: `${kind}s.xml` })
+    overridesExtra[`word/${kind}s.xml`] = `application/vnd.openxmlformats-officedocument.wordprocessingml.${kind}s+xml`
+  }
   for (const p of Object.keys(wr.hfFiles)) if (!p.endsWith('.rels')) overridesExtra[p] = p.includes('/header') ? CT.header : CT.footer
   if (hf?.differentOddEven) {
     const st = files['word/settings.xml'] ? strFromU8(files['word/settings.xml']) : ''

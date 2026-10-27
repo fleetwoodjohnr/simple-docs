@@ -62,6 +62,8 @@ export interface AppState {
   dark: boolean
   /** Header/footer currently being edited in place. */
   hf: { tabId: string; kind: 'header' | 'footer'; page: number } | null
+  /** Footnote/endnote being edited (document position of its reference). */
+  note: { tabId: string; pos: number } | null
 }
 
 export const HOME = 'home'
@@ -87,7 +89,8 @@ export const useApp = create<AppState>(() => ({
   painter: null,
   libreOffice: false,
   dark: false,
-  hf: null
+  hf: null,
+  note: null
 }))
 
 export const set = useApp.setState
@@ -102,7 +105,7 @@ export const carries = new Map<string, unknown>()
 export const hfEditor: { current: Editor | null } = { current: null }
 
 export function activeEditor(): Editor | null {
-  return (get().hf && hfEditor.current) || (editors.get(get().active) ?? null)
+  return (get().hf && hfEditor.current) || (get().note && hfEditor.current) || (editors.get(get().active) ?? null)
 }
 
 /** The document's body editor, even while a header is being edited. */

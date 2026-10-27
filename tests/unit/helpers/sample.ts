@@ -14,7 +14,7 @@ export function richDoc(): JSONContent {
   const doc = emptyDoc({}, [
     { type: 'paragraph', attrs: { styleId: 'Title' }, content: [t('Quarterly Report')] },
     { type: 'heading', attrs: { level: 1 }, content: [t('Introduction')] },
-    p(t('Plain, '), t('bold', [{ type: 'bold' }]), t(', '), t('italic', [{ type: 'italic' }]), t(', '), t('underlined', [{ type: 'underline' }]), t(' and '), t('struck', [{ type: 'strike' }]), t('.')),
+    p(t('Plain'), { type: 'footnote', attrs: { kind: 'footnote', content: [p(t('Footnote from the sample.'))] } }, t(', '), t('bold', [{ type: 'bold' }]), t(', '), t('italic', [{ type: 'italic' }]), t(', '), t('underlined', [{ type: 'underline' }]), t(' and '), t('struck', [{ type: 'strike' }]), t('.')),
     {
       type: 'paragraph',
       attrs: { align: 'justify', lineHeight: 1.5, spaceBefore: 6, spaceAfter: 12, indentFirst: 18 },

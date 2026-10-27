@@ -94,7 +94,7 @@ describe('DOCX round trip', () => {
     writeFileSync(file, data)
     execFileSync(soffice!, ['--headless', `-env:UserInstallation=file://${dir}/profile`, '--convert-to', 'pdf', '--outdir', dir, file], { timeout: 120_000 })
     const pdfText = execFileSync('pdftotext', ['-layout', path.join(dir, 'report.pdf'), '-']).toString()
-    for (const s of ['Quarterly Report', 'Nested bullet', 'Sub-step', 'Merged', 'After the break']) expect(pdfText).toContain(s)
+    for (const s of ['Quarterly Report', 'Nested bullet', 'Sub-step', 'Merged', 'After the break', 'Footnote from the sample.']) expect(pdfText).toContain(s)
     const pages = execFileSync('pdfinfo', [path.join(dir, 'report.pdf')]).toString()
     expect(Number(/Pages:\s+(\d+)/.exec(pages)![1])).toBeGreaterThanOrEqual(2)
   }, 150_000)

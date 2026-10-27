@@ -24,8 +24,18 @@ export function importText(data: Uint8Array): ImportResult {
   return { doc: { type: 'doc', content }, warnings: [] }
 }
 
+let notes: JSONContent[][] = []
+
 function inlineText(nodes: JSONContent[] = []): string {
-  return nodes.map((n) => (n.type === 'text' ? n.text : n.type === 'hardBreak' ? '\n' : n.type === 'preservedInline' ? n.attrs?.text ?? '' : '')).join('')
+  return nodes
+    .map((n) => {
+      if (n.type === 'footnote') {
+        notes.push((n.attrs?.content as JSONContent[]) ?? [])
+        return `[${notes.length}]`
+      }
+      return n.type === 'text' ? n.text : n.type === 'hardBreak' ? '\n' : n.type === 'preservedInline' ? n.attrs?.text ?? '' : ''
+    })
+    .join('')
 }
 
 export function docToText(doc: JSONContent): string {
@@ -71,7 +81,14 @@ export function docToText(doc: JSONContent): string {
       }
     }
   }
+  notes = []
   walk(doc.content, '', 0)
+  const collected = notes
+  notes = []
+  if (collected.length) {
+    lines.push('', '———')
+    collected.forEach((c, i) => lines.push(`[${i + 1}] ${c.map((b) => inlineText(b.content)).join(' ')}`))
+  }
   return lines.join('\n').replace(/\n?\f\n?/g, '\f') + '\n'
 }
 

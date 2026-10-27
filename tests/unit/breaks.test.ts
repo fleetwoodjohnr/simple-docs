@@ -72,3 +72,27 @@ describe('computeBreaks', () => {
     expect(r.pageCount).toBe(2)
   })
 })
+
+describe('footnotes', () => {
+  it('reserves room for a footnote on the page of its reference', () => {
+    // 60px block, then a 30px block whose footnote is 20px tall (+12 separator): 60+30+32 > 100
+    const units = stack([{ h: 60 }, { h: 30 }])
+    units[1].notes = [{ y: units[1].top + 5, h: 20 }]
+    const r = computeBreaks(units, M)
+    expect(r.breaks[0]).toMatchObject({ pos: 1000 })
+  })
+
+  it('splits a paragraph so the reference line and its note share a page', () => {
+    // 10-line paragraph (10px lines) with a 30px note referenced on line 2 → 100 - 42 = 58px of lines fit
+    const units = stack([{ h: 100, lineH: 10 }])
+    units[0].notes = [{ y: units[0].top + 15, h: 30 }]
+    const r = computeBreaks(units, M)
+    expect(r.breaks[0]).toMatchObject({ kind: 'inline', pos: 5 })
+  })
+
+  it('places notes without a break when everything fits', () => {
+    const units = stack([{ h: 40 }, { h: 20 }])
+    units[1].notes = [{ y: units[1].top, h: 10 }]
+    expect(computeBreaks(units, M).pageCount).toBe(1)
+  })
+})

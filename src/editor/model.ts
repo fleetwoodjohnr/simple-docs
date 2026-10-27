@@ -153,6 +153,7 @@ export function defaultStyles(font = 'Calibri', size = 11): StyleMap {
     { id: 'Quote', name: 'Quote', type: 'paragraph', basedOn: 'Normal', next: 'Normal', builtin: true, run: { italic: true, color: '#44444f' }, para: { indentLeft: 36, indentRight: 36, spaceBefore: 6 } },
     { id: 'Caption', name: 'Caption', type: 'paragraph', basedOn: 'Normal', next: 'Normal', builtin: true, run: { fontSize: 9, italic: true, color: '#44444f' }, para: { spaceAfter: 10 } },
     { id: 'NoSpacing', name: 'No Spacing', type: 'paragraph', basedOn: 'Normal', builtin: true, para: { spaceAfter: 0, lineHeight: 1 } },
+    { id: 'FootnoteText', name: 'Footnote Text', type: 'paragraph', basedOn: 'Normal', builtin: true, hidden: true, run: { fontSize: 9 }, para: { spaceAfter: 0, lineHeight: 1 } },
     { id: 'TOCHeading', name: 'TOC Heading', type: 'paragraph', basedOn: 'Normal', next: 'Normal', builtin: true, run: { fontSize: 16, bold: true, color: '#1c1c22' }, para: { spaceBefore: 12, spaceAfter: 8, keepNext: true } }
   ]
   return Object.fromEntries(list.map((s) => [s.id, s]))

@@ -85,6 +85,7 @@ function markFor(m: { type: string; attrs?: Record<string, unknown> }): Mk {
 
 class Serializer {
   w = new Warnings()
+  notes: JSONContent[][] = []
 
   inline(nodes: JSONContent[] = []): string {
     let out = ''
@@ -133,6 +134,10 @@ class Serializer {
           const a = node.attrs ?? {}
           if (a.width || a.float) this.w.add('loss', 'Image sizes and text wrapping are not kept in Markdown')
           out += `![${escapeText(String(a.alt ?? ''))}](${String(a.src ?? '').replace(/[()\s]/g, encodeURIComponent)}${a.title ? ` "${String(a.title).replace(/"/g, '\\"')}"` : ''})`
+        } else if (node.type === 'footnote') {
+          const n = this.notes.length + 1
+          this.notes.push(node.attrs?.content as JSONContent[])
+          out += `[^${n}]`
         } else if (node.type === 'preservedInline') {
           this.w.add('loss', 'Preserved content from the original file cannot be represented in Markdown')
           out += escapeText(String(node.attrs?.text ?? ''))
@@ -245,7 +250,12 @@ function flattenInline(n: JSONContent): JSONContent[] {
 
 export function docToMarkdown(doc: JSONContent): { markdown: string; warnings: ReturnType<Warnings['list']> } {
   const s = new Serializer()
-  const markdown = s.blocks(doc.content).replace(/\n{3,}/g, '\n\n').trim() + '\n'
+  let markdown = s.blocks(doc.content).replace(/\n{3,}/g, '\n\n').trim() + '\n'
+  // GFM footnotes (endnotes are numbered in the same sequence).
+  for (let i = 0; i < s.notes.length; i++) {
+    const body = s.blocks(s.notes[i] ?? []).split('\n').map((l, j) => (j ? `    ${l}` : l)).join('\n')
+    markdown += `${i ? '' : '\n'}[^${i + 1}]: ${body}\n`
+  }
   return { markdown, warnings: s.w.list() }
 }
 

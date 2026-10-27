@@ -5,6 +5,7 @@ import { TableMap } from '@tiptap/pm/tables'
 import { Extension } from '@tiptap/core'
 import { computeBreaks, sameBreaks, type Break, type Layout, type Line, type PageMetrics, type Unit } from './breaks'
 import { makePageSetup, ptToPx, resolveStyle, type PageSetup, type StyleMap } from '@/editor/model'
+import { notesKey, type NoteRef } from '@/editor/notes'
 
 export const PAGE_GAP = 32
 
@@ -194,7 +195,10 @@ interface Desc {
 
 const NO_HOIST = new Set(['doc', 'tableCell', 'tableHeader'])
 
-export function measureUnits(view: EditorView): Unit[] {
+/** Measures a note's rendered height (px); supplied by the app so layout stays schema-agnostic. */
+export type NoteHeightFn = (view: EditorView, note: NoteRef) => number
+
+export function measureUnits(view: EditorView, noteHeight?: NoteHeightFn): Unit[] {
   const doc = view.state.doc
   const root = view.dom as HTMLElement
   const m = makeMeasurer(root)
@@ -245,7 +249,18 @@ export function measureUnits(view: EditorView): Unit[] {
         if (b) {
           const st = name === 'paragraph' || name === 'heading' ? styleFor(node) : {}
           let lines: Line[] | undefined
+          let notes: Unit['notes']
+          if (noteHeight && noteByPos.size) {
+            node.forEach((child, off) => {
+              const note = child.type.name === 'footnote' ? noteByPos.get(p + 1 + off) : undefined
+              if (!note || note.kind !== 'footnote') return
+              const el = view.nodeDOM(p + 1 + off) as HTMLElement | null
+              const r = el?.getBoundingClientRect()
+              if (r) (notes ??= []).push({ y: m.natural(r.top), h: noteHeight(view, note) })
+            })
+          }
           units.push({
+            notes,
             pos: at,
             ...b,
             kind: 'text',
@@ -267,19 +282,25 @@ export function measureUnits(view: EditorView): Unit[] {
       p += d.size
     }
   }
+  const allNotes = notesKey.getState(view.state)?.notes ?? []
+  const noteByPos = new Map(allNotes.map((n) => [n.pos, n]))
   const docView = (view as unknown as { docView?: Desc }).docView
   if (docView?.children) walk(docView, doc, 0, 0)
+  // Endnotes are printed at the end, after the last unit.
+  const last = units[units.length - 1]
+  if (noteHeight && last) for (const n of allNotes) if (n.kind === 'endnote') (last.notes ??= []).push({ y: last.top, h: noteHeight(view, n) })
   return units
 }
 
-export function paginate(view: EditorView): Layout {
-  return computeBreaks(measureUnits(view), metricsFor(pageOf(view.state.doc)))
+export function paginate(view: EditorView, noteHeight?: NoteHeightFn): Layout {
+  return computeBreaks(measureUnits(view, noteHeight), metricsFor(pageOf(view.state.doc)))
 }
 
 // ---------- plugin ----------
 
 export interface PaginationOptions {
   onLayout?: (state: PaginationState) => void
+  noteHeight?: NoteHeightFn
 }
 
 function PaginationPlugin(opts: PaginationOptions) {
@@ -308,7 +329,7 @@ function PaginationPlugin(opts: PaginationOptions) {
         raf = 0
         const root = view.dom as HTMLElement
         if (!root.isConnected || root.offsetParent === null) return
-        const layout = paginate(view)
+        const layout = paginate(view, opts.noteHeight)
         const prev = paginationKey.getState(view.state)!
         if (!sameBreaks(prev.breaks, layout.breaks) || prev.pageCount !== layout.pageCount) {
           // Guard against pathological oscillation: settle after a few passes per burst.
@@ -365,7 +386,7 @@ export const Pagination = Extension.create<PaginationOptions>({
       repaginate:
         () =>
         ({ view }) => {
-          view.dispatch(view.state.tr.setMeta(paginationKey, paginate(view)).setMeta('addToHistory', false))
+          view.dispatch(view.state.tr.setMeta(paginationKey, paginate(view, this.options.noteHeight)).setMeta('addToHistory', false))
           return true
         }
     }

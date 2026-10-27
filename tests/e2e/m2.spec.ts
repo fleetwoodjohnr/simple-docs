@@ -38,6 +38,14 @@ test('headers, footers and page numbers appear on every page and in the PDF', as
     const headers = page.locator('[data-doc-scroll]:visible .sd-hf')
     await expect(headers.filter({ hasText: 'Confidential draft' })).toHaveCount(3)
     await expect(headers.filter({ hasText: 'Page 2 of 3' })).toHaveCount(1)
+    const footerPos = await headers.filter({ hasText: 'Page 1 of 3' }).evaluate((el) => {
+      const s = el.closest('.page-sheet')!.getBoundingClientRect()
+      const r = el.getBoundingClientRect()
+      return { fromTop: (r.top - s.top) / s.height, fromBottom: (s.bottom - r.bottom) / s.height }
+    })
+    expect(footerPos.fromTop).toBeGreaterThan(0.85)
+    const headerPos = await headers.filter({ hasText: 'Confidential draft' }).first().evaluate((el) => (el.getBoundingClientRect().top - el.closest('.page-sheet')!.getBoundingClientRect().top) / el.closest('.page-sheet')!.getBoundingClientRect().height)
+    expect(headerPos).toBeLessThan(0.1)
 
     await stubDialogs(app, { save: pdf })
     await page.keyboard.press('Control+Shift+e')
@@ -88,6 +96,54 @@ test('table of contents uses live page numbers', async () => {
     expect(Number(entries.at(-1)![1])).toBeGreaterThan(2)
     expect(sheets).toBeGreaterThanOrEqual(3)
     await expect(page.locator('[data-doc-scroll]:visible .sd-toc')).toBeVisible()
+  } finally {
+    await quit(app)
+  }
+})
+
+test('footnotes: insert, edit, reserve space on the reference page, export', async () => {
+  const { app, page } = await launch()
+  const pdf = path.join(tempDir(), 'notes.pdf')
+  try {
+    await page.keyboard.press('Control+n')
+    await doc(page).click()
+    // Fill most of page 1, then reference a note near the bottom.
+    await withEditor(page, `(e) => {
+      const p = { type: 'paragraph', content: [{ type: 'text', text: 'Filler sentence for the first page. '.repeat(30) }] }
+      e.commands.setContent({ type: 'doc', attrs: e.state.doc.attrs, content: [p, p, p, { type: 'paragraph', content: [{ type: 'text', text: 'Claim needing a source' }] }] })
+      e.commands.focus('end')
+    }`)
+    await settle(page, 500)
+    await page.keyboard.press('Control+Alt+f')
+    await expect(page.getByTestId('note-editor')).toBeVisible()
+    await page.keyboard.type('Primary source, 2024.')
+    await page.keyboard.press('Escape')
+    await settle(page, 600)
+
+    const notes = page.locator('[data-doc-scroll]:visible .page-sheet .sd-notes')
+    await expect(notes).toContainText('Primary source, 2024.')
+    // the note sits on the same sheet as its reference
+    const refPage = await page.locator('[data-doc-scroll]:visible .sd-note-ref').evaluate((el) => {
+      const r = el.getBoundingClientRect()
+      return [...document.querySelectorAll('[data-doc-scroll]:not([hidden]) .page-sheet')].findIndex((s) => { const b = s.getBoundingClientRect(); return r.top >= b.top && r.top <= b.bottom })
+    })
+    const notePage = await notes.first().evaluate((el) => [...document.querySelectorAll('[data-doc-scroll]:not([hidden]) .page-sheet')].indexOf(el.closest('.page-sheet')!))
+    expect(refPage).toBeGreaterThanOrEqual(0)
+    expect(notePage).toBe(refPage)
+    // text never overlaps the note area
+    const overlap = await page.evaluate(() => {
+      const area = document.querySelector('[data-doc-scroll]:not([hidden]) .page-sheet .sd-notes')!.getBoundingClientRect()
+      return [...document.querySelectorAll('[data-doc-scroll]:not([hidden]) .sd-doc p')].some((p) => {
+        const r = p.getBoundingClientRect()
+        return !p.closest('.sd-notes') && r.bottom > area.top + 1 && r.top < area.bottom
+      })
+    })
+    expect(overlap).toBe(false)
+
+    await stubDialogs(app, { save: pdf })
+    await page.keyboard.press('Control+Shift+e')
+    await expect.poll(() => existsSync(pdf) && statSync(pdf).size > 1000, { timeout: 15_000 }).toBe(true)
+    expect(pdfText(pdf, refPage + 1)).toContain('Primary source, 2024.')
   } finally {
     await quit(app)
   }

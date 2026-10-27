@@ -562,6 +562,11 @@ body {
 .md-preview hr { border: 0; border-top: 1px solid #ddd; margin: 1.2em 0; }
 
 /* ================= headers & footers ================= */
+.sd-doc.sd-hf,
+.sd-doc.sd-notes {
+  top: auto;
+  min-height: 0;
+}
 .sd-hf {
   position: absolute !important;
   pointer-events: none;
@@ -633,4 +638,72 @@ body {
 .sd-doc .toc-page {
   font-variant-numeric: tabular-nums;
   user-select: none;
+}
+
+/* ================= footnotes ================= */
+.sd-doc .sd-note-ref {
+  font-size: 0.68em;
+  vertical-align: super;
+  line-height: 0;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0 1px;
+}
+.sd-doc .sd-note-ref::after {
+  content: attr(data-n);
+}
+.sd-doc .sd-note-ref.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+  border-radius: 2px;
+}
+.print-page .sd-note-ref,
+.sd-hf .sd-note-ref {
+  color: inherit;
+}
+.sd-doc.sd-notes {
+  position: absolute !important;
+  font-size: 9pt !important;
+  line-height: 1.25;
+  cursor: pointer;
+}
+.sd-doc.sd-notes-measure {
+  visibility: hidden;
+  pointer-events: none;
+  top: 0;
+  left: 0;
+}
+.sd-notes .sd-notes-sep {
+  width: 33%;
+  border-top: 0.75pt solid #6b6b75;
+  margin: 0 0 4pt;
+  height: 0;
+}
+.sd-notes .sd-note {
+  display: flex;
+  gap: 3pt;
+  margin-bottom: 1pt;
+}
+.sd-notes .sd-note-n {
+  font-size: 0.75em;
+  vertical-align: super;
+  line-height: 1;
+  min-width: 8pt;
+}
+.sd-notes .sd-note-body {
+  flex: 1;
+  min-width: 0;
+}
+.sd-notes .sd-note-body :is(p, h1, h2, h3, h4, h5, h6) {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: inherit !important;
+  line-height: 1.25 !important;
+}
+.sd-notes .sd-endnotes-title {
+  font-weight: 600;
+  margin: 2pt 0;
+}
+.sd-notes .sd-note:hover {
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+  border-radius: 2px;
 }

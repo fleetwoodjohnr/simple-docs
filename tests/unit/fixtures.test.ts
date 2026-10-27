@@ -68,9 +68,11 @@ describe('third-party DOCX (LibreOffice-authored)', () => {
     expect(text(doc.content![i + 1])).toBe('Second page starts here.')
   })
 
-  it('preserves the footnote with a warning', () => {
-    expect(all(doc, (n) => n.type === 'preservedInline' && n.attrs!.label === 'Footnote')).toHaveLength(1)
-    expect(warnings.map((w) => w.message).join('\n')).toMatch(/Footnotes and endnotes are preserved/)
+  it('imports the footnote as editable content', () => {
+    const note = all(doc, (n) => n.type === 'footnote')
+    expect(note).toHaveLength(1)
+    expect(note[0].attrs!.kind).toBe('footnote')
+    expect(text({ content: note[0].attrs!.content } as JSONContent)).toBe('A footnote body.')
   })
 
   it('imports headers and footers as editable content with a live page field', () => {
@@ -99,10 +101,42 @@ describe('third-party DOCX (LibreOffice-authored)', () => {
 
 describe('preserved content safety', () => {
   it('falls back to text when referenced parts are missing (e.g. pasted into another document)', () => {
-    const { doc } = importDocx(fixture)
+    const raw = '<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:drawing><a:blip xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" r:embed="rId99"/></w:drawing></w:r>'
+    const doc = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'preservedInline', attrs: { format: 'docx', label: 'Chart', raw, text: 'Sales chart' } }] }] }
     const { data, warnings } = exportDocx(doc, null)
     const xml = strFromU8(unzipSync(data)['word/document.xml'])
-    expect(xml).not.toContain('footnoteReference')
+    expect(xml).not.toContain('rId99')
+    expect(xml).toContain('Sales chart')
     expect(warnings.map((w) => w.message).join()).toMatch(/could not be written back/)
+  })
+})
+
+describe('footnotes and endnotes', () => {
+  const note = (text: string) => [{ type: 'paragraph', content: [{ type: 'text', text }] }]
+  const doc = {
+    type: 'doc',
+    content: [
+      { type: 'paragraph', content: [{ type: 'text', text: 'Claim' }, { type: 'footnote', attrs: { kind: 'footnote', content: note('Source one.') } }, { type: 'text', text: ' and more' }, { type: 'footnote', attrs: { kind: 'endnote', content: note('Closing remark.') } }] }
+    ]
+  }
+  const out = unzipSync(exportDocx(doc).data)
+
+  it('writes footnotes.xml / endnotes.xml with separators, references and styles', () => {
+    expect(strFromU8(out['word/footnotes.xml'])).toContain('Source one.')
+    expect(strFromU8(out['word/footnotes.xml'])).toContain('w:type="separator"')
+    expect(strFromU8(out['word/endnotes.xml'])).toContain('Closing remark.')
+    expect(strFromU8(out['word/document.xml'])).toContain('<w:footnoteReference w:id="1"/>')
+    expect(strFromU8(out['word/styles.xml'])).toContain('w:styleId="FootnoteReference"')
+    expect(strFromU8(out['[Content_Types].xml'])).toContain('footnotes+xml')
+  })
+
+  it('round-trips the notes as editable content', () => {
+    const back = importDocx(exportDocx(doc).data).doc
+    const notes = all(back, (n) => n.type === 'footnote')
+    expect(notes.map((n) => [n.attrs!.kind, text({ content: n.attrs!.content } as JSONContent)])).toEqual([
+      ['footnote', 'Source one.'],
+      ['endnote', 'Closing remark.']
+    ])
+    expect(() => Node.fromJSON(schema, back).check()).not.toThrow()
   })
 })

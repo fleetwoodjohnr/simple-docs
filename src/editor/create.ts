@@ -3,6 +3,7 @@ import type { EditorView } from '@tiptap/pm/view'
 import { createExtensions } from './extensions'
 import { Pagination, type PaginationOptions } from '@/layout/plugin'
 import { Search } from './search'
+import { makeNoteMeasurer } from './notes-render'
 import { defaultStyles, makePageSetup, MARGIN_PRESETS, PAGE_SIZES, type DocMeta, type PageSetup, type StyleMap } from './model'
 
 export interface NewDocOptions {
@@ -70,7 +71,7 @@ export interface CreateEditorOptions extends PaginationOptions {
 
 export function createDocEditor(opts: CreateEditorOptions): Editor {
   return new Editor({
-    extensions: [...createExtensions({ placeholder: opts.placeholder }), Pagination.configure({ onLayout: opts.onLayout }), Search],
+    extensions: [...createExtensions({ placeholder: opts.placeholder }), Pagination.configure({ onLayout: opts.onLayout, noteHeight: makeNoteMeasurer() }), Search],
     content: opts.content,
     enableContentCheck: opts.strict ?? true,
     editorProps: {

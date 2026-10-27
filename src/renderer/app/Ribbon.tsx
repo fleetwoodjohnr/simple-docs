@@ -747,7 +747,14 @@ function ReferencesTab() {
         </TextBtn>
       </Group>
       <Sep />
-      <Note>Footnotes, endnotes, citations and captions are coming next.</Note>
+      <Group label="Notes">
+        <TextBtn icon={<Superscript />} label="Insert footnote" shortcut={shortcutFor('insert.footnote')} onClick={() => runCommand('insert.footnote')}>
+          Footnote
+        </TextBtn>
+        <TextBtn icon={<Superscript />} label="Insert endnote" shortcut={shortcutFor('insert.endnote')} onClick={() => runCommand('insert.endnote')}>
+          Endnote
+        </TextBtn>
+      </Group>
     </>
   )
 }

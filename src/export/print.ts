@@ -2,6 +2,8 @@ import type { Editor } from '@tiptap/core'
 import { pageOf, paginationKey } from '@/layout/plugin'
 import { ptToPx } from '@/editor/model'
 import { renderHF } from '@/editor/headers'
+import { notesKey } from '@/editor/notes'
+import { notesAreaHtml, notesForPage } from '@/editor/notes-render'
 
 // Builds fixed-size print pages by slicing the live, paginated editor DOM at the
 // page spacers. Range.cloneContents keeps partially selected ancestors (lists,
@@ -112,6 +114,16 @@ export function buildPrintRoot(editor: Editor, scopeClass: string): () => void {
       if (kind === 'header') el.style.top = `${ptToPx(page.margins.header)}px`
       else el.style.bottom = `${ptToPx(page.margins.footer)}px`
       el.innerHTML = html
+      pageEl.appendChild(el)
+    }
+    const notes = notesAreaHtml(notesForPage(notesKey.getState(editor.state)?.notes ?? [], state?.breaks ?? [], i))
+    if (notes) {
+      const el = document.createElement('div')
+      el.className = 'sd-doc sd-notes'
+      el.style.left = `${ptToPx(page.margins.left)}px`
+      el.style.width = `${ptToPx(page.width - page.margins.left - page.margins.right)}px`
+      el.style.bottom = `${ptToPx(page.margins.bottom)}px`
+      el.innerHTML = notes
       pageEl.appendChild(el)
     }
     container.appendChild(pageEl)

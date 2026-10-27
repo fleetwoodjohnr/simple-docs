@@ -6,6 +6,7 @@ import { ptToPx, type StyleMap } from '@/editor/model'
 import { stylesToCss } from '@/editor/styles-css'
 import { Ruler } from './Ruler'
 import { HFEditor, StaticHF, hfZoneAt } from './HeaderFooter'
+import { NoteEditor, StaticNotes } from './Notes'
 import { useApp, set } from '../state/store'
 
 export function usePageCount(editor: Editor): number {
@@ -32,6 +33,7 @@ export function DocumentView({ tabId, editor, zoom, showMarks, showBoundaries, s
     selector: ({ editor: e }) => ({ page: pageOf(e.state.doc), styles: e.state.doc.attrs.styles as StyleMap | null, hf: e.state.doc.attrs.hf, meta: e.state.doc.attrs.meta })
   })
   const hfEdit = useApp((s) => (s.hf?.tabId === tabId ? s.hf : null))
+  const noteEdit = useApp((s) => (s.note?.tabId === tabId ? s.note : null))
   const css = useMemo(() => (styles ? stylesToCss(styles, `.${docScope(tabId)} .sd-doc`) : ''), [styles, tabId])
   const w = ptToPx(page.width)
   const h = ptToPx(page.height)
@@ -103,9 +105,11 @@ export function DocumentView({ tabId, editor, zoom, showMarks, showBoundaries, s
                 {showBoundaries && <Marks m={m} />}
                 {zoom >= 0.6 && <span className="page-num select-none">{i + 1}</span>}
                 <StaticHF body={editor} page={page} index={i} count={pageCount} hidden={hfEdit?.page === i ? hfEdit.kind : null} />
+                <StaticNotes body={editor} tabId={tabId} page={page} index={i} />
               </div>
             ))}
             {hfEdit && <HFEditor key={`${hfEdit.kind}-${hfEdit.page}`} body={editor} page={page} kind={hfEdit.kind} index={hfEdit.page} />}
+            {noteEdit && <NoteEditor key={noteEdit.pos} body={editor} pos={noteEdit.pos} />}
             <div className="doc-host" style={{ width: w }}>
               <EditorContent editor={editor} />
             </div>

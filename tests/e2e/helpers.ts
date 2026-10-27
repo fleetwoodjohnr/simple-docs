@@ -35,7 +35,7 @@ export async function quit(app: ElectronApplication) {
   await app.evaluate(({ app }) => app.exit(0)).catch(() => {})
 }
 
-export const doc = (page: Page) => page.locator('[data-doc-scroll]:visible .sd-doc')
+export const doc = (page: Page) => page.locator('[data-doc-scroll]:visible .doc-host .ProseMirror')
 
 /** Run a function against the active Tiptap editor inside the renderer. */
 export async function withEditor<T>(page: Page, fn: string): Promise<T> {

@@ -237,6 +237,13 @@ export function insertPageNumber(kind: HFKind, align: 'left' | 'center' | 'right
   body.chain().focus().command(({ tr }) => (tr.setDocAttribute('hf', next), true)).run()
 }
 
+function insertNoteAndEdit(e: Editor, kind: 'footnote' | 'endnote') {
+  if (get().hf || get().note) return
+  const pos = e.state.selection.from
+  if (!e.chain().focus().insertNote(kind).run()) return
+  set({ note: { tabId: get().active, pos } })
+}
+
 export function editHF(kind: HFKind) {
   const body = bodyEditor()
   if (!body) return
@@ -359,6 +366,8 @@ def({ id: 'insert.quote', label: 'Block quote', run: (e) => chain(e!).toggleBloc
 def({ id: 'insert.date', label: 'Date', run: (e) => chain(e!).insertContent(new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })).run() })
 def({ id: 'insert.toc', label: 'Table of contents', run: (e) => insertToc(e!) })
 def({ id: 'toc.update', label: 'Update table of contents', shortcut: 'F9', run: (e) => updateTocsSettled(e!) })
+def({ id: 'insert.footnote', label: 'Footnote', shortcut: 'Mod-Alt-f', run: (e) => insertNoteAndEdit(e!, 'footnote') })
+def({ id: 'insert.endnote', label: 'Endnote', shortcut: 'Mod-Alt-d', run: (e) => insertNoteAndEdit(e!, 'endnote') })
 def({ id: 'insert.header', label: 'Edit header', run: () => editHF('header') })
 def({ id: 'insert.footer', label: 'Edit footer', run: () => editHF('footer') })
 def({ id: 'insert.lineBreak', label: 'Line break', shortcut: 'Shift-Enter', run: (e) => chain(e!).setHardBreak().run() })

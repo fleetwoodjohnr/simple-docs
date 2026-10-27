@@ -23,6 +23,8 @@ export interface Unit {
   widowControl?: boolean
   /** Lazily measured line boxes (text units only). */
   lines?: () => Line[]
+  /** Footnotes referenced in this unit: natural y of the reference and the note's rendered height. */
+  notes?: { y: number; h: number }[]
 }
 
 export interface PageMetrics {
@@ -32,6 +34,8 @@ export interface PageMetrics {
   stride: number
   /** Natural y where page 1's content begins (the root's padding-top = top margin). */
   contentTop: number
+  /** Space taken by the footnote separator when a page has notes (px). */
+  noteSep?: number
 }
 
 export type BreakKind = 'block' | 'inline' | 'row'
@@ -57,13 +61,19 @@ const EPS = 0.5
 export function computeBreaks(units: Unit[], m: PageMetrics): Layout {
   const breaks: Break[] = []
   const overflow: number[] = []
+  const sep = m.noteSep ?? 12
   let start = m.contentTop
-  let limit = start + m.contentHeight
+  /** Height of footnotes already placed on the current page. */
+  let noteH = 0
+  const area = (h: number) => (h > 0 ? h + sep : 0)
+  const limitWith = (extra: number) => start + m.contentHeight - area(noteH + extra)
+  /** Notes of `u` whose reference lies in [from, to) on the current page. */
+  const notesIn = (u: Unit, from: number, to: number) => (u.notes ?? []).reduce((s, n) => (n.y >= from - EPS && n.y < to - EPS ? s + n.h : s), 0)
 
   const newPage = (pos: number, kind: BreakKind, s: number) => {
     breaks.push({ pos, kind, start: s, height: m.stride - (s - start) })
     start = s
-    limit = s + m.contentHeight
+    noteH = 0
   }
   const blockKind = (u: Unit): BreakKind => (u.kind === 'row' ? 'row' : 'block')
 
@@ -77,13 +87,26 @@ export function computeBreaks(units: Unit[], m: PageMetrics): Layout {
     if ((forced || u.breakBefore) && u.top > start + EPS) newPage(u.pos, blockKind(u), u.top)
     forced = false
 
-    while (u.bottom > limit + EPS) {
-      // 1. Split a paragraph between lines, honouring widow/orphan control.
+    for (;;) {
+      const own = notesIn(u, start, Infinity)
+      if (u.bottom <= limitWith(own) + EPS) {
+        noteH += own
+        break
+      }
+      // 1. Split a paragraph between lines, honouring widow/orphan control and the
+      //    footnotes referenced on the lines that stay on this page.
       if (u.kind === 'text' && !u.keepLines && u.lines) {
         const lines = u.lines()
         const f = lines.findIndex((l) => l.top >= start - EPS)
-        let s = f < 0 ? -1 : lines.findIndex((l, i) => i >= f && l.bottom > limit + EPS)
-        if (f >= 0 && s > 0) {
+        let s = -1
+        if (f >= 0)
+          for (let j = lines.length - 1; j > f; j--) {
+            if (lines[j - 1].bottom <= limitWith(notesIn(u, start, lines[j].top)) + EPS) {
+              s = j
+              break
+            }
+          }
+        if (s > 0) {
           const widows = u.widowControl === false ? 1 : 2
           const orphans = f === 0 && u.widowControl !== false ? 2 : 1
           if (lines.length - s < widows) s = lines.length - widows
@@ -98,18 +121,21 @@ export function computeBreaks(units: Unit[], m: PageMetrics): Layout {
       while (b > 0 && units[b - 1].keepNext && units[b - 1].kind !== 'pagebreak' && units[b - 1].top > start + EPS) b--
       if (units[b].top > start + EPS) {
         newPage(units[b].pos, blockKind(units[b]), units[b].top)
+        // Units between the chain start and k are re-placed on the new page.
+        for (let j = b; j < k; j++) noteH += notesIn(units[j], start, Infinity)
         continue
       }
       // 3. Already at the top of a page: split anywhere we can, else let it overflow.
       if (u.kind === 'text' && u.lines) {
         const lines = u.lines()
-        const s = lines.findIndex((l) => l.top > start + EPS && l.bottom > limit + EPS)
+        const s = lines.findIndex((l) => l.top > start + EPS && l.bottom > limitWith(notesIn(u, start, l.top)) + EPS)
         if (s > 0 && lines[s].pos > 0) {
           newPage(lines[s].pos, 'inline', lines[s].top)
           continue
         }
       }
       overflow.push(breaks.length)
+      noteH += own
       break
     }
   }
