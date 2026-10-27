@@ -7,6 +7,7 @@ import { insertToc, updateTocsSettled } from '@/editor/toc'
 import { addComment, commentUiKey, focusComment, orderedCommentIds } from '@/editor/comments'
 import { changesAtSelection, gotoChange, resolveChanges, setTracking } from '@/editor/track'
 import { distributeColumns, setCellAlign, sortTable, tableToText, textToTable } from '@/editor/tables'
+import { updateStyleFromSelection } from '@/editor/style-ops'
 import { emptyHF, resolveStyle, type HeadersFooters, type HFKind, type StyleMap } from '@/editor/model'
 import { bodyEditor } from '../state/store'
 
@@ -357,6 +358,9 @@ for (let i = 1; i <= 6; i++) def({ id: `style.h${i}`, label: `Heading ${i}`, sho
 def({ id: 'style.title', label: 'Title', run: (e) => applyStyle(e!, 'Title') })
 def({ id: 'style.subtitle', label: 'Subtitle', run: (e) => applyStyle(e!, 'Subtitle') })
 def({ id: 'style.quote', label: 'Quote', run: (e) => applyStyle(e!, 'Quote') })
+def({ id: 'style.modify', label: 'Modify style…', run: (e) => set({ dialog: { kind: 'style', styleId: currentStyleId(e!) } }) })
+def({ id: 'style.new', label: 'New style…', run: () => set({ dialog: { kind: 'style', styleId: null } }) })
+def({ id: 'style.updateFromSelection', label: 'Update style to match selection', run: (e) => { const id = updateStyleFromSelection(e!); if (id) toast(`Updated style “${id}”`, 'success') } })
 
 // Insert
 def({ id: 'insert.pageBreak', label: 'Page break', shortcut: 'Mod-Enter', run: (e) => chain(e!).setPageBreak().run() })

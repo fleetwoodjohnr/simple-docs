@@ -2,7 +2,10 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { AlertTriangle, Info, Monitor, Moon, Sun } from 'lucide-react'
 import { useApp, set, get, editors, updateSettings, type Dialog } from '../state/store'
 import * as docs from '../state/documents'
-import { allCommands, eventToShortcut, formatShortcut, shortcutFor } from './commands'
+import { allCommands, applyStyle, eventToShortcut, formatShortcut, shortcutFor } from './commands'
+import { resolveStyle, type ParaProps, type RunProps, type StyleDef, type StyleMap } from '@/editor/model'
+import { saveStyle, uniqueStyleId } from '@/editor/style-ops'
+import { fontStack } from '@/editor/styles-css'
 import { StatsView } from './Panels'
 import { Btn, Field, Kbd, Modal, Segmented, Switch, cx, inputCls } from '../ui'
 import { FORMAT_LABELS } from '@/formats/types'
@@ -29,6 +32,8 @@ export function Dialogs() {
       return <StatsDialog />
     case 'export-warnings':
       return <ExportWarnings d={d} />
+    case 'style':
+      return <StyleDialog styleId={d.styleId} />
     default:
       return null
   }
@@ -222,6 +227,148 @@ function ExportWarnings({ d }: { d: Extract<Dialog, { kind: 'export-warnings' }>
       }
     >
       <WarningList title="What changes" icon={<AlertTriangle className="size-4 text-warn" />} items={d.warnings} />
+    </Modal>
+  )
+}
+
+function StyleDialog({ styleId }: { styleId: string | null }) {
+  const editor = editors.get(get().active)
+  const styles = (editor?.state.doc.attrs.styles ?? {}) as StyleMap
+  const existing = styleId ? styles[styleId] : null
+  const resolved = resolveStyle(styles, existing ? existing.id : 'Normal')
+  const [name, setName] = useState(existing?.name ?? 'New style')
+  const [basedOn, setBasedOn] = useState(existing?.basedOn ?? (existing ? '' : 'Normal'))
+  const [next, setNext] = useState(existing?.next ?? '')
+  const [run, setRun] = useState<RunProps>({ ...(existing ? existing.run : {}) })
+  const [para, setPara] = useState<ParaProps>({ ...(existing ? existing.para : {}) })
+  if (!editor) return null
+  const eff = { run: { ...resolved.run, ...run }, para: { ...resolved.para, ...para } }
+  const paraStyles = Object.values(styles).filter((s) => s.type === 'paragraph' && s.id !== existing?.id)
+  const save = () => {
+    const id = existing?.id ?? uniqueStyleId(styles, name)
+    const def: StyleDef = { ...(existing ?? { type: 'paragraph' as const }), id, name: existing?.builtin ? existing.name : name.trim() || id, basedOn: id === 'Normal' ? undefined : basedOn || 'Normal', next: next || undefined, run, para }
+    saveStyle(editor, def)
+    if (!existing) applyStyle(editor, id)
+    close()
+  }
+  const num = (v: string) => (v === '' ? undefined : Number(v))
+  const field = 'h-8 rounded-lg border border-border bg-panel px-2 text-[13px] outline-none focus:border-accent'
+  return (
+    <Modal
+      open
+      onOpenChange={(o) => !o && close()}
+      title={existing ? `Modify style: ${existing.name}` : 'New paragraph style'}
+      description="Changes apply to every paragraph that uses this style."
+      width={600}
+      footer={
+        <>
+          <Btn onClick={close}>Cancel</Btn>
+          <Btn variant="primary" onClick={save} data-testid="style-save">
+            {existing ? 'Save style' : 'Create style'}
+          </Btn>
+        </>
+      }
+    >
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Name">
+          <input className={cx(field, 'w-full')} value={name} disabled={!!existing?.builtin} onChange={(e) => setName(e.target.value)} aria-label="Style name" />
+        </Field>
+        <Field label="Based on">
+          <select className={cx(field, 'w-full')} value={basedOn} disabled={existing?.id === 'Normal'} onChange={(e) => setBasedOn(e.target.value)}>
+            {paraStyles.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Next paragraph">
+          <select className={cx(field, 'w-full')} value={next} onChange={(e) => setNext(e.target.value)}>
+            <option value="">Same style</option>
+            {Object.values(styles)
+              .filter((s) => s.type === 'paragraph')
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+          </select>
+        </Field>
+      </div>
+      <h4 className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wide text-text-3">Font</h4>
+      <div className="flex flex-wrap items-end gap-2">
+        <input className={cx(field, 'w-44')} list="sd-fonts" value={eff.run.fontFamily ?? ''} onChange={(e) => setRun({ ...run, fontFamily: e.target.value || undefined })} aria-label="Font" />
+        <datalist id="sd-fonts">
+          {['Calibri', 'Cambria', 'Arial', 'Times New Roman', 'Georgia', 'Courier New', 'Liberation Sans', 'Liberation Serif'].map((f) => (
+            <option key={f} value={f} />
+          ))}
+        </datalist>
+        <input className={cx(field, 'w-20')} type="number" step={0.5} min={4} value={eff.run.fontSize ?? ''} onChange={(e) => setRun({ ...run, fontSize: num(e.target.value) })} aria-label="Font size" />
+        {(['bold', 'italic', 'underline'] as const).map((k) => (
+          <button key={k} onClick={() => setRun({ ...run, [k]: !eff.run[k] })} aria-pressed={!!eff.run[k]} className={cx(field, 'w-9 font-serif', eff.run[k] && 'border-accent bg-accent-soft text-accent', k === 'bold' && 'font-bold', k === 'italic' && 'italic', k === 'underline' && 'underline')}>
+            {k[0].toUpperCase()}
+          </button>
+        ))}
+        <input type="color" aria-label="Text color" value={eff.run.color ?? '#000000'} onChange={(e) => setRun({ ...run, color: e.target.value })} className="h-8 w-10 cursor-pointer rounded-lg border border-border bg-panel p-1" />
+      </div>
+      <h4 className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wide text-text-3">Paragraph</h4>
+      <div className="flex flex-wrap items-center gap-3">
+        <Segmented
+          label="Alignment"
+          value={eff.para.align ?? 'left'}
+          onChange={(v) => setPara({ ...para, align: v })}
+          options={[
+            { value: 'left', label: 'Left' },
+            { value: 'center', label: 'Center' },
+            { value: 'right', label: 'Right' },
+            { value: 'justify', label: 'Justify' }
+          ]}
+        />
+        {(
+          [
+            ['lineHeight', 'Line spacing', '×', 0.05],
+            ['spaceBefore', 'Before', 'pt', 1],
+            ['spaceAfter', 'After', 'pt', 1],
+            ['indentLeft', 'Indent', 'pt', 6],
+            ['indentFirst', 'First line', 'pt', 6]
+          ] as const
+        ).map(([k, l, unit, step]) => (
+          <label key={k} className="flex items-center gap-1.5 text-[12px] text-text-2">
+            {l}
+            <input className={cx(field, 'w-16')} type="number" step={step} value={(eff.para[k] as number | undefined) ?? ''} onChange={(e) => setPara({ ...para, [k]: num(e.target.value) })} aria-label={l} />
+            <span className="text-text-3">{unit}</span>
+          </label>
+        ))}
+        {(
+          [
+            ['keepNext', 'Keep with next'],
+            ['keepLines', 'Keep lines together']
+          ] as const
+        ).map(([k, l]) => (
+          <label key={k} className="flex items-center gap-1.5 text-[12px] text-text-2">
+            <input type="checkbox" checked={!!eff.para[k]} onChange={(e) => setPara({ ...para, [k]: e.target.checked })} className="accent-[var(--accent)]" />
+            {l}
+          </label>
+        ))}
+      </div>
+      <h4 className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wide text-text-3">Preview</h4>
+      <div className="rounded-lg border border-border bg-white p-4 text-black" style={{ textAlign: eff.para.align ?? 'left' }}>
+        <p
+          style={{
+            fontFamily: eff.run.fontFamily ? fontStack(eff.run.fontFamily) : undefined,
+            fontSize: `${eff.run.fontSize ?? 11}pt`,
+            fontWeight: eff.run.bold ? 700 : 400,
+            fontStyle: eff.run.italic ? 'italic' : 'normal',
+            textDecoration: eff.run.underline ? 'underline' : 'none',
+            color: eff.run.color,
+            lineHeight: (eff.para.lineHeight ?? 1.15) * 1.2,
+            marginLeft: `${eff.para.indentLeft ?? 0}pt`,
+            textIndent: `${eff.para.indentFirst ?? 0}pt`
+          }}
+        >
+          The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.
+        </p>
+      </div>
     </Modal>
   )
 }

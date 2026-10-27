@@ -269,3 +269,28 @@ test('table header row repeats on continuation pages (screen and PDF)', async ()
     await quit(app)
   }
 })
+
+test('modifying a style restyles every paragraph that uses it', async () => {
+  const { app, page } = await launch()
+  try {
+    await page.keyboard.press('Control+n')
+    await doc(page).click()
+    await withEditor(page, `(e) => e.commands.setContent({ type: 'doc', attrs: e.state.doc.attrs, content: [
+      { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'First heading' }] },
+      { type: 'paragraph', content: [{ type: 'text', text: 'Body' }] },
+      { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Second heading' }] }
+    ] })`)
+    await withEditor(page, `(e) => e.commands.setTextSelection(3)`)
+    await page.evaluate(() => (window as never as { __sd: { runCommand(id: string): void } }).__sd.runCommand('style.modify'))
+    await page.getByRole('dialog').getByLabel('Font size').fill('30')
+    await page.getByTestId('style-save').click()
+    const sizes = await page.locator('[data-doc-scroll]:visible .doc-host h1').evaluateAll((els) => els.map((el) => getComputedStyle(el).fontSize))
+    expect(sizes).toEqual(['40px', '40px'])
+    // undo reverts the style change
+    await page.keyboard.press('Control+z')
+    const after = await page.locator('[data-doc-scroll]:visible .doc-host h1').first().evaluate((el) => getComputedStyle(el).fontSize)
+    expect(after).not.toBe('40px')
+  } finally {
+    await quit(app)
+  }
+})

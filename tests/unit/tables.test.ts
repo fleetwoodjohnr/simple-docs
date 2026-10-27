@@ -88,3 +88,22 @@ describe('table tools', () => {
     }
   })
 })
+
+describe('style operations', () => {
+  it('updates a style from the selection and clears the direct formatting', async () => {
+    const { updateStyleFromSelection } = await import('@/editor/style-ops')
+    const { defaultStyles } = await import('@/editor/model')
+    const e = new Editor({
+      extensions: createExtensions(),
+      content: { type: 'doc', attrs: { styles: defaultStyles() }, content: [{ type: 'paragraph', attrs: { styleId: 'Quote', align: 'center', spaceAfter: 20 }, content: [{ type: 'text', text: 'Quoted', marks: [{ type: 'textStyle', attrs: { color: '#ff0000', fontSize: '14pt' } }] }] }] }
+    })
+    e.commands.setTextSelection(2)
+    expect(updateStyleFromSelection(e)).toBe('Quote')
+    const q = (e.state.doc.attrs.styles as Record<string, { para: Record<string, unknown>; run: Record<string, unknown> }>).Quote
+    expect(q.para).toMatchObject({ align: 'center', spaceAfter: 20 })
+    expect(q.run).toMatchObject({ color: '#ff0000', fontSize: 14 })
+    const p = e.state.doc.firstChild!
+    expect(p.attrs.align).toBeNull()
+    expect(p.firstChild!.marks).toEqual([])
+  })
+})

@@ -244,7 +244,11 @@ function StyleGallery({ editor, current }: { editor: Editor; current: string }) 
       </div>
       <Menu>
         <DropBtn label="All styles" />
-        <MenuContent className="max-h-[420px] min-w-[220px] overflow-y-auto">
+        <MenuContent className="max-h-[460px] min-w-[240px] overflow-y-auto">
+          <MenuItem onSelect={() => runCommand('style.modify')}>Modify “{styles[current]?.name ?? current}”…</MenuItem>
+          <MenuItem onSelect={() => runCommand('style.updateFromSelection')}>Update “{styles[current]?.name ?? current}” to match selection</MenuItem>
+          <MenuItem onSelect={() => runCommand('style.new')}>New style…</MenuItem>
+          <MenuSep />
           <MenuLabel>Paragraph styles</MenuLabel>
           {all.map((s) => (
             <MenuItem key={s.id} onSelect={() => applyStyle(editor, s.id)} className={current === s.id ? 'text-accent' : ''}>

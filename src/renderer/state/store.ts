@@ -31,6 +31,7 @@ export type Dialog =
   | { kind: 'shortcuts' }
   | { kind: 'about' }
   | { kind: 'stats' }
+  | { kind: 'style'; styleId: string | null }
   | { kind: 'export-warnings'; tabId: string; format: FormatId; warnings: FormatWarning[]; resolve: (ok: boolean) => void }
 
 export interface Toast {
