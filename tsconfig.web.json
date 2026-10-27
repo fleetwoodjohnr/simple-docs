@@ -6,5 +6,5 @@
     "jsx": "react-jsx",
     "types": ["node", "vite/client"]
   },
-  "include": ["src/renderer/**/*", "src/editor/**/*", "src/layout/**/*", "src/formats/**/*", "src/export/**/*", "src/pdf/**/*", "src/shared/**/*", "tests/**/*", "vitest.config.mts", "playwright.config.mts"]
+  "include": ["src/renderer/**/*", "src/editor/**/*", "src/layout/**/*", "src/formats/**/*", "src/export/**/*", "src/pdf/**/*", "src/shared/**/*", "src/main/ocr.ts", "tests/**/*", "vitest.config.mts", "playwright.config.mts"]
 }

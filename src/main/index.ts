@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import type { OpenedFile, RecentFile, Settings } from '../shared/ipc-types'
 import * as store from './store'
 import * as lo from './libreoffice'
+import { recognize, stopOcr } from './ocr'
 
 const isMac = process.platform === 'darwin'
 const DOC_EXTENSIONS = ['docx', 'odt', 'md', 'markdown', 'html', 'htm', 'txt', 'rtf', 'doc', 'pdf']
@@ -274,6 +275,10 @@ function registerIpc() {
     if (!file.startsWith(root + path.sep) || !/\.(wasm|traineddata(\.gz)?)$/.test(file)) throw new Error('Asset outside the app')
     return new Uint8Array(await fs.readFile(file))
   })
+  handle('ocr:recognize', async (_e, image: unknown) => {
+    if (!(image instanceof Uint8Array) || image.byteLength > 200 * 1024 * 1024) throw new Error('Invalid image')
+    return recognize(image)
+  })
   handle('spell:dictionary', async (_e, lang: unknown) => {
     if (typeof lang !== 'string' || !/^[a-z]{2,3}([-_][A-Z]{2})?$/.test(lang)) return null
     const name = lang.replace('-', '_')
@@ -347,4 +352,5 @@ if (!app.requestSingleInstanceLock()) {
   app.on('window-all-closed', () => {
     if (!isMac) app.quit()
   })
+  app.on('will-quit', () => void stopOcr())
 }

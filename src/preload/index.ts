@@ -35,6 +35,7 @@ const api: SimpleDocsApi = {
   capturePage: (rect) => ipcRenderer.invoke('capture-page', rect),
   readAsset: (url) => ipcRenderer.invoke('asset:read', url),
   spellDictionary: (lang) => ipcRenderer.invoke('spell:dictionary', lang),
+  ocr: (image) => ipcRenderer.invoke('ocr:recognize', image),
   libreOfficeAvailable: () => ipcRenderer.invoke('lo:available'),
   libreOfficeConvert: (data, from, to) => ipcRenderer.invoke('lo:convert', data, from, to),
   windowMinimize: () => void ipcRenderer.invoke('window:minimize'),

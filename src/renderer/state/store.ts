@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { Editor } from '@tiptap/core'
-import { DEFAULT_SETTINGS, type RecentFile, type RecoveryEntry, type Settings } from '@/shared/ipc-types'
+import { DEFAULT_SETTINGS, type OpenedFile, type RecentFile, type RecoveryEntry, type Settings } from '@/shared/ipc-types'
 import type { FormatId, FormatWarning } from '@/formats/types'
 
 export type RibbonTab = 'home' | 'insert' | 'layout' | 'references' | 'review' | 'view' | 'tools'
@@ -34,6 +34,7 @@ export type Dialog =
   | { kind: 'about' }
   | { kind: 'stats' }
   | { kind: 'style'; styleId: string | null }
+  | { kind: 'pdf-password'; file: OpenedFile; wrong: boolean }
   | { kind: 'export-warnings'; tabId: string; format: FormatId; warnings: FormatWarning[]; resolve: (ok: boolean) => void }
 
 export interface Toast {

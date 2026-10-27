@@ -581,6 +581,30 @@ export class PdfDocument {
     )
   }
 
+  /** Add an invisible text layer (OCR result) so a scanned page becomes searchable and selectable. */
+  addInvisibleText(i: number, words: { text: string; rect: [number, number, number, number] }[]): boolean {
+    return this.withPage(i, (page) => {
+      const font = this.m.FPDFText_LoadStandardFont(this.ptr, 'Helvetica')
+      for (const { text, rect } of words) {
+        const [l, t, r, b] = rect
+        const h = t - b
+        if (h <= 0 || r <= l) continue
+        const obj = this.m.FPDFPageObj_CreateTextObj(this.ptr, font, h)
+        const w = this.e.wide(text)
+        this.m.FPDFText_SetText(obj, w)
+        this.e.free(w)
+        // Stretch horizontally so the word covers its box (selection and search hits line up with the image).
+        const natural = this.e.withBuf(16, (p) => (this.m.FPDFPageObj_GetBounds(obj, p, p + 4, p + 8, p + 12) ? this.e.floats(p, 4) : null))
+        const nw = natural ? natural[2] - natural[0] : 0
+        const sx = nw > 0 ? (r - l) / nw : 1
+        this.e.withBuf(24, (p) => (this.e.setFloats(p, [sx, 0, 0, 1, l, b + h * 0.2]), this.m.FPDFPageObj_SetMatrix(obj, p)))
+        this.m.FPDFTextObj_SetTextRenderMode(obj, 3) // invisible
+        this.m.FPDFPage_InsertObject(page, obj)
+      }
+      return this.m.FPDFPage_GenerateContent(page)
+    })
+  }
+
   /** Create a fillable form field (widget) at rect. */
   createField(i: number, type: 'text' | 'checkbox', name: string, rect: [number, number, number, number]): boolean {
     const form = this.formHandle()

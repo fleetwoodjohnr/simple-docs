@@ -19,9 +19,15 @@ export async function launch(opts: { userData?: string; settings?: Record<string
   if (opts.settings) writeFileSync(path.join(userData, 'settings.json'), JSON.stringify(opts.settings))
   const app = await electron.launch({ args: ['.'], env: { ...process.env, SIMPLE_DOCS_USER_DATA: userData } })
   const page = await app.firstWindow()
+  const violations: string[] = []
+  page.on('console', (m) => /Content.Security.Policy/i.test(m.text()) && violations.push(m.text()))
+  cspViolations.set(app, violations)
   await page.waitForSelector('[data-testid=dashboard], [data-testid=ribbon]')
   return { app, page, userData }
 }
+
+/** Every test fails if the renderer reported a Content-Security-Policy violation. */
+const cspViolations = new WeakMap<ElectronApplication, string[]>()
 
 /** Replace native dialogs in the main process with fixed answers. */
 export async function stubDialogs(app: ElectronApplication, d: { save?: string; open?: string[] }) {
@@ -33,6 +39,8 @@ export async function stubDialogs(app: ElectronApplication, d: { save?: string; 
 
 export async function quit(app: ElectronApplication) {
   await app.evaluate(({ app }) => app.exit(0)).catch(() => {})
+  const v = cspViolations.get(app)
+  if (v?.length) throw new Error(`CSP violations:\n${v.join('\n')}`)
 }
 
 export const doc = (page: Page) => page.locator('[data-doc-scroll]:visible .doc-host .ProseMirror')

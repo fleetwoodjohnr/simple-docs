@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
-import { copyFileSync, existsSync } from 'node:fs'
+import { copyFileSync, existsSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { launch, quit, settle, stubDialogs, tempDir } from './helpers'
 
@@ -116,6 +116,76 @@ test('acceptance 15–16: open a PDF, annotate, edit text, redact, save and reop
     // rotated page shows landscape proportions
     const p2 = (await page.locator('[data-pdf-page="1"]').boundingBox())!
     expect(p2.width).toBeGreaterThan(p2.height)
+  } finally {
+    await quit(app)
+  }
+})
+
+test('OCR: a scanned PDF becomes searchable and keeps its text after save', async () => {
+  const dir = tempDir()
+  const file = path.join(dir, 'scan.pdf')
+  copyFileSync(path.join(__dirname, '../fixtures/scanned.pdf'), file)
+  const { app, page } = await launch()
+  try {
+    await stubDialogs(app, { open: [file] })
+    await page.keyboard.press('Control+o')
+    await expect(page.getByTestId('pdf-workspace')).toBeVisible()
+    await expect(page.getByText(/looks scanned/)).toBeVisible()
+    await page.getByTestId('pdf-ocr').click()
+    await expect(page.getByText(/Recognized \d+ words/)).toBeVisible({ timeout: 60_000 })
+    await page.getByLabel('Search PDF').fill('Fixture Report')
+    await expect(page.getByLabel('Search PDF').locator('..')).toContainText('1/1')
+    await page.getByLabel('Search PDF').blur()
+    await page.keyboard.press('Control+s')
+    await expect(page.getByTestId('save-status')).toHaveText(/Saved/, { timeout: 15_000 })
+    if (existsSync('/usr/bin/pdftotext')) expect(pdftotext(file)).toContain('Centered paragraph')
+  } finally {
+    await quit(app)
+  }
+})
+
+test('password-protected PDF: prompts, rejects a wrong password, opens with the right one', async () => {
+  const { app, page } = await launch()
+  try {
+    await stubDialogs(app, { open: [path.join(__dirname, '../fixtures/protected.pdf')] })
+    await page.keyboard.press('Control+o')
+    await page.getByLabel('PDF password').fill('wrong')
+    await page.keyboard.press('Enter')
+    await expect(page.getByText('That password is not correct.')).toBeVisible()
+    await page.getByLabel('PDF password').fill('secret')
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('pdf-workspace')).toBeVisible()
+    await expect(page.locator('[data-pdf-page="1"]')).toBeAttached()
+  } finally {
+    await quit(app)
+  }
+})
+
+test('print a PDF tab: every page goes to the printer at its own size', async () => {
+  const { app, page } = await launch()
+  try {
+    // Capture the print request in the main process instead of opening the system dialog.
+    await app.evaluate(({ BrowserWindow }) => {
+      const wc = BrowserWindow.getAllWindows()[0].webContents
+      ;(globalThis as Record<string, unknown>).__printed = null
+      wc.print = ((_o: unknown, cb?: (ok: boolean) => void) => {
+        void wc.printToPDF({ preferCSSPageSize: true, margins: { top: 0, bottom: 0, left: 0, right: 0 } }).then((b) => {
+          ;(globalThis as Record<string, unknown>).__printed = b.toString('base64')
+          cb?.(true)
+        })
+      }) as never
+    })
+    await stubDialogs(app, { open: [fixture] })
+    await page.keyboard.press('Control+o')
+    await expect(page.getByTestId('pdf-workspace')).toBeVisible()
+    await page.keyboard.press('Control+p')
+    await expect.poll(() => app.evaluate(() => (globalThis as Record<string, unknown>).__printed !== null), { timeout: 15_000 }).toBe(true)
+    const out = path.join(tempDir(), 'printed.pdf')
+    const b64 = await app.evaluate(() => (globalThis as Record<string, unknown>).__printed as string)
+    writeFileSync(out, Buffer.from(b64, 'base64'))
+    const info = execFileSync('pdfinfo', [out]).toString()
+    expect(info).toMatch(/Pages:\s+2/)
+    expect(info).toMatch(/Page size:\s+612 x 792/)
   } finally {
     await quit(app)
   }

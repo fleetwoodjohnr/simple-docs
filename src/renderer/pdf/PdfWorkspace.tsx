@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 import {
   ArrowUp, Crop, Eraser, FilePlus2, Files, Highlighter, ImagePlus, Loader2, MessageSquare, MousePointer2, PenLine, PenTool, RotateCcw, RotateCw, Save, Scissors, Search, SquareDashed,
-  Strikethrough, TextCursorInput, Trash2, Type, TypeOutline, Underline, Undo2, ZoomIn, ZoomOut, X, Info, FormInput, Signature, ChevronUp, ChevronDown
+  ScanText, Strikethrough, TextCursorInput, Trash2, Type, TypeOutline, Underline, Undo2, ZoomIn, ZoomOut, X, Info, FormInput, Signature, ChevronUp, ChevronDown
 } from 'lucide-react'
 import type { AnnotInfo, FieldInfo, TextRun } from '@/pdf/engine'
-import { pdf } from './client'
+import { pdf, renderPng } from './client'
 import { pdfSessions, toast, useApp } from '../state/store'
 import * as docs from '../state/documents'
 import { Btn, IconBtn, Modal, Tip, cx, inputCls } from '../ui'
@@ -71,8 +71,24 @@ export function PdfWorkspace({ tabId }: { tabId: string }) {
   const [signature, setSignature] = useState<Uint8Array | null>(null)
   const [signOpen, setSignOpen] = useState(false)
   const [confirmRedact, setConfirmRedact] = useState(false)
+  const [ocrStatus, setOcrStatus] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const s = zoom * PX
+
+  // Start at fit-width when the page is wider than the view (measured once the tab is first shown).
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      const avail = el.clientWidth - 48
+      if (avail <= 0) return
+      ro.disconnect()
+      const widest = Math.max(...session.pages.map((p) => p.width)) * PX
+      if (widest > avail) setZoom(Math.max(0.25, Math.floor((avail / widest) * 100) / 100))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const refreshPage = useCallback(
     async (i: number) => {
@@ -208,6 +224,33 @@ export function PdfWorkspace({ tabId }: { tabId: string }) {
     toast('Redactions applied — the content was removed from the file', 'success')
   }
 
+  // ---------- OCR ----------
+  const pageHasText = async (i: number) => (await pdf.runs(doc, i)).reduce((n, r) => n + r.text.trim().length, 0) >= 10
+
+  useEffect(() => {
+    void pageHasText(0).then((has) => !has && toast('This PDF has no text layer (it looks scanned). Use Recognize text to make it searchable and selectable.', 'info'))
+  }, [])
+
+  /** OCR every page without a text layer and add the words as invisible text over the image. */
+  const recognizeText = async () => {
+    const todo: number[] = []
+    for (let i = 0; i < pages.length; i++) if (!(await pageHasText(i))) todo.push(i)
+    if (!todo.length) return toast('Every page already has text', 'info')
+    const k = 200 / 72 // render at 200 dpi for recognition
+    let found = 0
+    await mutate(async () => {
+      for (const [n, i] of todo.entries()) {
+        setOcrStatus(`Recognizing page ${n + 1} of ${todo.length}…`)
+        const png = new Uint8Array(await (await renderPng(doc, i, k)).arrayBuffer())
+        const words = await window.simpleDocs.ocr(png)
+        const map = mapper(pages[i], k)
+        found += words.length
+        await pdf.addInvisibleText(doc, i, words.map((w) => ({ text: w.text, rect: map.screenToRect([w.bbox[0], w.bbox[1]], [w.bbox[2], w.bbox[3]]) })))
+      }
+    }, todo).finally(() => setOcrStatus(null))
+    toast(found ? `Recognized ${found} words on ${todo.length} page${todo.length > 1 ? 's' : ''}. The text is now searchable and selectable.` : 'No text was recognized', found ? 'success' : 'info')
+  }
+
   const totalRedactions = Object.values(redactions).reduce((n, r) => n + r.length, 0)
   const ctx: PageCtx = { doc, s, tool, versions, hits, hitIndex, redactions, setRedactions, annots, fields, author, signature, mutate, setTool, setCurrent }
 
@@ -219,11 +262,12 @@ export function PdfWorkspace({ tabId }: { tabId: string }) {
             <button
               onClick={() => (t.id === 'sign' && !signature ? setSignOpen(true) : setTool(t.id))}
               aria-pressed={tool === t.id}
+              aria-label={t.label}
               data-testid={`pdf-tool-${t.id}`}
               className={cx('flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[12.5px] text-text-2 hover:bg-hover hover:text-text [&>svg]:size-4', tool === t.id && 'bg-accent-soft text-accent hover:bg-accent-soft hover:text-accent')}
             >
               {t.icon}
-              {t.label}
+              <span className="hidden min-[1640px]:inline">{t.label}</span>
             </button>
           </Tip>
         ))}
@@ -238,11 +282,17 @@ export function PdfWorkspace({ tabId }: { tabId: string }) {
           </Btn>
         )}
         <div className="mx-1.5 h-6 w-px bg-border" />
+        <Tip label="Recognize text in scanned pages (offline OCR, English)">
+          <button onClick={recognizeText} disabled={busy} data-testid="pdf-ocr" aria-label="Recognize text" className="flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[12.5px] text-text-2 hover:bg-hover hover:text-text disabled:opacity-50 [&>svg]:size-4">
+            {ocrStatus ? <Loader2 className="animate-spin" /> : <ScanText />}
+            <span className={ocrStatus ? undefined : 'hidden min-[1640px]:inline'}>{ocrStatus ?? 'Recognize text'}</span>
+          </button>
+        </Tip>
         <IconBtn label="Undo" onClick={undo} disabled={!session.undo.length || busy}>
           <Undo2 className="size-4" />
         </IconBtn>
         <div className="flex-1" />
-        <div className="relative mr-1 w-56">
+        <div className="relative mr-1 w-40 shrink-0 min-[1200px]:w-56">
           <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-text-3" />
           <input
             aria-label="Search PDF"
@@ -285,7 +335,7 @@ export function PdfWorkspace({ tabId }: { tabId: string }) {
       <div className="flex min-h-0 flex-1">
         <Thumbnails doc={doc} pages={pages} versions={versions} current={current} onSelect={scrollToPage} ops={pageOps} />
         <div ref={scrollRef} className="min-w-0 flex-1 overflow-auto" data-pdf-scroll>
-          <div className="flex flex-col items-center gap-6 py-8">
+          <div className="flex w-max min-w-full flex-col items-center gap-6 px-6 py-8">
             {pages.map((info, i) => (
               <PdfPage key={i} index={i} info={info} ctx={ctx} />
             ))}

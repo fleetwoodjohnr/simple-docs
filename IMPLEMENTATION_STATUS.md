@@ -1,6 +1,6 @@
 # Implementation status
 
-_Last updated: 2026-10-27 · Milestones 1 and 2 complete (M2 with two documented partial items) · Milestone 3 next._
+_Last updated: 2026-10-27 · Milestones 1–3 complete (M2 and M3 each with documented partial items) · Milestone 4 next._
 
 "Done" means implemented **and** covered by a passing automated test or a manual check recorded below. A button existing in the UI does not count.
 
@@ -9,9 +9,10 @@ _Last updated: 2026-10-27 · Milestones 1 and 2 complete (M2 with two documented
 | Suite | Result |
 |---|---|
 | `npm run typecheck` (strict, main + renderer) | ✅ clean |
-| `npm test` (vitest) | ✅ 72 / 72 |
-| `npm run e2e:headless` (Playwright + Electron) | ✅ 15 / 15 |
+| `npm test` (vitest) | ✅ 84 / 84 |
+| `npm run e2e:headless` (Playwright + Electron) | ✅ 19 / 19 (every test also fails on any Content-Security-Policy violation) |
 | Independent consumer: our DOCX → LibreOffice → PDF | ✅ (in `docx.test.ts`) |
+| Independent consumer: our edited PDFs → poppler (`pdftotext`, `pdfinfo`) | ✅ (in `pdf.test.ts`, `ocr.test.ts`, e2e `pdf.spec.ts`) |
 
 Acceptance criteria from the brief:
 
@@ -27,7 +28,7 @@ Acceptance criteria from the brief:
 | 10–11 | Export PDF; page count and per-page content | ✅ PDF pages = editor pages | e2e `acceptance 1–11` (`pdfinfo`, `pdftotext`) |
 | 12–13 | Open ODT, edit, save | ✅ native ODT engine (no LibreOffice) | e2e `acceptance 12–13`, unit `odt.test.ts` |
 | 14 | Markdown import/export | ✅ | e2e `acceptance 14` |
-| 15–16 | Annotate PDF, save, reopen | ⏳ Milestone 3 | — |
+| 15–16 | Annotate PDF, save, reopen | ✅ highlight + note + text edit + redaction + rotation + form field, saved and reopened | e2e `acceptance 15–16` (checked with `pdftotext`) |
 | 17 | Undo/redo | ✅ | e2e `acceptance 17 & 19` |
 | 18 | AutoSave and crash recovery (SIGKILL) | ✅ | e2e `acceptance 18` |
 | 19 | Keyboard shortcuts | ✅ | e2e `acceptance 17 & 19` |
@@ -135,16 +136,54 @@ Planned, in order:
 8. Style editor dialog and custom styles. Advanced tables: borders, padding, sort, distribute, convert text↔table, repeat header row, can't-split rows.
 9. Native ODT reader/writer with loss warnings, removing the dependence on LibreOffice for ODT.
 
-## Milestones 3–5 ⏳
+## Milestone 3 — PDF workspace ✅ (limits listed below)
+
+PDF files open in their own workspace tab, built on PDFium compiled to WebAssembly (`@embedpdf/pdfium`). PDFium runs in a Web Worker. The ribbon is replaced by a PDF toolbar.
+
+### Done (each with unit and/or E2E tests)
+- **Viewing**: pages render lazily as they scroll into view. Includes zoom, fit-to-width on open, thumbnails, search with hit highlighting and next/previous, and a selectable text layer for copying.
+- **Markup annotations**: highlight, underline and strike-through from a text selection; sticky notes; freehand ink. Each carries the author name from Settings. The Comments panel lists them, jumps to them and deletes them. They are standard PDF annotations, so other readers show them too.
+- **Editing existing text (not an overlay)**: click a line and type the replacement. The line's text objects in the page content are rewritten and the content stream is regenerated. The original font is kept when its embedded subset already holds every new character. Otherwise a standard font is substituted and the user is told which one (Times, Helvetica or Courier, picked from the original's flags and name). Tests read the result back with `pdftotext`, and a pixel check confirms every new character is actually drawn.
+- **Adding content**: new text, plus signatures or images. A signature can be drawn on a pad or loaded from an image file, and is placed as an image object.
+- **True redaction**: mark areas, then apply after a confirmation. PDFium's redaction removes the content under each area from the file, and a black box is drawn in its place. Tests confirm with `pdftotext` that redacted text is gone from the saved file and that the same text on other pages is untouched.
+- **Pages**: rotate, delete, insert a blank page, move up/down, merge (append another PDF), extract a page to a new PDF, split after a page, and crop (sets the CropBox).
+- **Forms**: fill text fields and checkboxes on the page or in the Form fields panel. New text fields and checkboxes can be created by dragging.
+- **Metadata**: title, author, subject and keywords.
+- **OCR (offline)**: *Recognize text* runs Tesseract (tesseract.js with the bundled 2.9 MB English model) on every page that has no text layer. The words are added as an invisible text layer positioned over the image, so the page looks unchanged but can be searched, selected and indexed. The unit test confirms the rendering is pixel-identical and that search hits land on the word in the image. The model runs in the main process on a worker thread and never touches the network.
+- **Password-protected PDFs**: a password prompt appears, and a wrong password is reported. The file stays encrypted with the same password when saved (checked with poppler).
+- **Saving, undo, printing**: Save and Save as write a new full file atomically. Ctrl+Z restores whole-document snapshots (15 levels). Ctrl+P prints each page on a sheet of its own size.
+
+### Known limitations (M3)
+- **Text edits are line-level and do not reflow.** Replacement text is the same size and position as the line it replaces. Longer text runs past the line and nothing moves out of its way.
+- **The substitute standard fonts only cover Latin-1 (WinAnsi).** Characters outside it, such as Greek, Cyrillic or CJK, cannot be typed into a substituted line. Text is not auto-fitted either: a substituted font of a different width changes the line length.
+- **Rotated pages show no text layer.** Text selection, markup and text editing are available only on pages with 0° rotation. Rotate the page back to edit it.
+- **Redaction coverage is partly verified.** Removing text is tested. Removing images and vector graphics under a redaction area is left to PDFium's redaction routine, which no test of ours covers yet.
+- **Annotations can only be added or deleted.** Existing annotations cannot be moved, resized or edited, and comment threads (replies) are not supported.
+- **Only text and checkbox form fields are editable.** Radio buttons, combo boxes and list boxes are shown read-only, and form JavaScript is never run.
+- **Signatures are not cryptographic.** *Sign* places a picture of a signature, not a digital (certificate) signature. Editing a digitally signed PDF invalidates its signature, and the app does not warn about this yet.
+- **Permission flags are not enforced.** On a protected PDF, restrictions such as "no editing" are ignored once the file is opened.
+- **Undo works on whole-file snapshots.** There is no redo, and undo history is capped at 15 steps.
+- **Crop hides content instead of removing it.** It sets the CropBox, so content outside the box stays in the file. Use redaction to remove content.
+- **Printing is raster.** Pages print as 150 dpi images.
+- **OCR is English only.**
+
+### Security hardening done alongside M3
+The packaged renderer now has a strict Content-Security-Policy:
+- no inline or remote scripts
+- WebAssembly is allowed, but `eval` is not
+- `object-src` and `frame-src` are set to `'none'`
+
+Every E2E test fails if Chromium reports a CSP violation. A test also confirms that an injected inline script is blocked.
+
+## Milestones 4–5 ⏳
 
 See the plan in the README and the original brief.
 
-- **M3:** PDF workspace on PDFium WASM. Includes true redaction and editing of existing text objects (with honest font-substitution limits) and optional OCR with tesseract.js.
 - **M4:** Compare, citations, mail merge, equations, shapes and charts, protection, version history and an optional AI assistant.
 - **M5:** Packaging and signing, accessibility audit (axe), compatibility regression corpus, release docs.
 
 ## Next recommended tasks
 
-1. Milestone 3: PDF workspace on PDFium WASM (`@embedpdf/pdfium`), starting with viewing, page operations and annotations, then form filling, true redaction and existing-text editing.
+1. Milestone 4: compare documents, citations and bibliography, mail merge, equations, shapes and charts, templates and cover pages, protection, accessibility checker, version history, optional AI assistant (off by default).
 2. Per-section page setup in the layout engine (displayed landscape sections).
-4. Then Milestone 3 (PDF workspace on PDFium WASM).
+3. PDF: text layer on rotated pages, moving and resizing annotations, a warning before editing digitally signed files.

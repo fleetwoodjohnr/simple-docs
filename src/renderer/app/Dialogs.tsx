@@ -34,6 +34,8 @@ export function Dialogs() {
       return <ExportWarnings d={d} />
     case 'style':
       return <StyleDialog styleId={d.styleId} />
+    case 'pdf-password':
+      return <PdfPasswordDialog d={d} />
     default:
       return null
   }
@@ -89,6 +91,36 @@ function ConfirmClose({ d }: { d: Extract<Dialog, { kind: 'confirm-close' }> }) 
           ))}
         </ul>
       )}
+    </Modal>
+  )
+}
+
+function PdfPasswordDialog({ d }: { d: Extract<Dialog, { kind: 'pdf-password' }> }) {
+  const [pw, setPw] = useState('')
+  const submit = () => {
+    close()
+    void docs.openPdf(d.file, pw)
+  }
+  return (
+    <Modal
+      open
+      onOpenChange={(o) => !o && close()}
+      title="Password required"
+      description={`${d.file.name} is protected. Enter its password to open it. It stays protected with the same password when you save.`}
+      width={420}
+      footer={
+        <>
+          <Btn onClick={close}>Cancel</Btn>
+          <Btn variant="primary" disabled={!pw} onClick={submit}>
+            Open
+          </Btn>
+        </>
+      }
+    >
+      <form onSubmit={(e) => (e.preventDefault(), pw && submit())}>
+        <input autoFocus type="password" aria-label="PDF password" className={inputCls} value={pw} onChange={(e) => setPw(e.target.value)} />
+        {d.wrong && <p className="mt-2 text-[12px] text-danger">That password is not correct.</p>}
+      </form>
     </Modal>
   )
 }

@@ -102,6 +102,26 @@ Source mode shows the generated Markdown with syntax highlighting and a live pre
 
 Import detects the encoding: UTF-8, UTF-8/16 BOMs, and Windows-1252 as a fallback. Form feeds become page breaks. Export flattens lists to text markers and tables to tab-separated columns, with a warning.
 
+## PDF workspace (opening and editing existing PDFs)
+
+Engine: PDFium (WASM). Saving always writes a complete new file, so incremental-update history is not kept.
+
+| Feature | Status |
+|---|---|
+| Viewing, search, copy text | ✅ |
+| Highlight, underline, strike-through, sticky note, ink annotations (standard PDF annotations) | ✅ add, list and delete · ⚠️ existing annotations cannot be moved or edited |
+| Editing existing text | ✅ line-level, written into the content stream · ⚠️ no reflow; a standard font is substituted when the embedded subset lacks a character, and it covers Latin-1 only |
+| Add text, images, drawn signatures | ✅ · ⚠️ signatures are images, not certificate signatures |
+| Redaction | ✅ removes text from the file (verified) · ⚠️ removal of images and vector graphics relies on PDFium and is not yet tested |
+| Rotate, delete, insert, reorder, merge, extract, split, crop pages | ✅ · ⚠️ crop sets the CropBox and does not remove content |
+| AcroForm text fields and checkboxes: fill, create | ✅ · ⚠️ radio, combo and list fields read-only; form JavaScript never runs |
+| Metadata (title, author, subject, keywords) | ✅ |
+| OCR of scanned pages into an invisible, searchable text layer | ✅ English, offline |
+| Password-protected PDFs | ✅ opened with the password; saved with the same encryption · ⚠️ permission flags not enforced |
+| Rotated pages | ✅ view, page operations · ⚠️ no text layer, so no selection, markup or text editing |
+| Printing | ✅ each page at its own size · ⚠️ printed as 150 dpi images |
+| Digital signatures (validation or signing) | ❌ not supported |
+
 ## PDF export
 
 | Feature | Status |

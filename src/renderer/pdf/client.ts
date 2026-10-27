@@ -53,6 +53,14 @@ export interface OpenedPdf {
   keywords: string
 }
 
+/** Render a page to a PNG blob (scale = pixels per PDF point). */
+export async function renderPng(doc: number, i: number, scale: number): Promise<Blob> {
+  const img = await pdf.render(doc, i, scale)
+  const canvas = new OffscreenCanvas(img.width, img.height)
+  canvas.getContext('2d')!.putImageData(new ImageData(img.data as Uint8ClampedArray<ArrayBuffer>, img.width, img.height), 0, 0)
+  return canvas.convertToBlob({ type: 'image/png' })
+}
+
 export const pdf = {
   async open(bytes: Uint8Array, password = ''): Promise<OpenedPdf> {
     await ensureEngine()
@@ -74,6 +82,7 @@ export const pdf = {
   fields: (doc: number, i: number) => call<FieldInfo[]>('fields', doc, [i]),
   setFieldValue: (doc: number, i: number, annot: number, value: string) => call<boolean>('setFieldValue', doc, [i, annot, value]),
   createField: (doc: number, i: number, type: 'text' | 'checkbox', name: string, rect: [number, number, number, number]) => call<boolean>('createField', doc, [i, type, name, rect]),
+  addInvisibleText: (doc: number, i: number, words: { text: string; rect: [number, number, number, number] }[]) => call<boolean>('addInvisibleText', doc, [i, words]),
   addPng: (doc: number, i: number, png: Uint8Array, rect: [number, number, number, number]) => call<boolean>('addPng', doc, [i, png, rect]),
   rotate: (doc: number, i: number, deg: number) => call<void>('rotate', doc, [i, deg]),
   deletePage: (doc: number, i: number) => call<void>('deletePage', doc, [i]),

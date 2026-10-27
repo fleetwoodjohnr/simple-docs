@@ -2,12 +2,12 @@ import type { Editor, JSONContent } from '@tiptap/core'
 import { createDocEditor, emptyDoc, normalizeDoc, type NewDocOptions } from '@/editor/create'
 import { exportBytes, importBytes, type LibreOfficeBridge } from '@/formats/registry'
 import { formatFromPath, type FormatId, type FormatWarning } from '@/formats/types'
-import { printDocument, renderPdf } from '@/export/print'
+import { printDocument, printImages, renderPdf } from '@/export/print'
 import type { OpenedFile, RecoveryEntry } from '@/shared/ipc-types'
 import { docScope } from '../app/DocumentView'
 import { checker } from '../spell/client'
 import { HOME, carries, editors, get, pdfSessions, set, toast, updateTab, type TabMeta } from './store'
-import { pdf } from '../pdf/client'
+import { pdf, renderPng } from '../pdf/client'
 
 const api = () => window.simpleDocs
 
@@ -125,15 +125,16 @@ export function activate(id: string) {
   requestAnimationFrame(() => editors.get(id)?.commands.focus())
 }
 
-async function openPdf(f: OpenedFile) {
+export async function openPdf(f: OpenedFile, password = '') {
   try {
-    const opened = await pdf.open(f.data)
+    const opened = await pdf.open(f.data, password)
     const id = newId()
     pdfSessions.set(id, { doc: opened.id, pages: opened.pages, meta: { title: opened.title, author: opened.author, subject: opened.subject, keywords: opened.keywords }, undo: [] })
     addTab({ id, kind: 'pdf', title: baseName(f.name), path: f.path || null, savedAt: f.mtime })
     if (f.path) void addRecent(f.path, f.name)
   } catch (e) {
-    toast(`Could not open ${f.name}: ${(e as Error).message}`, 'error')
+    if (/password/i.test((e as Error).message)) set({ dialog: { kind: 'pdf-password', file: f, wrong: !!password } })
+    else toast(`Could not open ${f.name}: ${(e as Error).message}`, 'error')
   }
 }
 
@@ -318,6 +319,20 @@ export async function exportPdf(id = get().active) {
 
 export async function print(id = get().active) {
   const tab = get().tabs.find((t) => t.id === id)
+  const session = pdfSessions.get(id)
+  if (tab && session) {
+    // ponytail: pages are printed as 150 dpi images, all rendered up front; stream in batches if huge PDFs strain memory.
+    const urls: string[] = []
+    try {
+      for (let i = 0; i < session.pages.length; i++) urls.push(URL.createObjectURL(await renderPng(session.doc, i, 150 / 72)))
+      await printImages(session.pages.map((p, i) => ({ width: p.width, height: p.height, src: urls[i] })), tab.title)
+    } catch (e) {
+      toast(`Printing failed: ${(e as Error).message}`, 'error')
+    } finally {
+      urls.forEach((u) => URL.revokeObjectURL(u))
+    }
+    return
+  }
   const editor = editors.get(id)
   if (!tab || !editor) return
   try {

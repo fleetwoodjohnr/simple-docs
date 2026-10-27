@@ -104,6 +104,9 @@ export interface SimpleDocsApi {
   /** Read a bundled renderer asset (file:// URL inside the app) — used for the PDFium WASM binary. */
   readAsset(url: string): Promise<Uint8Array>
 
+  /** Recognize words in an encoded page image with the bundled offline OCR engine. Pixel boxes: left, top, right, bottom. */
+  ocr(image: Uint8Array): Promise<{ text: string; confidence: number; bbox: [number, number, number, number] }[]>
+
   /** Hunspell dictionary installed on the system for a language (Linux), or null. */
   spellDictionary(lang: string): Promise<{ aff: string; dic: string } | null>
 

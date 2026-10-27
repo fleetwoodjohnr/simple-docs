@@ -151,6 +151,37 @@ export async function renderPdf(editor: Editor, scopeClass: string, title: strin
   }
 }
 
+/** Print page images (a PDF tab), each on a sheet of its own size. */
+export async function printImages(pages: { width: number; height: number; src: string }[], title: string): Promise<boolean> {
+  const container = document.createElement('div')
+  container.id = 'print-root'
+  const style = document.createElement('style')
+  const sizes = [...new Set(pages.map((p) => `${p.width}pt ${p.height}pt`))]
+  style.textContent = sizes.map((s, k) => `@page s${k}{size:${s};margin:0}`).join('\n')
+  for (const p of pages) {
+    const sheet = document.createElement('div')
+    sheet.className = 'print-page'
+    sheet.style.cssText = `width:${p.width}pt;height:${p.height - 0.2}pt;page:s${sizes.indexOf(`${p.width}pt ${p.height}pt`)}`
+    const img = document.createElement('img')
+    img.src = p.src
+    img.style.cssText = 'display:block;width:100%;height:100%'
+    sheet.append(img)
+    container.append(sheet)
+  }
+  document.head.append(style)
+  document.body.append(container)
+  const prevTitle = document.title
+  document.title = title
+  try {
+    await Promise.all([...container.querySelectorAll('img')].map((i) => i.decode()))
+    return await window.simpleDocs.print()
+  } finally {
+    document.title = prevTitle
+    container.remove()
+    style.remove()
+  }
+}
+
 export async function printDocument(editor: Editor, scopeClass: string, title: string): Promise<boolean> {
   const cleanup = buildPrintRoot(editor, scopeClass)
   const prevTitle = document.title
