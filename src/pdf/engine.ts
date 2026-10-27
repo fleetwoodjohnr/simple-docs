@@ -581,6 +581,29 @@ export class PdfDocument {
     )
   }
 
+  /** Create a fillable form field (widget) at rect. */
+  createField(i: number, type: 'text' | 'checkbox', name: string, rect: [number, number, number, number]): boolean {
+    const form = this.formHandle()
+    return this.withPage(
+      i,
+      (page) => {
+        const namePtr = this.e.wide(name)
+        const a = this.m.EPDFPage_CreateFormField(page, form, type === 'text' ? 6 : 2, namePtr)
+        this.e.free(namePtr)
+        if (!a) return false
+        try {
+          this.e.withBuf(16, (p) => (this.e.setFloats(p, rect), this.m.FPDFAnnot_SetRect(a, p)))
+          this.m.FPDFAnnot_SetFlags(a, 4)
+          this.m.EPDFAnnot_GenerateFormFieldAP(a)
+          return true
+        } finally {
+          this.m.FPDFPage_CloseAnnot(a)
+        }
+      },
+      true
+    )
+  }
+
   // ---------- images ----------
   /** Place a PNG on the page (e.g. a signature) at rect (points). */
   addPng(i: number, png: Uint8Array, rect: [number, number, number, number]): boolean {

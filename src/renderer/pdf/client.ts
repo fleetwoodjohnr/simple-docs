@@ -73,6 +73,7 @@ export const pdf = {
   removeAnnotation: (doc: number, i: number, index: number) => call<boolean>('removeAnnotation', doc, [i, index]),
   fields: (doc: number, i: number) => call<FieldInfo[]>('fields', doc, [i]),
   setFieldValue: (doc: number, i: number, annot: number, value: string) => call<boolean>('setFieldValue', doc, [i, annot, value]),
+  createField: (doc: number, i: number, type: 'text' | 'checkbox', name: string, rect: [number, number, number, number]) => call<boolean>('createField', doc, [i, type, name, rect]),
   addPng: (doc: number, i: number, png: Uint8Array, rect: [number, number, number, number]) => call<boolean>('addPng', doc, [i, png, rect]),
   rotate: (doc: number, i: number, deg: number) => call<void>('rotate', doc, [i, deg]),
   deletePage: (doc: number, i: number) => call<void>('deletePage', doc, [i]),

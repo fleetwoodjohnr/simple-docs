@@ -33,6 +33,7 @@ const ops: Record<string, (doc: PdfDocument | undefined, args: unknown[]) => unk
   removeAnnotation: (d, [i, k]) => d!.removeAnnotation(i as number, k as number),
   fields: (d, [i]) => d!.fields(i as number),
   setFieldValue: (d, [i, k, v]) => d!.setFieldValue(i as number, k as number, v as string),
+  createField: (d, [i, t, n, r]) => d!.createField(i as number, t as 'text' | 'checkbox', n as string, r as [number, number, number, number]),
   addPng: (d, [i, png, rect]) => d!.addPng(i as number, png as Uint8Array, rect as [number, number, number, number]),
   rotate: (d, [i, deg]) => d!.rotate(i as number, deg as number),
   deletePage: (d, [i]) => d!.deletePage(i as number),

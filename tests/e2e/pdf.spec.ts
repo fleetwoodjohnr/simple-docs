@@ -65,6 +65,32 @@ test('acceptance 15–16: open a PDF, annotate, edit text, redact, save and reop
     await settle(page, 800)
     if (shotDir) await page.screenshot({ path: path.join(shotDir, 'pdf-workspace.png') })
 
+    // Create a fillable text field on page 2, fill it
+    await page.getByTestId('pdf-tool-field').click()
+    const page2 = page.locator('[data-pdf-page="1"]')
+    await page2.scrollIntoViewIfNeeded()
+    const b2 = (await page2.boundingBox())!
+    await page.mouse.move(b2.x + 100, b2.y + 300)
+    await page.mouse.down()
+    await page.mouse.move(b2.x + 400, b2.y + 330, { steps: 5 })
+    await page.mouse.up()
+    await expect(page2.getByTestId('pdf-field')).toHaveCount(1)
+    await page2.getByTestId('pdf-field').fill('Ada Lovelace')
+    await page2.getByTestId('pdf-field').blur()
+    await settle(page, 600)
+    // Ctrl+Z undoes the fill, Ctrl+Z again removes the field; then redo the work for the save check
+    await page.keyboard.press('Control+z')
+    await page.keyboard.press('Control+z')
+    await expect(page2.getByTestId('pdf-field')).toHaveCount(0)
+    await page.mouse.move(b2.x + 100, b2.y + 300)
+    await page.mouse.down()
+    await page.mouse.move(b2.x + 400, b2.y + 330, { steps: 5 })
+    await page.mouse.up()
+    await page2.getByTestId('pdf-field').fill('Ada Lovelace')
+    await page2.getByTestId('pdf-field').blur()
+    await settle(page, 600)
+    await page.getByTestId('pdf-tool-select').click()
+
     // Rotate page 2, save, reopen
     await page.getByTestId('rotate-1').click({ force: true })
     await settle(page, 600)
@@ -86,6 +112,7 @@ test('acceptance 15–16: open a PDF, annotate, edit text, redact, save and reop
     await expect(page.getByTestId('pdf-comments')).toContainText('highlight', { timeout: 10_000 })
     await expect(page.getByTestId('pdf-comments')).toContainText('Please verify this page')
     await expect(page.getByTestId('pdf-comments')).toContainText('PDF Reviewer')
+    await expect(page.locator('[data-pdf-page="1"]').getByTestId('pdf-field')).toHaveValue('Ada Lovelace')
     // rotated page shows landscape proportions
     const p2 = (await page.locator('[data-pdf-page="1"]').boundingBox())!
     expect(p2.width).toBeGreaterThan(p2.height)

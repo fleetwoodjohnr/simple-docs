@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 import {
   ArrowUp, Crop, Eraser, FilePlus2, Files, Highlighter, ImagePlus, Loader2, MessageSquare, MousePointer2, PenLine, PenTool, RotateCcw, RotateCw, Save, Scissors, Search, SquareDashed,
-  Strikethrough, Trash2, Type, TypeOutline, Underline, Undo2, ZoomIn, ZoomOut, X, Info, FormInput, Signature, ChevronUp, ChevronDown
+  Strikethrough, TextCursorInput, Trash2, Type, TypeOutline, Underline, Undo2, ZoomIn, ZoomOut, X, Info, FormInput, Signature, ChevronUp, ChevronDown
 } from 'lucide-react'
 import type { AnnotInfo, FieldInfo, TextRun } from '@/pdf/engine'
 import { pdf } from './client'
@@ -9,7 +9,7 @@ import { pdfSessions, toast, useApp } from '../state/store'
 import * as docs from '../state/documents'
 import { Btn, IconBtn, Modal, Tip, cx, inputCls } from '../ui'
 
-type Tool = 'select' | 'highlight' | 'underline' | 'strikeout' | 'note' | 'ink' | 'text' | 'edit' | 'redact' | 'sign' | 'crop'
+type Tool = 'select' | 'highlight' | 'underline' | 'strikeout' | 'note' | 'ink' | 'text' | 'edit' | 'field' | 'redact' | 'sign' | 'crop'
 type Rect = [number, number, number, number] // left, top, right, bottom (PDF points)
 
 const PX = 96 / 72
@@ -45,6 +45,7 @@ const TOOLS: { id: Tool; label: string; icon: ReactNode; hint: string }[] = [
   { id: 'ink', label: 'Draw', icon: <PenTool />, hint: 'Draw freehand' },
   { id: 'text', label: 'Add text', icon: <Type />, hint: 'Click to add new text to the page' },
   { id: 'edit', label: 'Edit text', icon: <TypeOutline />, hint: 'Click a line of existing text to change it in the PDF (text does not reflow — keep edits about the same length)' },
+  { id: 'field', label: 'Field', icon: <TextCursorInput />, hint: 'Drag to create a fillable text field (a small square makes a checkbox)' },
   { id: 'sign', label: 'Sign', icon: <Signature />, hint: 'Draw a signature or choose an image, then click to place it' },
   { id: 'redact', label: 'Redact', icon: <Eraser />, hint: 'Drag over content to remove it permanently' },
   { id: 'crop', label: 'Crop', icon: <Crop />, hint: 'Drag the area to keep on this page' }
@@ -115,6 +116,17 @@ export function PdfWorkspace({ tabId }: { tabId: string }) {
     [doc, pages, refreshPage, session, tabId]
   )
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'z') return
+      if (useApp.getState().active !== tabId || (e.target as HTMLElement | null)?.closest('input, textarea')) return
+      e.preventDefault()
+      void undoRef.current()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [tabId])
+
   const undo = async () => {
     const snap = session.undo.pop()
     if (!snap) return toast('Nothing to undo')
@@ -132,6 +144,9 @@ export function PdfWorkspace({ tabId }: { tabId: string }) {
       setBusy(false)
     }
   }
+
+  const undoRef = useRef(undo)
+  undoRef.current = undo
 
   // ---------- search ----------
   const runSearch = async (q: string) => {
@@ -413,7 +428,7 @@ function PdfPage({ index, info, ctx }: { index: number; info: { width: number; h
   }
 
   const onPointerDown = (e: RPointerEvent) => {
-    if (['redact', 'crop'].includes(tool)) {
+    if (['redact', 'crop', 'field'].includes(tool)) {
       const p = local(e)
       setDrag({ a: p, b: p })
       ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
@@ -435,6 +450,11 @@ function PdfPage({ index, info, ctx }: { index: number; info: { width: number; h
       else if (tool === 'crop') {
         await ctx.mutate(() => pdf.crop(doc, index, rect), [index], true)
         ctx.setTool('select')
+      } else if (tool === 'field') {
+        const w = rect[2] - rect[0]
+        const box = w <= 24 && Math.abs(w - (rect[1] - rect[3])) < 6
+        const name = `${box ? 'Check' : 'Text'}${Object.values(ctx.fields).flat().length + 1}`
+        await ctx.mutate(() => pdf.createField(doc, index, box ? 'checkbox' : 'text', name, rect), [index])
       }
     } else if (ink.length > 1) {
       const pts = ink.map((p) => map.toPdf(p[0], p[1]))
@@ -527,7 +547,7 @@ function PdfPage({ index, info, ctx }: { index: number; info: { width: number; h
         </div>
       ))}
       {/* Fillable fields */}
-      {tool === 'select' &&
+      {(tool === 'select' || tool === 'field') &&
         (ctx.fields[index] ?? [])
           .filter((f) => f.type === 'text' || f.type === 'checkbox')
           .map((f) => {
@@ -555,7 +575,7 @@ function PdfPage({ index, info, ctx }: { index: number; info: { width: number; h
             )
           })}
       {/* Drag rectangle / ink preview */}
-      {drag && <div className={cx('pointer-events-none absolute border-2', tool === 'redact' ? 'border-danger bg-danger/15' : 'border-accent border-dashed')} style={{ left: Math.min(drag.a[0], drag.b[0]), top: Math.min(drag.a[1], drag.b[1]), width: Math.abs(drag.b[0] - drag.a[0]), height: Math.abs(drag.b[1] - drag.a[1]) }} />}
+      {drag && <div data-testid="pdf-drag" className={cx('pointer-events-none absolute border-2', tool === 'redact' ? 'border-danger bg-danger/15' : tool === 'field' ? 'border-accent bg-accent/10' : 'border-accent border-dashed')} style={{ left: Math.min(drag.a[0], drag.b[0]), top: Math.min(drag.a[1], drag.b[1]), width: Math.abs(drag.b[0] - drag.a[0]), height: Math.abs(drag.b[1] - drag.a[1]) }} />}
       {ink.length > 1 && (
         <svg className="pointer-events-none absolute inset-0" width={w} height={h}>
           <polyline points={ink.map((p) => p.join(',')).join(' ')} fill="none" stroke="#1e3cc8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />

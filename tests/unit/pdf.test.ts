@@ -187,3 +187,22 @@ describe('PDF edit rendering', () => {
     doc.close()
   })
 })
+
+describe('PDF forms', () => {
+  it('creates fillable fields, fills them, and keeps values after save', () => {
+    const doc = engine.open(fixture)
+    expect(doc.createField(1, 'text', 'full_name', [72, 700, 300, 680])).toBe(true)
+    expect(doc.createField(1, 'checkbox', 'agree', [72, 660, 86, 646])).toBe(true)
+    let fields = doc.fields(1)
+    expect(fields.map((f) => [f.name, f.type])).toEqual([
+      ['full_name', 'text'],
+      ['agree', 'checkbox']
+    ])
+    expect(doc.setFieldValue(1, fields[0].annotIndex, 'Ada Lovelace')).toBe(true)
+    const again = engine.open(doc.save())
+    fields = again.fields(1)
+    expect(fields.find((f) => f.name === 'full_name')!.value).toBe('Ada Lovelace')
+    again.close()
+    doc.close()
+  })
+})
