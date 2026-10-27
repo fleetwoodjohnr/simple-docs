@@ -5,6 +5,8 @@ import { PAGE_GAP, pageOf, paginationKey } from '@/layout/plugin'
 import { ptToPx, type StyleMap } from '@/editor/model'
 import { stylesToCss } from '@/editor/styles-css'
 import { Ruler } from './Ruler'
+import { HFEditor, StaticHF, hfZoneAt } from './HeaderFooter'
+import { useApp, set } from '../state/store'
 
 export function usePageCount(editor: Editor): number {
   return useEditorState({ editor, selector: ({ editor: e }) => paginationKey.getState(e.state)?.pageCount ?? 1 }) ?? 1
@@ -27,8 +29,9 @@ export function DocumentView({ tabId, editor, zoom, showMarks, showBoundaries, s
   const pageCount = usePageCount(editor)
   const { page, styles } = useEditorState({
     editor,
-    selector: ({ editor: e }) => ({ page: pageOf(e.state.doc), styles: e.state.doc.attrs.styles as StyleMap | null })
+    selector: ({ editor: e }) => ({ page: pageOf(e.state.doc), styles: e.state.doc.attrs.styles as StyleMap | null, hf: e.state.doc.attrs.hf, meta: e.state.doc.attrs.meta })
   })
+  const hfEdit = useApp((s) => (s.hf?.tabId === tabId ? s.hf : null))
   const css = useMemo(() => (styles ? stylesToCss(styles, `.${docScope(tabId)} .sd-doc`) : ''), [styles, tabId])
   const w = ptToPx(page.width)
   const h = ptToPx(page.height)
@@ -59,6 +62,7 @@ export function DocumentView({ tabId, editor, zoom, showMarks, showBoundaries, s
 
   /** Clicking on paper outside the text area places the caret at the nearest position. */
   const onSheetMouseDown = (e: MouseEvent) => {
+    if (hfEdit) set({ hf: null })
     if ((e.target as HTMLElement).closest('.sd-doc')) return
     const view = editor.view
     const rect = (view.dom as HTMLElement).getBoundingClientRect()
@@ -71,6 +75,15 @@ export function DocumentView({ tabId, editor, zoom, showMarks, showBoundaries, s
     view.focus()
   }
 
+  /** Double-click in the top/bottom margin edits that page's header/footer (like Word). */
+  const onStackDoubleClick = (e: MouseEvent) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const zone = hfZoneAt(page, (e.clientY - r.top) / zoom)
+    if (!zone) return
+    e.preventDefault()
+    set({ hf: { tabId, kind: zone.kind, page: zone.page } })
+  }
+
   const stackStyle: CSSProperties = { width: w, height: stackH, transform: `scale(${zoom})`, transformOrigin: '0 0', position: 'relative' }
 
   return (
@@ -79,7 +92,7 @@ export function DocumentView({ tabId, editor, zoom, showMarks, showBoundaries, s
       {showRuler && <Ruler editor={editor} zoom={zoom} />}
       <div className="mx-auto py-8" style={{ width: Math.max(w * zoom, 1) + 120 }}>
         <div className="relative mx-auto" style={{ width: w * zoom, height: stackH * zoom }}>
-          <div className={docScope(tabId)} style={stackStyle} onMouseDown={onSheetMouseDown} data-page-stack>
+          <div className={`${docScope(tabId)} ${hfEdit ? 'hf-editing' : ''}`} style={stackStyle} onMouseDown={onSheetMouseDown} onDoubleClick={onStackDoubleClick} data-page-stack>
             {Array.from({ length: pageCount }, (_, i) => (
               <div
                 key={i}
@@ -89,8 +102,10 @@ export function DocumentView({ tabId, editor, zoom, showMarks, showBoundaries, s
               >
                 {showBoundaries && <Marks m={m} />}
                 {zoom >= 0.6 && <span className="page-num select-none">{i + 1}</span>}
+                <StaticHF body={editor} page={page} index={i} count={pageCount} hidden={hfEdit?.page === i ? hfEdit.kind : null} />
               </div>
             ))}
+            {hfEdit && <HFEditor key={`${hfEdit.kind}-${hfEdit.page}`} body={editor} page={page} kind={hfEdit.kind} index={hfEdit.page} />}
             <div className="doc-host" style={{ width: w }}>
               <EditorContent editor={editor} />
             </div>

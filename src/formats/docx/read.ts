@@ -1,6 +1,6 @@
 import { unzipSync, strFromU8 } from 'fflate'
 import type { JSONContent } from '@tiptap/core'
-import { makePageSetup, PAGE_SIZES, type DocMeta, type PageSetup, type ParaProps, type RunProps, type StyleDef, type StyleMap } from '@/editor/model'
+import { makePageSetup, PAGE_SIZES, type DocMeta, type HeadersFooters, type PageNumberFormat, type PageSetup, type ParaProps, type RunProps, type StyleDef, type StyleMap } from '@/editor/model'
 import { Warnings, type ImportResult } from '../types'
 import { NS, attr, child, children, elements, find, findAll, is, mimeFromExt, num, onOff, parseXml, serialize, textOf, toBase64, wval, type El } from './xml'
 
@@ -24,6 +24,8 @@ export interface DocxCarry {
   sectPrExtra: string
   /** Original content-type overrides by part name. */
   overrides: Record<string, string>
+  /** Parts converted into the editor model (headers/footers); regenerated, never copied. */
+  converted?: string[]
 }
 
 type Mark = { type: string; attrs?: Record<string, unknown> }
@@ -98,6 +100,8 @@ class Reader {
   themeFonts = { major: 'Calibri Light', minor: 'Calibri' }
   counters = new Map<string, number[]>()
   imageCount = 0
+  /** Parsing a header/footer: page-number style fields become live field nodes. */
+  inHF = false
 
   constructor(
     public files: Record<string, Uint8Array>,
@@ -111,17 +115,50 @@ class Reader {
 
   // ---------- relationships ----------
   loadRels() {
-    const dir = this.docPath.replace(/[^/]+$/, '')
-    const relsXml = this.text(`${dir}_rels/${this.docPath.slice(dir.length)}.rels`)
-    if (!relsXml) return
+    this.rels = this.relsFor(this.docPath)
+  }
+
+  relsFor(partPath: string): Map<string, Rel> {
+    const out = new Map<string, Rel>()
+    const dir = partPath.replace(/[^/]+$/, '')
+    const relsXml = this.text(`${dir}_rels/${partPath.slice(dir.length)}.rels`)
+    if (!relsXml) return out
     for (const r of elements(parseXml(relsXml).documentElement)) {
       const id = attr(r, null, 'Id')
       if (!id) continue
       const external = attr(r, null, 'TargetMode') === 'External'
       let target = attr(r, null, 'Target') ?? ''
       if (!external) target = target.startsWith('/') ? target.slice(1) : normalizePath(dir + target)
-      this.rels.set(id, { id, type: attr(r, null, 'Type') ?? '', target, external })
+      out.set(id, { id, type: attr(r, null, 'Type') ?? '', target, external })
     }
+    return out
+  }
+
+  /** Parse header/footer parts referenced by the final section into editable content. */
+  headersFooters(sectPr: El | null, evenAndOdd: boolean): { hf: HeadersFooters; parts: string[] } | null {
+    if (!sectPr) return null
+    const hf: HeadersFooters = { header: {}, footer: {}, differentFirst: onOff(child(sectPr, NS.w, 'titlePg')) ?? false, differentOddEven: evenAndOdd }
+    const parts: string[] = []
+    let any = false
+    for (const kind of ['header', 'footer'] as const) {
+      for (const ref of children(sectPr, NS.w, `${kind}Reference`)) {
+        const rel = this.rels.get(attr(ref, NS.r, 'id') ?? '')
+        const xml = rel && !rel.external ? this.text(rel.target) : null
+        if (!rel || !xml) continue
+        const type = (attr(ref, NS.w, 'type') ?? 'default') as 'default' | 'first' | 'even'
+        const saved = this.rels
+        this.rels = this.relsFor(rel.target)
+        this.inHF = true
+        const blocks = this.blocks(parseXml(xml).documentElement)
+        this.inHF = false
+        this.rels = saved
+        parts.push(rel.target)
+        const empty = blocks.every((b) => b.type === 'paragraph' && !b.content)
+        if (!empty) any = true
+        hf[kind][type] = empty ? null : blocks
+      }
+    }
+    return any || parts.length ? { hf, parts } : null
   }
 
   // ---------- theme ----------
@@ -474,7 +511,7 @@ class Reader {
   }
 
   /** Parse paragraph children into inline nodes; returns extra page breaks split points. */
-  inlines(p: El, out: JSONContent[][], linkMark: Mark | null = null, field = { inInstr: false, depth: 0 }) {
+  inlines(p: El, out: JSONContent[][], linkMark: Mark | null = null, field: FieldState = { inInstr: false, instr: '', skip: false }) {
     const push = (n: JSONContent) => out[out.length - 1].push(n)
     for (const e of elements(p)) {
       if (e.namespaceURI === NS.w) {
@@ -499,10 +536,15 @@ class Reader {
             this.inlines(e, out, href ? { type: 'link', attrs: { href } } : linkMark, field)
             continue
           }
-          case 'fldSimple':
-            this.w.add('info', 'Fields (dates, page numbers, references) are kept as their current text')
-            this.inlines(e, out, linkMark, field)
+          case 'fldSimple': {
+            const kind = this.inHF ? fieldKind(attr(e, NS.w, 'instr') ?? '') : null
+            if (kind) push({ type: 'field', attrs: { kind } })
+            else {
+              this.w.add('info', 'Fields (references, cross-references) are kept as their current text')
+              this.inlines(e, out, linkMark, field)
+            }
             continue
+          }
           case 'ins':
           case 'moveTo':
             this.w.add('loss', 'Tracked changes were accepted on import')
@@ -547,13 +589,13 @@ class Reader {
     }
   }
 
-  run(r: El, out: JSONContent[][], linkMark: Mark | null, field: { inInstr: boolean; depth: number }) {
+  run(r: El, out: JSONContent[][], linkMark: Mark | null, field: FieldState) {
     const rp = this.runProps(child(r, NS.w, 'rPr'))
     const marks = this.marksFor(rp)
     if (linkMark) marks.push(linkMark)
     const push = (n: JSONContent) => out[out.length - 1].push(n)
     const text = (t: string) => {
-      if (!t || field.inInstr) return
+      if (!t || field.inInstr || field.skip) return
       push(marks.length ? { type: 'text', text: t, marks: marks.map((m) => ({ ...m })) } : { type: 'text', text: t })
     }
     for (const e of elements(r)) {
@@ -568,7 +610,9 @@ class Reader {
             text(textOf(e))
             continue
           case 'delText':
+            continue
           case 'instrText':
+            if (field.inInstr) field.instr += textOf(e)
             continue
           case 'tab':
           case 'ptab':
@@ -599,10 +643,15 @@ class Reader {
           }
           case 'fldChar': {
             const t = attr(e, NS.w, 'fldCharType')
-            if (t === 'begin') field.inInstr = true
-            else if (t === 'separate') field.inInstr = false
-            else if (t === 'end') field.inInstr = false
-            if (t === 'begin') this.w.add('info', 'Fields (dates, page numbers, references) are kept as their current text')
+            if (t === 'begin') Object.assign(field, { inInstr: true, instr: '', skip: false })
+            else if (t === 'separate' || (t === 'end' && field.inInstr)) {
+              field.inInstr = false
+              const kind = this.inHF ? fieldKind(field.instr) : null
+              if (kind) {
+                push({ type: 'field', attrs: { kind } })
+                field.skip = t === 'separate'
+              } else if (field.instr.trim()) this.w.add('info', 'Fields (references, cross-references) are kept as their current text')
+            } else if (t === 'end') field.skip = false
             continue
           }
           case 'drawing': {
@@ -838,6 +887,11 @@ class Reader {
       }
     }
     if (child(sectPr, NS.w, 'cols') && (num(attr(child(sectPr, NS.w, 'cols'), NS.w, 'num')) ?? 1) > 1) this.w.add('loss', 'Multi-column layout is shown as a single column')
+    const pg = child(sectPr, NS.w, 'pgNumType')
+    if (pg) {
+      const fmt = ({ decimal: '1', lowerRoman: 'i', upperRoman: 'I', lowerLetter: 'a', upperLetter: 'A' } as Record<string, PageNumberFormat>)[attr(pg, NS.w, 'fmt') ?? 'decimal'] ?? '1'
+      page.numbering = { format: fmt, start: num(attr(pg, NS.w, 'start')) ?? 1 }
+    }
     return page
   }
 
@@ -922,6 +976,19 @@ class ListBuilder {
 
 // ---------- helpers ----------
 
+interface FieldState {
+  inInstr: boolean
+  instr: string
+  /** Skipping the cached result of a field we turned into a live field node. */
+  skip: boolean
+}
+
+/** Map a Word field instruction to one of our live fields. */
+function fieldKind(instr: string): string | null {
+  const name = instr.trim().split(/\s+/)[0]?.toUpperCase()
+  return ({ PAGE: 'page', NUMPAGES: 'pages', SECTIONPAGES: 'pages', DATE: 'date', TITLE: 'title', AUTHOR: 'author' } as Record<string, string>)[name] ?? null
+}
+
 function normalizePath(p: string): string {
   const out: string[] = []
   for (const s of p.split('/')) {
@@ -984,14 +1051,17 @@ export function importDocx(data: Uint8Array): ImportResult {
 
   const finalSect = child(body, NS.w, 'sectPr')
   const page = r.pageSetup(finalSect)
+  const settingsRel = [...r.rels.values()].find((x) => x.type.endsWith('/settings'))
+  const settingsXml = settingsRel && r.text(settingsRel.target)
+  const evenAndOdd = !!settingsXml && /<w:evenAndOddHeaders(?![^>]*w:val="(0|false)")/.test(settingsXml)
+  const hfResult = r.headersFooters(finalSect, evenAndOdd)
+  // Header/footer references, titlePg and pgNumType are regenerated from the model on save.
   const extra = finalSect
     ? elements(finalSect)
-        .filter((e) => ['headerReference', 'footerReference', 'titlePg', 'pgNumType', 'docGrid', 'lnNumType', 'pgBorders', 'vAlign', 'textDirection', 'formProt', 'noEndnote', 'bidi', 'rtlGutter', 'printerSettings'].includes(e.localName))
+        .filter((e) => ['docGrid', 'lnNumType', 'pgBorders', 'vAlign', 'textDirection', 'formProt', 'noEndnote', 'bidi', 'rtlGutter', 'printerSettings'].includes(e.localName))
         .map(serialize)
         .join('')
     : ''
-  if (finalSect && (child(finalSect, NS.w, 'headerReference') || child(finalSect, NS.w, 'footerReference')))
-    r.w.add('loss', 'Headers and footers are preserved and saved back, but not editable yet')
   if (find(doc.documentElement, NS.w, 'commentReference')) r.w.add('loss', 'Comments are not supported yet and will not be kept on save')
   if (findAll(doc.documentElement, NS.w, 'pgBorders').length) r.w.add('info', 'Page borders are preserved but not shown')
 
@@ -1000,9 +1070,9 @@ export function importDocx(data: Uint8Array): ImportResult {
   const ct = files['[Content_Types].xml']
   if (ct) for (const o of children(parseXml(strFromU8(ct)).documentElement, NS.ct, 'Override')) overrides[(attr(o, null, 'PartName') ?? '').replace(/^\//, '')] = attr(o, null, 'ContentType') ?? ''
 
-  const carry: DocxCarry = { parts: files, rels: [...r.rels.values()], sectPrExtra: extra, overrides }
+  const carry: DocxCarry = { parts: files, rels: [...r.rels.values()], sectPrExtra: extra, overrides, converted: hfResult?.parts ?? [] }
   return {
-    doc: { type: 'doc', attrs: { page, styles: r.styles, meta: r.meta() }, content: content.length ? content : [{ type: 'paragraph' }] },
+    doc: { type: 'doc', attrs: { page, styles: r.styles, meta: r.meta(), hf: hfResult?.hf ?? null }, content: content.length ? content : [{ type: 'paragraph' }] },
     warnings: r.w.list(),
     carry
   }

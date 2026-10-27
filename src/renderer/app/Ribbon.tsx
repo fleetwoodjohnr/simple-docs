@@ -4,11 +4,11 @@ import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, CalendarDays, CaseSensitive, ChevronDown, ChevronUp, ClipboardPaste, Code2, Columns3, Copy, Eraser, Eye, FileDown, Focus,
   Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Info, Italic, Keyboard, Link2, List, ListChecks, ListOrdered, Maximize2, Minus, Moon, PaintBucket, Paintbrush, PanelLeft,
   PanelRight, Pilcrow, Plus, Printer, Quote, Redo2, Replace, Ruler, Scissors, Search, Settings, Sigma, SquareDashed, Strikethrough, Subscript, Superscript, Table2, Type, Underline, Undo2,
-  Volume2, WrapText, ZoomIn, ZoomOut, BookOpen, FileCode2, ShieldCheck, Merge, Split, Trash2, Rows3, AlignStartVertical, AlignEndVertical, RectangleHorizontal, RectangleVertical
+  Volume2, WrapText, ZoomIn, ZoomOut, BookOpen, PanelTop, PanelBottom, Hash, FileCode2, ShieldCheck, Merge, Split, Trash2, Rows3, AlignStartVertical, AlignEndVertical, RectangleHorizontal, RectangleVertical
 } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { useApp, set, updateSettings, type RibbonTab } from '../state/store'
-import { applyStyle, changeCase, FONT_SIZES, runCommand, shortcutFor, SYMBOLS, updateBlocks, zoomTo } from './commands'
+import { applyStyle, changeCase, FONT_SIZES, insertPageNumber, runCommand, shortcutFor, SYMBOLS, updateBlocks, zoomTo } from './commands'
 import { useActiveEditor, useSnapshot, type Snapshot } from './hooks'
 import { ColorGrid, IconBtn, Menu, MenuCheck, MenuContent, MenuItem, MenuLabel, MenuSep, MenuTrigger, NumberInput, Pop, PopClose, PopContent, PopTrigger, SubMenu, Tip, cx } from '../ui'
 import { MARGIN_PRESETS, PAGE_SIZES, withOrientation, withSize, type PageSetup, type StyleMap, resolveStyle } from '@/editor/model'
@@ -523,6 +523,29 @@ function InsertTab({ editor }: { editor: Editor }) {
         </TextBtn>
       </Group>
       <Sep />
+      <Group label="Header & footer">
+        <TextBtn icon={<PanelTop />} label="Edit the page header (or double-click the top margin)" onClick={() => runCommand('insert.header')}>
+          Header
+        </TextBtn>
+        <TextBtn icon={<PanelBottom />} label="Edit the page footer (or double-click the bottom margin)" onClick={() => runCommand('insert.footer')}>
+          Footer
+        </TextBtn>
+        <Menu>
+          <DropBtn label="Page number" icon={<Hash />}>
+            Page number
+          </DropBtn>
+          <MenuContent>
+            <MenuLabel>Bottom of page</MenuLabel>
+            <MenuItem onSelect={() => insertPageNumber('footer', 'center', false)}>Centered</MenuItem>
+            <MenuItem onSelect={() => insertPageNumber('footer', 'right', false)}>Right</MenuItem>
+            <MenuItem onSelect={() => insertPageNumber('footer', 'center', true)}>“Page X of Y”, centered</MenuItem>
+            <MenuLabel>Top of page</MenuLabel>
+            <MenuItem onSelect={() => insertPageNumber('header', 'right', false)}>Right</MenuItem>
+            <MenuItem onSelect={() => insertPageNumber('header', 'center', false)}>Centered</MenuItem>
+          </MenuContent>
+        </Menu>
+      </Group>
+      <Sep />
       <Group label="Tables">
         <TablePicker editor={editor} />
       </Group>
@@ -622,6 +645,36 @@ function LayoutTab({ editor, s }: { editor: Editor; s: Snapshot }) {
         <TextBtn icon={<FileDown />} label="Insert page break" shortcut={shortcutFor('insert.pageBreak')} onClick={() => runCommand('insert.pageBreak')}>
           Break
         </TextBtn>
+        <Menu>
+          <DropBtn label="Page numbering" icon={<Hash />}>
+            Numbering
+          </DropBtn>
+          <MenuContent>
+            <MenuLabel>Format</MenuLabel>
+            {(
+              [
+                ['1', '1, 2, 3'],
+                ['i', 'i, ii, iii'],
+                ['I', 'I, II, III'],
+                ['a', 'a, b, c'],
+                ['A', 'A, B, C']
+              ] as const
+            ).map(([f, l]) => (
+              <MenuCheck key={f} checked={(page.numbering?.format ?? '1') === f} onSelect={() => setPage({ ...page, numbering: { format: f, start: page.numbering?.start ?? 1 } })}>
+                {l}
+              </MenuCheck>
+            ))}
+            <MenuSep />
+            <MenuItem
+              onSelect={() => {
+                const v = window.prompt('First page number', String(page.numbering?.start ?? 1))
+                if (v && Number(v) >= 0) setPage({ ...page, numbering: { format: page.numbering?.format ?? '1', start: Math.floor(Number(v)) } })
+              }}
+            >
+              Start at…
+            </MenuItem>
+          </MenuContent>
+        </Menu>
       </Group>
       <Sep />
       <Group label="Indent">

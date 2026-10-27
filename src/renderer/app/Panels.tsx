@@ -6,7 +6,7 @@ import { FileText, Hash, Minus, Plus, X, Clock, BookOpenText } from 'lucide-reac
 import { useShallow } from 'zustand/react/shallow'
 import { useApp, set, type LeftPanel, type RightPanel } from '../state/store'
 import * as docs from '../state/documents'
-import { useActiveEditor, usePageInfo, useSnapshot, useStats, useThrottled } from './hooks'
+import { useActiveEditor, useBodyEditor, usePageInfo, useSnapshot, useStats, useThrottled } from './hooks'
 import { applyStyle, runCommand, updateBlocks, zoomTo } from './commands'
 import { IconBtn, NumberInput, Segmented, cx, inputCls } from '../ui'
 import { pageOf, paginationKey, PAGE_GAP } from '@/layout/plugin'
@@ -180,7 +180,7 @@ export function Empty({ icon, title, children }: { icon: ReactNode; title: strin
 export function LeftSidebar() {
   const panel = useApp((s) => s.leftPanel)
   const active = useApp((s) => s.active)
-  const editor = useActiveEditor()
+  const editor = useBodyEditor()
   if (!panel || !editor) return null
   return (
     <aside aria-label="Navigation" className="slide-up flex w-[248px] shrink-0 flex-col border-r border-border bg-panel">
@@ -374,7 +374,8 @@ export function StatsView({ editor }: { editor: Editor }) {
 export function RightSidebar() {
   const panel = useApp((s) => s.rightPanel)
   const editor = useActiveEditor()
-  if (!panel || !editor) return null
+  const body = useBodyEditor()
+  if (!panel || !editor || !body) return null
   return (
     <aside aria-label="Properties" className="slide-up flex w-[272px] shrink-0 flex-col border-l border-border bg-panel">
       <PanelHeader
@@ -389,10 +390,10 @@ export function RightSidebar() {
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
         {panel === 'format' && <FormatPanel editor={editor} />}
-        {panel === 'page' && <PagePanel editor={editor} />}
+        {panel === 'page' && <PagePanel editor={body} />}
         {panel === 'stats' && (
           <div className="px-4 py-2">
-            <StatsView editor={editor} />
+            <StatsView editor={body} />
           </div>
         )}
       </div>
@@ -403,7 +404,7 @@ export function RightSidebar() {
 // ---------- status bar ----------
 
 export function StatusBar() {
-  const editor = useActiveEditor()
+  const editor = useBodyEditor()
   const { zoom, settings, active } = useApp(useShallow((s) => ({ zoom: s.zoom, settings: s.settings, active: s.active })))
   const tab = useApp((s) => s.tabs.find((t) => t.id === s.active))
   const info = usePageInfo(editor)

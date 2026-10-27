@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/core'
 import { pageOf, paginationKey } from '@/layout/plugin'
 import { ptToPx } from '@/editor/model'
+import { renderHF } from '@/editor/headers'
 
 // Builds fixed-size print pages by slicing the live, paginated editor DOM at the
 // page spacers. Range.cloneContents keeps partially selected ancestors (lists,
@@ -101,6 +102,18 @@ export function buildPrintRoot(editor: Editor, scopeClass: string): () => void {
     doc.style.padding = `${ptToPx(page.margins.top)}px ${ptToPx(page.margins.right)}px 0 ${ptToPx(page.margins.left)}px`
     while (host.firstChild) doc.appendChild(host.firstChild)
     pageEl.appendChild(doc)
+    for (const kind of ['header', 'footer'] as const) {
+      const html = renderHF(editor.state.doc, kind, i, spacers.length + 1)
+      if (!html) continue
+      const el = document.createElement('div')
+      el.className = 'sd-doc sd-hf'
+      el.style.left = `${ptToPx(page.margins.left)}px`
+      el.style.width = `${ptToPx(page.width - page.margins.left - page.margins.right)}px`
+      if (kind === 'header') el.style.top = `${ptToPx(page.margins.header)}px`
+      else el.style.bottom = `${ptToPx(page.margins.footer)}px`
+      el.innerHTML = html
+      pageEl.appendChild(el)
+    }
     container.appendChild(pageEl)
   }
 

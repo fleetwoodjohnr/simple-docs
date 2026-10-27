@@ -3,7 +3,8 @@ import { TextSelection } from '@tiptap/pm/state'
 import { activeEditor, activeTab, get, set, toast, updateSettings, HOME } from '../state/store'
 import * as docs from '../state/documents'
 import { readAsDataUrl } from '@/editor/create'
-import { resolveStyle, type StyleMap } from '@/editor/model'
+import { emptyHF, resolveStyle, type HeadersFooters, type HFKind, type StyleMap } from '@/editor/model'
+import { bodyEditor } from '../state/store'
 
 // Central command registry. Ribbon buttons, menus, the floating toolbar, the
 // command palette and keyboard shortcuts all dispatch through here.
@@ -223,6 +224,24 @@ export function applyPainter(e: Editor) {
 
 export const SYMBOLS = '©®™§¶†‡•…–—‘’“”«»‹›°±×÷≠≈≤≥∞√∑∏∫∂µπΩαβγδεθλσφψω€£¥¢¤←→↑↓↔⇒⇔✓✗★☆♠♣♥♦½¼¾⅓⅔¹²³ⁿ∈∉∩∪⊂⊃∀∃∅∇'.split('')
 
+/** Put a page number (optionally "Page X of Y") in the default header or footer. */
+export function insertPageNumber(kind: HFKind, align: 'left' | 'center' | 'right', withTotal: boolean) {
+  const body = bodyEditor()
+  if (!body) return
+  const hf = (body.state.doc.attrs.hf as HeadersFooters | null) ?? emptyHF()
+  const content = withTotal
+    ? [{ type: 'text', text: 'Page ' }, { type: 'field', attrs: { kind: 'page' } }, { type: 'text', text: ' of ' }, { type: 'field', attrs: { kind: 'pages' } }]
+    : [{ type: 'field', attrs: { kind: 'page' } }]
+  const next: HeadersFooters = { ...hf, [kind]: { ...hf[kind], default: [{ type: 'paragraph', attrs: { align: align === 'left' ? null : align }, content }] } }
+  body.chain().focus().command(({ tr }) => (tr.setDocAttribute('hf', next), true)).run()
+}
+
+export function editHF(kind: HFKind) {
+  const body = bodyEditor()
+  if (!body) return
+  set({ hf: { tabId: get().active, kind, page: 0 } })
+}
+
 export function zoomTo(z: number) {
   set({ zoom: Math.round(Math.min(5, Math.max(0.25, z)) * 100) / 100 })
 }
@@ -337,6 +356,8 @@ def({ id: 'insert.hr', label: 'Horizontal line', run: (e) => chain(e!).setHorizo
 def({ id: 'insert.codeBlock', label: 'Code block', run: (e) => chain(e!).toggleCodeBlock().run(), isActive: (e) => e.isActive('codeBlock') })
 def({ id: 'insert.quote', label: 'Block quote', run: (e) => chain(e!).toggleBlockquote().run(), isActive: (e) => e.isActive('blockquote') })
 def({ id: 'insert.date', label: 'Date', run: (e) => chain(e!).insertContent(new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })).run() })
+def({ id: 'insert.header', label: 'Edit header', run: () => editHF('header') })
+def({ id: 'insert.footer', label: 'Edit footer', run: () => editHF('footer') })
 def({ id: 'insert.lineBreak', label: 'Line break', shortcut: 'Shift-Enter', run: (e) => chain(e!).setHardBreak().run() })
 
 // Table

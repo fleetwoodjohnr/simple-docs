@@ -55,7 +55,7 @@ export const SdDocument = Node.create({
   topNode: true,
   content: 'block+',
   addAttributes() {
-    return { page: { default: null }, styles: { default: null }, meta: { default: null } }
+    return { page: { default: null }, styles: { default: null }, meta: { default: null }, hf: { default: null } }
   }
 })
 
@@ -264,6 +264,28 @@ const preserved = (inline: boolean) =>
       ]
     }
   })
+export type FieldKind = 'page' | 'pages' | 'date' | 'title' | 'author'
+
+export const FIELD_LABELS: Record<FieldKind, string> = { page: '#', pages: '##', date: 'Date', title: 'Title', author: 'Author' }
+
+/** Dynamic text resolved when rendered (page numbers in headers/footers, date, title…). */
+export const Field = Node.create({
+  name: 'field',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: true,
+  addAttributes() {
+    return { kind: { default: 'page' } }
+  },
+  parseHTML() {
+    return [{ tag: 'span[data-field]', getAttrs: (el: HTMLElement) => ({ kind: el.getAttribute('data-field') }) }]
+  },
+  renderHTML({ node }) {
+    return ['span', { 'data-field': node.attrs.kind, class: 'sd-field', contenteditable: 'false' }, FIELD_LABELS[node.attrs.kind as FieldKind] ?? '?']
+  }
+})
+
 export const PreservedBlock = preserved(false)
 export const PreservedInline = preserved(true)
 
@@ -404,6 +426,7 @@ export function createExtensions(opts: ExtensionOptions = {}): Extensions {
     PageBreak,
     PreservedBlock,
     PreservedInline,
+    Field,
     TabKey,
     Numbering,
     ...(opts.placeholder ? [Placeholder.configure({ placeholder: opts.placeholder, showOnlyWhenEditable: true })] : [])

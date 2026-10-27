@@ -60,6 +60,8 @@ export interface AppState {
   painter: { marks: { type: string; attrs: Record<string, unknown> }[]; para: Record<string, unknown> | null } | null
   libreOffice: boolean
   dark: boolean
+  /** Header/footer currently being edited in place. */
+  hf: { tabId: string; kind: 'header' | 'footer'; page: number } | null
 }
 
 export const HOME = 'home'
@@ -84,7 +86,8 @@ export const useApp = create<AppState>(() => ({
   toasts: [],
   painter: null,
   libreOffice: false,
-  dark: false
+  dark: false,
+  hf: null
 }))
 
 export const set = useApp.setState
@@ -95,7 +98,15 @@ export const editors = new Map<string, Editor>()
 /** Format-specific data carried with a tab (e.g. original DOCX parts). */
 export const carries = new Map<string, unknown>()
 
+/** The in-place header/footer editor while one is open (ribbon commands target it). */
+export const hfEditor: { current: Editor | null } = { current: null }
+
 export function activeEditor(): Editor | null {
+  return (get().hf && hfEditor.current) || (editors.get(get().active) ?? null)
+}
+
+/** The document's body editor, even while a header is being edited. */
+export function bodyEditor(): Editor | null {
   return editors.get(get().active) ?? null
 }
 

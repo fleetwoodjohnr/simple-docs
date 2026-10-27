@@ -560,3 +560,38 @@ body {
 .md-preview a { color: #1f5bd8; text-decoration: underline; }
 .md-preview img { max-width: 100%; }
 .md-preview hr { border: 0; border-top: 1px solid #ddd; margin: 1.2em 0; }
+
+/* ================= headers & footers ================= */
+.sd-hf {
+  position: absolute !important;
+  pointer-events: none;
+  cursor: default;
+  user-select: none;
+}
+.sd-hf > :last-child {
+  margin-bottom: 0 !important;
+}
+.sd-doc.sd-hf-edit {
+  position: relative !important;
+  min-height: 1lh;
+}
+.sd-doc.sd-hf-edit > :last-child {
+  margin-bottom: 0 !important;
+}
+.hf-editing .doc-host {
+  opacity: 0.45;
+  transition: opacity 120ms;
+}
+.sd-field {
+  font-variant-numeric: tabular-nums;
+}
+.sd-doc .sd-field {
+  background: color-mix(in oklab, var(--accent) 12%, transparent);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.sd-hf .sd-field,
+.print-page .sd-field {
+  background: none;
+  padding: 0;
+}

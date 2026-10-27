@@ -1,13 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/core'
-import { useApp, editors } from '../state/store'
+import { useApp, editors, hfEditor } from '../state/store'
 import { blockAttr, currentFont, currentFontSize, currentStyleId } from './commands'
 import { paginationKey } from '@/layout/plugin'
 
 export function useActiveEditor(): Editor | null {
   const active = useApp((s) => s.active)
+  const hf = useApp((s) => s.hf)
   // Re-render when tabs change so a freshly created editor is picked up.
+  useApp((s) => s.tabs.length)
+  return (hf && hfEditor.current) || (editors.get(active) ?? null)
+}
+
+/** Body editor of the active tab (ignores an open header/footer editor). */
+export function useBodyEditor(): Editor | null {
+  const active = useApp((s) => s.active)
   useApp((s) => s.tabs.length)
   return editors.get(active) ?? null
 }

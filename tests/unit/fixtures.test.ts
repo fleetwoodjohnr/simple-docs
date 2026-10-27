@@ -68,16 +68,23 @@ describe('third-party DOCX (LibreOffice-authored)', () => {
     expect(text(doc.content![i + 1])).toBe('Second page starts here.')
   })
 
-  it('preserves the footnote and headers/footers with warnings', () => {
+  it('preserves the footnote with a warning', () => {
     expect(all(doc, (n) => n.type === 'preservedInline' && n.attrs!.label === 'Footnote')).toHaveLength(1)
     expect(warnings.map((w) => w.message).join('\n')).toMatch(/Footnotes and endnotes are preserved/)
-    expect(warnings.map((w) => w.message).join('\n')).toMatch(/Headers and footers are preserved/)
+  })
+
+  it('imports headers and footers as editable content with a live page field', () => {
+    const hf = doc.attrs!.hf as { header: { default: JSONContent[] }; footer: { default: JSONContent[] } }
+    expect(text({ content: hf.header.default } as JSONContent)).toBe('Fixture header text')
+    const footer = { content: hf.footer.default } as JSONContent
+    expect(all(footer, (n) => n.type === 'field').map((f) => f.attrs!.kind)).toEqual(['page'])
+    expect(text(footer)).toContain('Page')
   })
 
   it('writes headers, footers and footnotes back on save', () => {
     const out = unzipSync(exportDocx(doc, carry as never).data)
     const docXml = strFromU8(out['word/document.xml'])
-    expect(docXml).toMatch(/<w:headerReference [^>]*r:id="(rId\d+)"/)
+    expect(docXml).toMatch(/<w:headerReference [^>]*r:id="([^"]+)"/)
     const rels = strFromU8(out['word/_rels/document.xml.rels'])
     const hdrId = /<w:headerReference [^>]*r:id="([^"]+)"/.exec(docXml)![1]
     const target = new RegExp(`Id="${hdrId}"[^>]*Target="([^"]+)"`).exec(rels)![1]

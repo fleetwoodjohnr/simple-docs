@@ -1,6 +1,6 @@
-import { zipSync, strToU8 } from 'fflate'
+import { zipSync, strToU8, strFromU8 } from 'fflate'
 import type { JSONContent } from '@tiptap/core'
-import { makePageSetup, resolveStyle, defaultStyles, type DocMeta, type PageSetup, type ParaProps, type RunProps, type StyleMap } from '@/editor/model'
+import { makePageSetup, resolveStyle, defaultStyles, type DocMeta, type HeadersFooters, type PageSetup, type ParaProps, type RunProps, type StyleMap } from '@/editor/model'
 import { effectiveListType, DEFAULT_BULLETS, type ListType } from '@/editor/numbering'
 import { Warnings, type ExportResult } from '../types'
 import { HIGHLIGHT_NAMES, type DocxCarry } from './read'
@@ -32,6 +32,8 @@ const CT = {
   numbering: 'application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml',
   settings: 'application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml',
   core: 'application/vnd.openxmlformats-package.core-properties+xml',
+  header: 'application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml',
+  footer: 'application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml',
   app: 'application/vnd.openxmlformats-officedocument.extended-properties+xml'
 }
 
@@ -150,6 +152,12 @@ class Writer {
         return this.image(n)
       case 'preservedInline':
         return this.preserved(n, false)
+      case 'field': {
+        const instr = ({ page: 'PAGE', pages: 'NUMPAGES', date: 'DATE \\@ "MMMM d, yyyy"', title: 'TITLE', author: 'AUTHOR' } as Record<string, string>)[String(n.attrs?.kind)] ?? 'PAGE'
+        const rpr = this.rPr(n.marks as Mark[])
+        const r = (inner: string) => `<w:r>${rpr}${inner}</w:r>`
+        return r('<w:fldChar w:fldCharType="begin"/>') + r(`<w:instrText xml:space="preserve"> ${x(instr)} </w:instrText>`) + r('<w:fldChar w:fldCharType="separate"/>') + r('<w:t>1</w:t>') + r('<w:fldChar w:fldCharType="end"/>')
+      }
       default:
         return ''
     }
@@ -389,17 +397,47 @@ class Writer {
     return xml + '</w:tbl>'
   }
 
-  sectPr(): string {
+  hfRefs = ''
+  hfFiles: Record<string, Uint8Array> = {}
+
+  /** Write header/footer parts (each with its own relationships) and remember their sectPr references. */
+  headersFooters(hf: HeadersFooters | null) {
+    if (!hf) return
+    let n = 0
+    for (const kind of ['header', 'footer'] as const) {
+      for (const variant of ['default', 'first', 'even'] as const) {
+        const content = hf[kind][variant] as JSONContent[] | null | undefined
+        if (!content?.length) continue
+        if (variant === 'first' && !hf.differentFirst) continue
+        if (variant === 'even' && !hf.differentOddEven) continue
+        n++
+        const docRels = this.rels
+        this.rels = []
+        let body = this.blocks(content)
+        if (!body.trimEnd().endsWith('</w:p>') && !body.trimEnd().endsWith('</w:tbl>')) body += '<w:p/>'
+        const partRels = this.rels
+        this.rels = docRels
+        const tag = kind === 'header' ? 'hdr' : 'ftr'
+        const name = `${kind}${n}.xml`
+        this.hfFiles[`word/${name}`] = strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:${tag} ${NSDECL}>${body}</w:${tag}>`)
+        if (partRels.length) this.hfFiles[`word/_rels/${name}.rels`] = strToU8(relsXml(partRels))
+        const id = this.rel(`http://schemas.openxmlformats.org/officeDocument/2006/relationships/${kind}`, name)
+        this.hfRefs += `<w:${kind}Reference w:type="${variant}" r:id="${id}"/>`
+      }
+    }
+    // headerReferences must precede footerReferences
+    this.hfRefs = (this.hfRefs.match(/<w:headerReference[^>]*\/>/g) ?? []).join('') + (this.hfRefs.match(/<w:footerReference[^>]*\/>/g) ?? []).join('')
+  }
+
+  sectPr(hf: HeadersFooters | null): string {
     const p = this.page
     const m = p.margins
     const orient = p.orientation === 'landscape' ? ' w:orient="landscape"' : ''
-    const extra = this.carry?.sectPrExtra ?? ''
-    // headerReference/footerReference must precede pgSz
-    const refs = extra.match(/<w:(headerReference|footerReference)[^>]*\/>/g)?.join('') ?? ''
-    const rest = extra.replace(/<w:(headerReference|footerReference)[^>]*\/>/g, '')
-    const titlePg = rest.match(/<w:titlePg[^>]*\/>/)?.[0] ?? ''
-    const pgNum = rest.match(/<w:pgNumType[^>]*\/>/)?.[0] ?? ''
-    return `<w:sectPr>${refs}<w:pgSz w:w="${tw(p.width)}" w:h="${tw(p.height)}"${orient}/><w:pgMar w:top="${tw(m.top)}" w:right="${tw(m.right)}" w:bottom="${tw(m.bottom)}" w:left="${tw(m.left)}" w:header="${tw(m.header)}" w:footer="${tw(m.footer)}" w:gutter="${tw(m.gutter)}"/>${pgNum}<w:cols w:space="720"/>${titlePg}<w:docGrid w:linePitch="360"/></w:sectPr>`
+    const FMT: Record<string, string> = { '1': 'decimal', i: 'lowerRoman', I: 'upperRoman', a: 'lowerLetter', A: 'upperLetter' }
+    const nb = p.numbering
+    const pgNum = nb && (nb.format !== '1' || nb.start !== 1) ? `<w:pgNumType w:fmt="${FMT[nb.format]}" w:start="${nb.start}"/>` : ''
+    const titlePg = hf?.differentFirst ? '<w:titlePg/>' : ''
+    return `<w:sectPr>${this.hfRefs}<w:pgSz w:w="${tw(p.width)}" w:h="${tw(p.height)}"${orient}/><w:pgMar w:top="${tw(m.top)}" w:right="${tw(m.right)}" w:bottom="${tw(m.bottom)}" w:left="${tw(m.left)}" w:header="${tw(m.header)}" w:footer="${tw(m.footer)}" w:gutter="${tw(m.gutter)}"/>${pgNum}<w:cols w:space="720"/>${titlePg}<w:docGrid w:linePitch="360"/></w:sectPr>`
   }
 
   // ---------- parts ----------
@@ -495,6 +533,12 @@ class Writer {
   }
 }
 
+function relsXml(rels: { id: string; type: string; target: string; external?: boolean }[]): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels
+    .map((r) => `<Relationship Id="${r.id}" Type="${r.type}" Target="${x(r.target)}"${r.external ? ' TargetMode="External"' : ''}/>`)
+    .join('')}</Relationships>`
+}
+
 function cssColorHex(c: string | undefined | null): string | null {
   if (!c) return null
   const s = c.trim().toLowerCase()
@@ -520,16 +564,21 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
   const meta = (doc.attrs?.meta ?? {}) as DocMeta
   const wr = new Writer(page, structuredClone(styles), carry)
 
+  const hf = (doc.attrs?.hf as HeadersFooters | null | undefined) ?? null
   const body = wr.blocks(doc.content)
-  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:document ${NSDECL}><w:body>${body}${wr.sectPr()}</w:body></w:document>`
+  wr.headersFooters(hf)
+  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:document ${NSDECL}><w:body>${body}${wr.sectPr(hf)}</w:body></w:document>`
 
   const files: Record<string, Uint8Array> = {}
+  const overridesExtra: Record<string, string> = {}
   // Carry over parts we do not regenerate (headers, footers, footnotes, theme, fonts, settings, media used by preserved XML…).
   const carriedRels: string[] = []
   if (carry) {
-    for (const [path, data] of Object.entries(carry.parts)) if (!GENERATED.has(path) && !path.startsWith('customXml/') && path !== 'docProps/custom.xml') files[path] = data
+    const converted = new Set(carry.converted ?? [])
+    const skip = (path: string) => GENERATED.has(path) || converted.has(path) || [...converted].some((c) => path === c.replace(/([^/]+)$/, '_rels/$1.rels')) || path.startsWith('customXml/') || path === 'docProps/custom.xml'
+    for (const [path, data] of Object.entries(carry.parts)) if (!skip(path)) files[path] = data
     for (const r of carry.rels) {
-      if (/\/(styles|numbering)$/.test(r.type)) continue
+      if (/\/(styles|numbering|header|footer)$/.test(r.type)) continue
       if (r.type.endsWith('/hyperlink') || r.type.endsWith('/image') || !r.external) {
         const target = r.external ? r.target : r.target.startsWith('word/') ? r.target.slice(5) : `../${r.target}`
         if (!r.external && !files[r.target]) continue
@@ -547,6 +596,15 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
   if (wr.lists.length) wr.rels.push({ id: 'sdRnumbering', type: REL.numbering, target: 'numbering.xml' })
 
   files['word/document.xml'] = strToU8(documentXml)
+  Object.assign(files, wr.hfFiles)
+  for (const p of Object.keys(wr.hfFiles)) if (!p.endsWith('.rels')) overridesExtra[p] = p.includes('/header') ? CT.header : CT.footer
+  if (hf?.differentOddEven) {
+    const st = files['word/settings.xml'] ? strFromU8(files['word/settings.xml']) : ''
+    const cleaned = st.replace(/<w:evenAndOddHeaders[^>]*\/>/g, '')
+    files['word/settings.xml'] = strToU8(
+      /<w:defaultTabStop[^>]*\/>/.test(cleaned) ? cleaned.replace(/(<w:defaultTabStop[^>]*\/>)/, '$1<w:evenAndOddHeaders/>') : cleaned.replace(/(<w:settings[^>]*>)/, '$1<w:evenAndOddHeaders/>')
+    )
+  }
   files['word/styles.xml'] = strToU8(wr.stylesXml())
   if (wr.lists.length) files['word/numbering.xml'] = strToU8(wr.numberingXml())
   Object.assign(files, wr.media)
@@ -570,6 +628,7 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
 
   const overrides: Record<string, string> = { 'word/document.xml': CT.document, 'word/styles.xml': CT.styles, 'word/settings.xml': CT.settings, 'docProps/core.xml': CT.core, 'docProps/app.xml': CT.app }
   if (wr.lists.length) overrides['word/numbering.xml'] = CT.numbering
+  Object.assign(overrides, overridesExtra)
   if (carry) for (const [p, t] of Object.entries(carry.overrides)) if (files[p] && !overrides[p] && t) overrides[p] = t
   const defaults: Record<string, string> = { rels: 'application/vnd.openxmlformats-package.relationships+xml', xml: 'application/xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', tif: 'image/tiff', tiff: 'image/tiff', emf: 'image/x-emf', wmf: 'image/x-wmf', svg: 'image/svg+xml', bin: 'application/vnd.openxmlformats-officedocument.oleObject' }
   files['[Content_Types].xml'] = strToU8(

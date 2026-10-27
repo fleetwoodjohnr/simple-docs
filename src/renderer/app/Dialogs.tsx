@@ -226,7 +226,7 @@ function ExportWarnings({ d }: { d: Extract<Dialog, { kind: 'export-warnings' }>
 }
 
 function StatsDialog() {
-  const editor = editors.get(get().active)
+  const editor = editors.get(get().active) // body editor, even while a header is open
   if (!editor) return null
   return (
     <Modal

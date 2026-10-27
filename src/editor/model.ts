@@ -33,6 +33,8 @@ export const MARGIN_PRESETS: Record<'normal' | 'narrow' | 'moderate' | 'wide', {
   wide: { label: 'Wide', margins: { top: 72, right: 144, bottom: 72, left: 144 } }
 }
 
+export type PageNumberFormat = '1' | 'i' | 'I' | 'a' | 'A'
+
 export interface PageSetup {
   size: PageSizeId
   /** Width/height as displayed (already swapped for landscape). */
@@ -41,6 +43,8 @@ export interface PageSetup {
   orientation: Orientation
   margins: PageMargins
   background: string | null
+  /** Page number format and starting value (defaults: '1', 1). */
+  numbering?: { format: PageNumberFormat; start: number }
 }
 
 export function makePageSetup(size: Exclude<PageSizeId, 'custom'> = 'letter', margins: keyof typeof MARGIN_PRESETS = 'normal'): PageSetup {
@@ -174,3 +178,29 @@ export function resolveStyle(styles: StyleMap, id: string): { run: RunProps; par
 }
 
 export const DEFAULT_TAB_STOP = 36
+
+/** Block content (editor JSON) for each header/footer variant. */
+export interface HFVariants {
+  default?: unknown[] | null
+  first?: unknown[] | null
+  even?: unknown[] | null
+}
+
+export interface HeadersFooters {
+  header: HFVariants
+  footer: HFVariants
+  differentFirst: boolean
+  differentOddEven: boolean
+}
+
+export type HFKind = 'header' | 'footer'
+export type HFVariant = 'default' | 'first' | 'even'
+
+export const emptyHF = (): HeadersFooters => ({ header: {}, footer: {}, differentFirst: false, differentOddEven: false })
+
+/** Which variant applies to a 0-based page index. */
+export function hfVariantFor(hf: HeadersFooters, pageIndex: number): HFVariant {
+  if (hf.differentFirst && pageIndex === 0) return 'first'
+  if (hf.differentOddEven && pageIndex % 2 === 1) return 'even'
+  return 'default'
+}
