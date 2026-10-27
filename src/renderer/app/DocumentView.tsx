@@ -4,6 +4,7 @@ import { TextSelection } from '@tiptap/pm/state'
 import { PAGE_GAP, pageOf, paginationKey } from '@/layout/plugin'
 import { ptToPx, type StyleMap } from '@/editor/model'
 import { stylesToCss } from '@/editor/styles-css'
+import { Ruler } from './Ruler'
 
 export function usePageCount(editor: Editor): number {
   return useEditorState({ editor, selector: ({ editor: e }) => paginationKey.getState(e.state)?.pageCount ?? 1 }) ?? 1
@@ -18,10 +19,11 @@ interface Props {
   zoom: number
   showMarks: boolean
   showBoundaries: boolean
+  showRuler?: boolean
   onZoomChange?: (z: number) => void
 }
 
-export function DocumentView({ tabId, editor, zoom, showMarks, showBoundaries, onZoomChange }: Props) {
+export function DocumentView({ tabId, editor, zoom, showMarks, showBoundaries, showRuler, onZoomChange }: Props) {
   const pageCount = usePageCount(editor)
   const { page, styles } = useEditorState({
     editor,
@@ -74,6 +76,7 @@ export function DocumentView({ tabId, editor, zoom, showMarks, showBoundaries, o
   return (
     <div ref={scrollRef} className={`h-full overflow-auto bg-workspace ${showMarks ? 'show-marks' : ''}`} data-doc-scroll={tabId}>
       <style>{css}</style>
+      {showRuler && <Ruler editor={editor} zoom={zoom} />}
       <div className="mx-auto py-8" style={{ width: Math.max(w * zoom, 1) + 120 }}>
         <div className="relative mx-auto" style={{ width: w * zoom, height: stackH * zoom }}>
           <div className={docScope(tabId)} style={stackStyle} onMouseDown={onSheetMouseDown} data-page-stack>

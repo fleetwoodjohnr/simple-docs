@@ -100,6 +100,7 @@ function createWindow(settings: Settings) {
   else mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
 
   mainWindow.webContents.once('did-finish-load', () => {
+    mainWindow?.webContents.setZoomFactor(settings.uiScale || 1)
     if (pendingOpen.length) void sendOpenFiles(pendingOpen.splice(0))
   })
 }
@@ -242,6 +243,7 @@ function registerIpc() {
     if (typeof patch !== 'object' || !patch) throw new Error('Invalid settings')
     const next = await store.setSettings(patch)
     if (patch.theme) nativeTheme.themeSource = next.theme
+    if (patch.uiScale) mainWindow?.webContents.setZoomFactor(next.uiScale)
     return next
   })
 

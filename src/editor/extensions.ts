@@ -1,4 +1,5 @@
 import { Extension, Mark, Node, mergeAttributes, type Extensions } from '@tiptap/core'
+import { TextSelection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import Heading from '@tiptap/extension-heading'
 import { BulletList, OrderedList, ListItem, TaskList, TaskItem } from '@tiptap/extension-list'
@@ -189,10 +190,32 @@ export const PageBreak = Node.create({
   },
   addCommands() {
     return {
+      // Like Word: text after the cursor moves to the new page; the cursor lands after the break.
       setPageBreak:
         () =>
-        ({ chain }) =>
-          chain().insertContent({ type: 'pageBreak' }).run()
+        ({ state, tr, dispatch }) => {
+          // A non-empty selection breaks after its end.
+          const { $from } = state.selection.empty ? state.selection : TextSelection.near(state.selection.$to, -1)
+          const block = $from.parent
+          if (!block.isTextblock) return false
+          const pb = state.schema.nodes.pageBreak.create()
+          if (dispatch && $from.depth > 1) {
+            // Inside a list or table: break after the whole top-level block.
+            const at = $from.after(1)
+            tr.insert(at, [pb, state.schema.nodes.paragraph.create()])
+            tr.setSelection(TextSelection.create(tr.doc, at + 2)).scrollIntoView()
+          } else if (dispatch) {
+            if (block.content.size === 0 || $from.parentOffset === 0) tr.insert($from.before(), pb)
+            else {
+              const atEnd = $from.parentOffset === block.content.size
+              tr.split($from.pos, 1, atEnd ? [{ type: state.schema.nodes.paragraph }] : undefined)
+              tr.insert(tr.mapping.map($from.pos, -1) + 1, pb)
+            }
+            tr.setSelection(TextSelection.create(tr.doc, tr.mapping.map($from.pos)))
+            tr.scrollIntoView()
+          }
+          return true
+        }
     }
   }
 })

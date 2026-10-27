@@ -506,3 +506,57 @@ body {
     content: none !important;
   }
 }
+
+/* ================= motion ================= */
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(-3px) scale(0.98);
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.97);
+  }
+}
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.pop-in {
+  animation: popIn 130ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.fade-in {
+  animation: fadeIn 160ms ease-out;
+}
+.dialog-in {
+  animation: dialogIn 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.slide-up {
+  animation: slideUp 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ================= markdown preview ================= */
+.md-preview h1 { font-size: 1.9em; font-weight: 700; margin: 0 0 0.5em; letter-spacing: -0.02em; }
+.md-preview h2 { font-size: 1.45em; font-weight: 700; margin: 1.2em 0 0.4em; }
+.md-preview h3 { font-size: 1.2em; font-weight: 700; margin: 1em 0 0.3em; }
+.md-preview p { margin: 0 0 0.8em; }
+.md-preview ul { list-style: disc; padding-left: 1.5em; margin: 0 0 0.8em; }
+.md-preview ol { list-style: decimal; padding-left: 1.5em; margin: 0 0 0.8em; }
+.md-preview blockquote { border-left: 3px solid #d4d4dc; padding-left: 1em; color: #555; margin: 0 0 0.8em; }
+.md-preview code { font-family: 'Liberation Mono', monospace; font-size: 0.9em; background: #f2f2f5; padding: 0.1em 0.3em; border-radius: 3px; }
+.md-preview pre { background: #f5f5f7; padding: 12px; border-radius: 6px; overflow-x: auto; margin: 0 0 0.8em; }
+.md-preview pre code { background: none; padding: 0; }
+.md-preview table { border-collapse: collapse; margin: 0 0 0.8em; }
+.md-preview th, .md-preview td { border: 1px solid #ccc; padding: 4px 8px; }
+.md-preview a { color: #1f5bd8; text-decoration: underline; }
+.md-preview img { max-width: 100%; }
+.md-preview hr { border: 0; border-top: 1px solid #ddd; margin: 1.2em 0; }
