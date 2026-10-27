@@ -962,7 +962,16 @@ class Reader {
       .map((row) => ({ type: 'tableRow', content: row.cells.filter((c) => c.vMerge !== 'continue').map((c) => c.node) }))
       .filter((row) => row.content.length)
     if (child(child(tbl, NS.w, 'tblPr'), NS.w, 'tblpPr')) this.w.add('info', 'Floating tables are placed inline')
-    return { type: 'table', content }
+    // Recognize borderless / horizontal-lines tables from explicit borders.
+    const tb = child(child(tbl, NS.w, 'tblPr'), NS.w, 'tblBorders')
+    const off = (side: string) => {
+      const v = wval(child(tb, NS.w, side))
+      return v === 'nil' || v === 'none'
+    }
+    let tableStyle: string | null = null
+    if (tb && ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].every(off)) tableStyle = 'plain'
+    else if (tb && off('left') && off('right') && off('insideV') && !off('insideH')) tableStyle = 'lines'
+    return { type: 'table', attrs: { tableStyle }, content }
   }
 
   blocks(container: El, depth = 0): JSONContent[] {

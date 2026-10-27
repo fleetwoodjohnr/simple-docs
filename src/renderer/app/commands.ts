@@ -6,6 +6,7 @@ import { readAsDataUrl } from '@/editor/create'
 import { insertToc, updateTocsSettled } from '@/editor/toc'
 import { addComment, commentUiKey, focusComment, orderedCommentIds } from '@/editor/comments'
 import { changesAtSelection, gotoChange, resolveChanges, setTracking } from '@/editor/track'
+import { distributeColumns, setCellAlign, sortTable, tableToText, textToTable } from '@/editor/tables'
 import { emptyHF, resolveStyle, type HeadersFooters, type HFKind, type StyleMap } from '@/editor/model'
 import { bodyEditor } from '../state/store'
 
@@ -385,6 +386,14 @@ def({ id: 'table.delete', label: 'Delete table', run: (e) => chain(e!).deleteTab
 def({ id: 'table.merge', label: 'Merge cells', run: (e) => chain(e!).mergeCells().run() })
 def({ id: 'table.split', label: 'Split cell', run: (e) => chain(e!).splitCell().run() })
 def({ id: 'table.headerRow', label: 'Header row', run: (e) => chain(e!).toggleHeaderRow().run() })
+def({ id: 'table.sortAsc', label: 'Sort A → Z', run: (e) => { const err = sortTable(e!); if (err) toast(err, 'error') } })
+def({ id: 'table.sortDesc', label: 'Sort Z → A', run: (e) => { const err = sortTable(e!, true); if (err) toast(err, 'error') } })
+def({ id: 'table.distribute', label: 'Distribute columns', run: (e) => distributeColumns(e!) })
+def({ id: 'table.toText', label: 'Convert table to text', run: (e) => tableToText(e!) })
+def({ id: 'table.fromText', label: 'Convert text to table', run: (e) => { const err = textToTable(e!); if (err) toast(err, 'error') } })
+def({ id: 'table.alignTop', label: 'Align top', run: (e) => setCellAlign(e!, 'top') })
+def({ id: 'table.alignMiddle', label: 'Align middle', run: (e) => setCellAlign(e!, 'middle') })
+def({ id: 'table.alignBottom', label: 'Align bottom', run: (e) => setCellAlign(e!, 'bottom') })
 
 // View
 def({ id: 'view.zoomIn', label: 'Zoom in', shortcut: 'Mod-=', global: true, needsEditor: false, run: () => zoomTo(get().zoom + 0.1) })

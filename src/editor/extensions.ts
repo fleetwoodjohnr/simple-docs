@@ -15,6 +15,7 @@ import { Toc, TocEntry, TocNavigation } from './toc'
 import { Footnote, NoteClicks } from './notes'
 import { Comment } from './comments'
 import { Deletion, Insertion, TrackChanges } from './track'
+import { TableStyles } from './tables'
 
 // ---------- helpers ----------
 
@@ -427,6 +428,7 @@ export function createExtensions(opts: ExtensionOptions = {}): Extensions {
     TableRow,
     SdTableCell,
     SdTableHeader,
+    TableStyles,
     PageBreak,
     PreservedBlock,
     PreservedInline,

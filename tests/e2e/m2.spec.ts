@@ -240,3 +240,32 @@ test('spell checking: offline underline, suggestions, add to dictionary', async 
     await quit(app)
   }
 })
+
+test('table header row repeats on continuation pages (screen and PDF)', async () => {
+  const { app, page } = await launch()
+  const pdf = path.join(tempDir(), 'table.pdf')
+  try {
+    await page.keyboard.press('Control+n')
+    await doc(page).click()
+    await withEditor(page, `(e) => {
+      const cell = (t, h) => ({ type: h ? 'tableHeader' : 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: t }] }] })
+      const rows = [{ type: 'tableRow', content: [cell('Account', 1), cell('Balance', 1)] }]
+      for (let i = 1; i <= 60; i++) rows.push({ type: 'tableRow', content: [cell('Row ' + i), cell(String(i * 100))] })
+      e.commands.setContent({ type: 'doc', attrs: e.state.doc.attrs, content: [{ type: 'table', content: rows }, { type: 'paragraph' }] })
+    }`)
+    await settle(page, 1000)
+    const repeats = page.locator('[data-doc-scroll]:visible tr[data-pg-repeat]')
+    expect(await repeats.count()).toBeGreaterThanOrEqual(1)
+    await expect(repeats.first()).toContainText('Account')
+    await stubDialogs(app, { save: pdf })
+    await page.keyboard.press('Control+Shift+e')
+    await expect.poll(() => existsSync(pdf) && statSync(pdf).size > 1000, { timeout: 15_000 }).toBe(true)
+    expect(pdfText(pdf, 2)).toContain('Account')
+    expect(pdfText(pdf, 2)).toContain('Balance')
+    // rows are not duplicated or lost across the page boundary
+    const all = pdfText(pdf, 1) + pdfText(pdf, 2) + (existsSync(pdf) ? execFileSync('pdftotext', [pdf, '-']).toString() : '')
+    for (const n of [1, 30, 60]) expect(all).toContain(`Row ${n}`)
+  } finally {
+    await quit(app)
+  }
+})

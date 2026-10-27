@@ -129,3 +129,16 @@ describe('incremental re-layout', () => {
     expect(measured).toBeLessThan(units.length)
   })
 })
+
+describe('repeated table header rows', () => {
+  it('reserves the header height on continuation pages', () => {
+    const rows = stack(Array.from({ length: 12 }, () => ({ h: 20, kind: 'row' as const })))
+    for (const r of rows.slice(1)) r.repeatHeader = 20
+    const r = computeBreaks(rows, M)
+    // page 1: header + 4 rows (100px); later pages: repeated header (20) + 4 rows
+    expect(r.breaks.map((b) => [b.pos / 1000, b.kind, b.repeat])).toEqual([
+      [5, 'row', 20],
+      [9, 'row', 20]
+    ])
+  })
+})

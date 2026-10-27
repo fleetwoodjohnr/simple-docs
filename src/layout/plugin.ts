@@ -67,11 +67,26 @@ function buildDecorations(doc: PMNode, breaks: Break[]): DecorationSet {
       const $p = doc.resolve(b.pos)
       const table = $p.parent.type.name === 'table' ? $p.parent : null
       const cols = table ? TableMap.get(table).width : 1
-      return Decoration.widget(b.pos, () => rowSpacer(b.height, cols), { side: -1, key: key + cols, ignoreSelection: true })
+      const spacerDeco = Decoration.widget(b.pos, () => rowSpacer(b.height, cols), { side: -2, key: key + cols, ignoreSelection: true })
+      if (!b.repeat || !table) return spacerDeco
+      const firstRow = $p.start()
+      const header = Decoration.widget(b.pos, (view) => repeatedHeader(view, firstRow), { side: -1, key: `${key}h${b.repeat.toFixed(1)}`, ignoreSelection: true })
+      return [spacerDeco, header]
     }
     return Decoration.widget(b.pos, () => spacer('div', b.height, 'pg-spacer'), { side: -1, key, ignoreSelection: true })
   })
-  return DecorationSet.create(doc, decos)
+  return DecorationSet.create(doc, decos.flat())
+}
+
+/** A read-only copy of a table's header row, shown at the top of a continuation page. */
+function repeatedHeader(view: EditorView, firstRowPos: number): HTMLElement {
+  const src = view.nodeDOM(firstRowPos) as HTMLElement | null
+  const tr = (src?.cloneNode(true) as HTMLElement | undefined) ?? document.createElement('tr')
+  tr.setAttribute('data-pg-repeat', '')
+  tr.setAttribute('aria-hidden', 'true')
+  tr.setAttribute('contenteditable', 'false')
+  tr.querySelectorAll('.selectedCell, .column-resize-handle').forEach((el) => (el.classList.remove('selectedCell'), el.classList.contains('column-resize-handle') && el.remove()))
+  return tr
 }
 
 // ---------- measurement ----------
@@ -85,7 +100,7 @@ interface Measurer {
 function makeMeasurer(root: HTMLElement): Measurer {
   const rr = root.getBoundingClientRect()
   const scale = rr.width / (root.offsetWidth || rr.width || 1) || 1
-  const spacers = Array.from(root.querySelectorAll<HTMLElement>('[data-pg-spacer]')).map((el) => {
+  const spacers = Array.from(root.querySelectorAll<HTMLElement>('[data-pg-spacer], [data-pg-repeat]')).map((el) => {
     const r = el.getBoundingClientRect()
     return { top: (r.top - rr.top) / scale, h: r.height / scale }
   })
@@ -281,8 +296,15 @@ export function measureUnits(view: EditorView, noteHeight?: NoteHeightFn, fromPo
       if (name === 'table') {
         let rp = p + 1
         let i = 0
-        for (const row of (d.children ?? []).filter((c) => c.node)) {
-          if (rp + row.size > fromPos) units.push(lazyUnit(row.dom, { pos: i === 0 ? at : rp, kind: 'row', ...flags }))
+        const rows = (d.children ?? []).filter((c) => c.node)
+        const hasHeader = rows.length > 1 && rows[0].node!.childCount > 0 && rows[0].node!.content.content.every((c) => c.type.name === 'tableHeader')
+        const headerUnit = hasHeader ? lazyUnit(rows[0].dom, { pos: at, kind: 'row', ...flags }) : null
+        for (const row of rows) {
+          if (rp + row.size > fromPos) {
+            const unit = i === 0 && headerUnit ? headerUnit : lazyUnit(row.dom, { pos: i === 0 ? at : rp, kind: 'row', ...flags })
+            if (headerUnit && i > 0) Object.defineProperty(unit, 'repeatHeader', { get: () => headerUnit.bottom - headerUnit.top, enumerable: true })
+            units.push(unit)
+          }
           rp += row.node!.nodeSize
           i++
         }

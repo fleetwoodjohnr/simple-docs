@@ -759,3 +759,28 @@ body {
 .print-page .sd-misspelled {
   text-decoration: none;
 }
+
+/* ================= table styles ================= */
+.sd-doc [data-table-style='plain'] :is(td, th) {
+  border-color: transparent;
+}
+.sd-doc [data-table-style='plain'] th {
+  background: none;
+}
+.sd-doc [data-table-style='lines'] :is(td, th) {
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
+.sd-doc [data-table-style='lines'] th {
+  background: none;
+  border-bottom: 1.5px solid #55555f;
+}
+.sd-doc [data-table-style='striped'] :is(td, th) {
+  border-color: #e3e3ea;
+}
+.sd-doc [data-table-style='striped'] tr:nth-child(even) > td {
+  background: #f5f6fa;
+}
+.sd-doc [data-table-style='striped'] th {
+  background: #e9ebf3;
+}

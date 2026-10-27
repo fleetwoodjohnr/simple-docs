@@ -25,6 +25,8 @@ export interface Unit {
   lines?: () => Line[]
   /** Footnotes referenced in this unit: natural y of the reference and the note's rendered height. */
   notes?: { y: number; h: number }[]
+  /** Table rows: height of the header row repeated when this row starts a page. */
+  repeatHeader?: number
 }
 
 export interface PageMetrics {
@@ -47,6 +49,8 @@ export interface Break {
   start: number
   /** Spacer height that moves `start` to the next page's content top. */
   height: number
+  /** Height of a repeated table header row drawn at the top of the new page. */
+  repeat?: number
 }
 
 /** Resume a previous layout from a page before the edit instead of recomputing everything. */
@@ -80,19 +84,22 @@ export function computeBreaks(units: Unit[], m: PageMetrics, resume?: Resume): L
   let reused = false
   /** Height of footnotes already placed on the current page. */
   let noteH = 0
+  /** Space taken at the top of the current page by a repeated table header. */
+  let reserve = 0
   const area = (h: number) => (h > 0 ? h + sep : 0)
-  const limitWith = (extra: number) => start + m.contentHeight - area(noteH + extra)
+  const limitWith = (extra: number) => start + m.contentHeight - reserve - area(noteH + extra)
   /** Notes of `u` whose reference lies in [from, to) on the current page. */
   const notesIn = (u: Unit, from: number, to: number) => (u.notes ?? []).reduce((s, n) => (n.y >= from - EPS && n.y < to - EPS ? s + n.h : s), 0)
 
   /** Start a new page; returns true when the rest of the old layout was reused (stop). */
-  const newPage = (pos: number, kind: BreakKind, s: number): boolean => {
-    breaks.push({ pos, kind, start: s, height: m.stride - (s - start) })
+  const newPage = (pos: number, kind: BreakKind, s: number, repeat = 0): boolean => {
+    breaks.push(repeat ? { pos, kind, start: s, height: m.stride - (s - start), repeat } : { pos, kind, start: s, height: m.stride - (s - start) })
     start = s
     noteH = 0
+    reserve = repeat
     // Past the edit, a page that starts where an old page started is followed by the same pages.
     if (resume && pos > resume.changeEnd) {
-      const j = resume.prev.findIndex((b) => b.pos === pos && b.kind === kind)
+      const j = resume.prev.findIndex((b) => b.pos === pos && b.kind === kind && (b.repeat ?? 0) === repeat)
       if (j >= 0) {
         const d = s - resume.prev[j].start
         for (const b of resume.prev.slice(j + 1)) breaks.push({ ...b, start: b.start + d })
@@ -111,7 +118,7 @@ export function computeBreaks(units: Unit[], m: PageMetrics, resume?: Resume): L
       forced = true
       continue
     }
-    if ((forced || u.breakBefore) && u.top > start + EPS && newPage(u.pos, blockKind(u), u.top)) break outer
+    if ((forced || u.breakBefore) && u.top > start + EPS && newPage(u.pos, blockKind(u), u.top, u.repeatHeader)) break outer
     forced = false
 
     for (;;) {
@@ -147,7 +154,7 @@ export function computeBreaks(units: Unit[], m: PageMetrics, resume?: Resume): L
       let b = k
       while (b > 0 && units[b - 1].keepNext && units[b - 1].kind !== 'pagebreak' && units[b - 1].top > start + EPS) b--
       if (units[b].top > start + EPS) {
-        if (newPage(units[b].pos, blockKind(units[b]), units[b].top)) break outer
+        if (newPage(units[b].pos, blockKind(units[b]), units[b].top, units[b].repeatHeader)) break outer
         // Units between the chain start and k are re-placed on the new page.
         for (let j = b; j < k; j++) noteH += notesIn(units[j], start, Infinity)
         continue
@@ -170,5 +177,5 @@ export function computeBreaks(units: Unit[], m: PageMetrics, resume?: Resume): L
 }
 
 export function sameBreaks(a: Break[], b: Break[]): boolean {
-  return a.length === b.length && a.every((x, i) => x.pos === b[i].pos && x.kind === b[i].kind && Math.abs(x.height - b[i].height) < 0.5)
+  return a.length === b.length && a.every((x, i) => x.pos === b[i].pos && x.kind === b[i].kind && Math.abs(x.height - b[i].height) < 0.5 && Math.abs((x.repeat ?? 0) - (b[i].repeat ?? 0)) < 0.5)
 }

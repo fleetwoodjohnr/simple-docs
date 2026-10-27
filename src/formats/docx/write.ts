@@ -492,7 +492,12 @@ class Writer {
     const colPx = widths.map((v) => v || rest)
     const twips = colPx.map((px) => Math.round(px * 15))
     const total = twips.reduce((s, v) => s + v, 0)
-    const border = '<w:top w:val="single" w:sz="4" w:space="0" w:color="B9B9C3"/><w:left w:val="single" w:sz="4" w:space="0" w:color="B9B9C3"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="B9B9C3"/><w:right w:val="single" w:sz="4" w:space="0" w:color="B9B9C3"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="B9B9C3"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="B9B9C3"/>'
+    const style = n.attrs?.tableStyle as string | null | undefined
+    const line = (side: string, on: boolean, color = 'B9B9C3') => (on ? `<w:${side} w:val="single" w:sz="4" w:space="0" w:color="${color}"/>` : `<w:${side} w:val="nil"/>`)
+    const plain = style === 'plain'
+    const lines = style === 'lines'
+    const c = style === 'striped' ? 'E3E3EA' : 'B9B9C3'
+    const border = line('top', !plain, c) + line('left', !plain && !lines, c) + line('bottom', !plain, c) + line('right', !plain && !lines, c) + line('insideH', !plain, c) + line('insideV', !plain && !lines, c)
     let xml = `<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="${total}" w:type="dxa"/><w:tblBorders>${border}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="108" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar><w:tblLook w:val="04A0" w:firstRow="1" w:lastRow="0" w:firstColumn="1" w:lastColumn="0" w:noHBand="0" w:noVBand="1"/></w:tblPr><w:tblGrid>${twips.map((t) => `<w:gridCol w:w="${t}"/>`).join('')}</w:tblGrid>`
     for (const r of gridRows) {
       xml += `<w:tr>${r.header ? '<w:trPr><w:tblHeader/></w:trPr>' : ''}`
@@ -503,7 +508,7 @@ class Writer {
         if (c.span > 1) pr.push(`<w:gridSpan w:val="${c.span}"/>`)
         if (c.cont) pr.push('<w:vMerge/>')
         else if ((Number(a.rowspan) || 1) > 1) pr.push('<w:vMerge w:val="restart"/>')
-        const bg = cssColorHex(a.background as string | undefined)
+        const bg = cssColorHex(a.background as string | undefined) ?? (style === 'striped' && !r.header && gridRows.indexOf(r) % 2 === 1 ? 'F5F6FA' : null)
         if (bg) pr.push(`<w:shd w:val="clear" w:color="auto" w:fill="${bg}"/>`)
         if (a.verticalAlign) pr.push(`<w:vAlign w:val="${a.verticalAlign === 'middle' ? 'center' : a.verticalAlign}"/>`)
         let body = c.cont ? '' : this.blocks(c.cell?.content)

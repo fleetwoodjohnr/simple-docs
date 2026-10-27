@@ -4,7 +4,7 @@ import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, CalendarDays, CaseSensitive, ChevronDown, ChevronUp, ClipboardPaste, Code2, Columns3, Copy, Eraser, Eye, FileDown, Focus,
   Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Info, Italic, Keyboard, Link2, List, ListChecks, ListOrdered, Maximize2, Minus, Moon, PaintBucket, Paintbrush, PanelLeft,
   PanelRight, Pilcrow, Plus, Printer, Quote, Redo2, Replace, Ruler, Scissors, Search, Settings, Sigma, SquareDashed, Strikethrough, Subscript, Superscript, Table2, Type, Underline, Undo2,
-  Volume2, WrapText, ZoomIn, ZoomOut, BookOpen, PanelTop, PanelBottom, Hash, ListTree, RefreshCw, MessageSquarePlus, MessagesSquare, CheckCheck, XCircle, ArrowUpToLine, ArrowDownToLine, FilePenLine, FileCode2, ShieldCheck, Merge, Split, Trash2, Rows3, AlignStartVertical, AlignEndVertical, RectangleHorizontal, RectangleVertical
+  Volume2, WrapText, ZoomIn, ZoomOut, BookOpen, PanelTop, PanelBottom, Hash, ListTree, RefreshCw, MessageSquarePlus, MessagesSquare, CheckCheck, XCircle, ArrowUpToLine, ArrowDownToLine, FilePenLine, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, ArrowDownAZ, ArrowUpZA, FileCode2, ShieldCheck, Merge, Split, Trash2, Rows3, AlignStartVertical, AlignEndVertical, RectangleHorizontal, RectangleVertical
 } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { useApp, set, updateSettings, type RibbonTab } from '../state/store'
@@ -15,6 +15,7 @@ import { ColorGrid, IconBtn, Menu, MenuCheck, MenuContent, MenuItem, MenuLabel, 
 import { MARGIN_PRESETS, PAGE_SIZES, withOrientation, withSize, type PageSetup, type StyleMap, resolveStyle } from '@/editor/model'
 import { pageOf } from '@/layout/plugin'
 import { fontStack } from '@/editor/styles-css'
+import { setTableStyle, TABLE_STYLES, type TableStyle } from '@/editor/tables'
 
 const TABS: { id: RibbonTab; label: string }[] = [
   { id: 'home', label: 'Home' },
@@ -470,6 +471,9 @@ function TablePicker({ editor }: { editor: Editor }) {
       </Tip>
       <PopContent onOpenAutoFocus={(e) => e.preventDefault()}>
         <div className="mb-2 text-[12px] font-medium text-text-2">{hover[0] ? `${hover[1]} × ${hover[0]} table` : 'Insert table'}</div>
+        <button onClick={() => runCommand('table.fromText')} className="mb-2 flex h-7 w-full items-center gap-2 rounded-md px-2 text-[12px] text-text-2 hover:bg-hover">
+          <Table2 className="size-3.5" /> Convert selected text to table
+        </button>
         <div className="grid grid-cols-10 gap-[3px]" onMouseLeave={() => setHover([0, 0])}>
           {Array.from({ length: 80 }, (_, i) => {
             const r = Math.floor(i / 10) + 1
@@ -949,6 +953,21 @@ function TableTab() {
           Header row
         </TextBtn>
         <CellShading />
+        <Cmd id="table.alignTop" label="Align top" icon={<AlignVerticalJustifyStart className="size-4" />} />
+        <Cmd id="table.alignMiddle" label="Align middle" icon={<AlignVerticalJustifyCenter className="size-4" />} />
+        <Cmd id="table.alignBottom" label="Align bottom" icon={<AlignVerticalJustifyEnd className="size-4" />} />
+      </Group>
+      <Sep />
+      <Group label="Table">
+        <TableStyleMenu />
+        <Cmd id="table.sortAsc" label="Sort by this column, A → Z" icon={<ArrowDownAZ className="size-4" />} />
+        <Cmd id="table.sortDesc" label="Sort by this column, Z → A" icon={<ArrowUpZA className="size-4" />} />
+        <TextBtn icon={<Columns3 />} onClick={() => runCommand('table.distribute')} label="Make all columns the same width">
+          Distribute
+        </TextBtn>
+        <TextBtn icon={<Pilcrow />} onClick={() => runCommand('table.toText')} label="Replace the table with tab-separated paragraphs">
+          To text
+        </TextBtn>
       </Group>
       <Sep />
       <Group label="Delete">
@@ -963,6 +982,26 @@ function TableTab() {
         </TextBtn>
       </Group>
     </>
+  )
+}
+
+function TableStyleMenu() {
+  const editor = useActiveEditor()
+  if (!editor) return null
+  const current = (editor.getAttributes('table').tableStyle as TableStyle | null) ?? 'grid'
+  return (
+    <Menu>
+      <DropBtn label="Table style" icon={<Table2 />}>
+        Style
+      </DropBtn>
+      <MenuContent>
+        {TABLE_STYLES.map((t) => (
+          <MenuCheck key={t.id} checked={current === t.id} onSelect={() => setTableStyle(editor, t.id)}>
+            {t.label}
+          </MenuCheck>
+        ))}
+      </MenuContent>
+    </Menu>
   )
 }
 

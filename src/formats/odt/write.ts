@@ -406,7 +406,14 @@ class OdtWriter {
     const cellXml = (cell: JSONContent | null) => {
       if (!cell) return '<table:covered-table-cell/>'
       const a = cell.attrs ?? {}
-      const props = `<style:table-cell-properties fo:padding="3pt" fo:border="0.5pt solid #b9b9c3"${a.background ? ` fo:background-color="${x(String(a.background))}"` : cell.type === 'tableHeader' ? ' fo:background-color="#f4f4f7"' : ''}${a.verticalAlign ? ` style:vertical-align="${a.verticalAlign === 'middle' ? 'middle' : 'bottom'}"` : ''}/>`
+      const tStyleName = n.attrs?.tableStyle as string | null | undefined
+      const borders =
+        tStyleName === 'plain'
+          ? 'fo:border="none"'
+          : tStyleName === 'lines'
+            ? 'fo:border-top="0.5pt solid #b9b9c3" fo:border-bottom="0.5pt solid #b9b9c3" fo:border-left="none" fo:border-right="none"'
+            : `fo:border="0.5pt solid ${tStyleName === 'striped' ? '#e3e3ea' : '#b9b9c3'}"`
+      const props = `<style:table-cell-properties fo:padding="3pt" ${borders}${a.background ? ` fo:background-color="${x(String(a.background))}"` : cell.type === 'tableHeader' && tStyleName !== 'plain' && tStyleName !== 'lines' ? ' fo:background-color="#f4f4f7"' : ''}${a.verticalAlign ? ` style:vertical-align="${a.verticalAlign === 'middle' ? 'middle' : 'bottom'}"` : ''}/>`
       const cs = Number(a.colspan) || 1
       const rs = Number(a.rowspan) || 1
       const body = this.blocks(cell.content) || '<text:p/>'
