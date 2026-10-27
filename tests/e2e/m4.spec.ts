@@ -157,3 +157,32 @@ test('citations: add a source, cite it, switch style, insert a bibliography', as
     await quit(app)
   }
 })
+
+test('mail merge: CSV recipients, insert fields, preview, merge into a new document', async () => {
+  const { app, page } = await launch()
+  try {
+    await page.keyboard.press('Control+n')
+    await doc(page).click()
+    await page.keyboard.type('Dear ')
+    await page.getByRole('tab', { name: 'Tools', exact: true }).click()
+    await stubDialogs(app, { open: [path.join(__dirname, '../fixtures/recipients.csv')] })
+    await page.getByRole('button', { name: 'Recipients…' }).click()
+    await expect(page.getByText(/3 recipients with fields Name, City/)).toBeVisible()
+    await page.getByRole('button', { name: 'Insert merge field' }).click()
+    await page.getByRole('menuitem', { name: 'Name' }).click()
+    await page.keyboard.type(' of ')
+    await page.getByRole('button', { name: 'Insert merge field' }).click()
+    await page.getByRole('menuitem', { name: 'City' }).click()
+    await expect(doc(page)).toHaveText('Dear «Name» of «City»')
+    await page.getByRole('button', { name: 'Preview', exact: true }).click()
+    await expect(doc(page)).toHaveText('Dear Lovelace, Ada of London', { useInnerText: true })
+    await page.getByRole('button', { name: 'Next recipient' }).click()
+    await expect(doc(page)).toHaveText('Dear Alan Turing of Wilmslow', { useInnerText: true })
+    await page.getByRole('button', { name: 'Finish & merge' }).click()
+    await expect(page.getByRole('tab', { name: /merged/ })).toBeVisible()
+    await expect(page.locator('[data-doc-scroll]:visible .page-sheet')).toHaveCount(3)
+    await expect(doc(page)).toContainText('Dear Grace Hopper of Arlington')
+  } finally {
+    await quit(app)
+  }
+})

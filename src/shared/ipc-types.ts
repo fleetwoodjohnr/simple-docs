@@ -78,7 +78,8 @@ export interface PdfOptions {
 
 export interface SimpleDocsApi {
   platform: 'darwin' | 'win32' | 'linux' | string
-  openDialog(): Promise<OpenedFile[]>
+  /** Native open dialog; `filter` replaces the default document filter (single selection). */
+  openDialog(filter?: { name: string; extensions: string[] }): Promise<OpenedFile[]>
   readFile(path: string): Promise<OpenedFile>
   saveDialog(defaultName: string, extensions: string[]): Promise<string | null>
   writeFile(path: string, data: Uint8Array): Promise<{ mtime: number }>

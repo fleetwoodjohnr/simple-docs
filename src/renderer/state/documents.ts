@@ -389,7 +389,8 @@ export function closeTab(id: string, force = false) {
   const idx = tabs.findIndex((t) => t.id === id)
   const rest = tabs.filter((t) => t.id !== id)
   const next = get().active === id ? (rest[idx] ?? rest[idx - 1])?.id ?? HOME : get().active
-  set({ tabs: rest, active: next })
+  const { [id]: _merge, ...merge } = get().merge
+  set({ tabs: rest, active: next, merge })
   // Destroy after React unmounts the view.
   requestAnimationFrame(() => {
     editors.get(id)?.destroy()

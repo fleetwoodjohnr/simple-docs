@@ -1,4 +1,4 @@
-import { forwardRef, type ButtonHTMLAttributes, type ComponentProps, type ReactNode } from 'react'
+import { forwardRef, useRef, useState, type ButtonHTMLAttributes, type ComponentProps, type ReactNode } from 'react'
 import { DropdownMenu, Tooltip, Dialog, Popover, Switch as RSwitch, ContextMenu } from 'radix-ui'
 import { Check, ChevronRight, X } from 'lucide-react'
 import { formatShortcut } from '../app/commands'
@@ -93,10 +93,36 @@ export const MenuTrigger = DropdownMenu.Trigger
 
 const surface = 'pop-in z-[90] min-w-[180px] overflow-hidden rounded-xl border border-border bg-elev p-1 text-[13px] text-text shadow-[var(--shadow-pop)] outline-none'
 
-export function MenuContent({ children, className, align = 'start', ...p }: ComponentProps<typeof DropdownMenu.Content>) {
+export function MenuContent({ children, className, align = 'start', onCloseAutoFocus, onEscapeKeyDown, ...p }: ComponentProps<typeof DropdownMenu.Content>) {
+  // After choosing an item, focus stays where the item put it (the document, a dialog) or returns to the
+  // visible document — not to the trigger button — so the next keystroke goes into the text.
+  // Escape still returns focus to the trigger.
+  const escaped = useRef(false)
+  const [opener] = useState(() => document.activeElement as HTMLElement | null)
   return (
     <DropdownMenu.Portal>
-      <DropdownMenu.Content sideOffset={6} align={align} collisionPadding={8} {...p} className={cx(surface, className)}>
+      <DropdownMenu.Content
+        sideOffset={6}
+        align={align}
+        collisionPadding={8}
+        onEscapeKeyDown={(e) => {
+          escaped.current = true
+          onEscapeKeyDown?.(e)
+        }}
+        onCloseAutoFocus={(e) => {
+          onCloseAutoFocus?.(e)
+          if (e.defaultPrevented || escaped.current) return
+          e.preventDefault()
+          requestAnimationFrame(() => {
+            const a = document.activeElement
+            if (a && a !== document.body && !a.closest('[role=menu]')) return
+            const docEl = [...document.querySelectorAll<HTMLElement>('.doc-host .ProseMirror')].find((el) => el.offsetParent !== null)
+            ;(docEl ?? (opener?.isConnected ? opener : null))?.focus()
+          })
+        }}
+        {...p}
+        className={cx(surface, className)}
+      >
         {children}
       </DropdownMenu.Content>
     </DropdownMenu.Portal>

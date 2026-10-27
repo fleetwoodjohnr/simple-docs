@@ -601,6 +601,21 @@ body {
   padding: 0;
 }
 
+/* ================= mail merge ================= */
+.sd-doc .sd-merge-field {
+  border-radius: 3px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 0 1px;
+}
+.sd-doc .sd-merge-hidden {
+  display: none;
+}
+.print-page .sd-merge-field {
+  background: none;
+  color: inherit;
+}
+
 /* ================= citations ================= */
 .sd-doc .sd-citation {
   border-radius: 2px;

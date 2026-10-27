@@ -34,7 +34,7 @@ function inlineText(nodes: JSONContent[] = []): string {
         return `[${notes.length}]`
       }
       if (n.marks?.some((m) => m.type === 'deletion')) return ''
-      return n.type === 'text' ? n.text : n.type === 'hardBreak' ? '\n' : n.type === 'preservedInline' || n.type === 'citation' ? n.attrs?.text ?? '' : ''
+      return n.type === 'text' ? n.text : n.type === 'hardBreak' ? '\n' : n.type === 'preservedInline' || n.type === 'citation' ? n.attrs?.text ?? '' : n.type === 'mergeField' ? `«${n.attrs?.name ?? ''}»` : ''
     })
     .join('')
 }

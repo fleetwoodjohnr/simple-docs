@@ -182,6 +182,10 @@ class Writer {
         this.usedNotes.add(kind)
         return `<w:r><w:rPr><w:rStyle w:val="${refStyle}"/></w:rPr><w:${kind}Reference w:id="${id}"/></w:r>`
       }
+      case 'mergeField': {
+        const name = String(n.attrs?.name ?? '')
+        return `<w:fldSimple w:instr="${x(` MERGEFIELD ${/\s/.test(name) ? `"${name}"` : name} \\* MERGEFORMAT `)}"><w:r>${this.rPr(n.marks as Mark[])}<w:t>${x(`«${name}»`)}</w:t></w:r></w:fldSimple>`
+      }
       case 'citation': {
         const a = n.attrs ?? {}
         const rpr = this.rPr(n.marks as Mark[])

@@ -165,13 +165,12 @@ function handle<A extends unknown[], R>(channel: string, fn: (e: IpcMainInvokeEv
 }
 
 function registerIpc() {
-  handle('files:open-dialog', async () => {
+  handle('files:open-dialog', async (_e, filter?: unknown) => {
+    const f = filter as { name?: unknown; extensions?: unknown } | undefined
+    const custom = f && typeof f.name === 'string' && Array.isArray(f.extensions) && f.extensions.every((x) => typeof x === 'string' && /^[a-z0-9]{1,8}$/.test(x)) ? { name: f.name.slice(0, 60), extensions: f.extensions as string[] } : null
     const res = await dialog.showOpenDialog(mainWindow!, {
-      properties: ['openFile', 'multiSelections'],
-      filters: [
-        { name: 'Documents', extensions: DOC_EXTENSIONS },
-        { name: 'All files', extensions: ['*'] }
-      ]
+      properties: custom ? ['openFile'] : ['openFile', 'multiSelections'],
+      filters: [custom ?? { name: 'Documents', extensions: DOC_EXTENSIONS }, { name: 'All files', extensions: ['*'] }]
     })
     const out: OpenedFile[] = []
     for (const p of res.filePaths) {

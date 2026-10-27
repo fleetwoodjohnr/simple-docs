@@ -142,6 +142,9 @@ class Serializer {
           const n = this.notes.length + 1
           this.notes.push(node.attrs?.content as JSONContent[])
           out += `[^${n}]`
+        } else if (node.type === 'mergeField') {
+          this.w.add('loss', 'Mail-merge fields are saved as «name» text in Markdown')
+          out += escapeText(`«${node.attrs?.name ?? ''}»`)
         } else if (node.type === 'citation') {
           this.w.add('loss', 'Citations are saved as plain text in Markdown')
           out += escapeText(String(node.attrs?.text ?? ''))

@@ -11,7 +11,7 @@ const on = <T extends unknown[]>(channel: string, cb: (...args: T) => void) => {
 
 const api: SimpleDocsApi = {
   platform: process.platform,
-  openDialog: () => ipcRenderer.invoke('files:open-dialog'),
+  openDialog: (filter) => ipcRenderer.invoke('files:open-dialog', filter),
   readFile: (p) => ipcRenderer.invoke('files:read', p),
   saveDialog: (name, exts) => ipcRenderer.invoke('files:save-dialog', name, exts),
   writeFile: (p, data) => ipcRenderer.invoke('files:write', p, data),

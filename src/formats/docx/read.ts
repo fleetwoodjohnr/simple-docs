@@ -675,7 +675,9 @@ class Reader {
           case 'fldSimple': {
             const kind = this.inHF ? fieldKind(attr(e, NS.w, 'instr') ?? '') : null
             const cite = this.inHF ? null : citationFrom(attr(e, NS.w, 'instr') ?? '')
-            if (kind) push({ type: 'field', attrs: { kind } })
+            const merge = this.inHF ? null : mergeFieldFrom(attr(e, NS.w, 'instr') ?? '')
+            if (merge) push(merge)
+            else if (kind) push({ type: 'field', attrs: { kind } })
             else if (cite) {
               push(cite)
               this.inlines(e, out, linkMark, { inInstr: false, instr: '', skip: true, citation: cite })
@@ -797,7 +799,11 @@ class Reader {
               field.inInstr = false
               const kind = this.inHF ? fieldKind(field.instr) : null
               const cite = this.inHF ? null : citationFrom(field.instr)
-              if (kind) {
+              const merge = this.inHF ? null : mergeFieldFrom(field.instr)
+              if (merge) {
+                push(merge)
+                field.skip = t === 'separate'
+              } else if (kind) {
                 push({ type: 'field', attrs: { kind } })
                 field.skip = t === 'separate'
               } else if (cite) {
@@ -1164,6 +1170,12 @@ interface FieldState {
   citation?: JSONContent
   /** Skipping the cached result of a field we turned into a live field node. */
   skip: boolean
+}
+
+/** A MERGEFIELD becomes a mail-merge field. */
+function mergeFieldFrom(instr: string): JSONContent | null {
+  const m = /^\s*MERGEFIELD\s+(?:"([^"]+)"|(\S+))/i.exec(instr)
+  return m ? { type: 'mergeField', attrs: { name: m[1] ?? m[2] } } : null
 }
 
 /** A CITATION field becomes a citation node (its first source; the displayed text is collected separately). */
