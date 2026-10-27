@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- **Word charts and shapes.** Charts and shapes are saved to DOCX as native Word charts (with their data in an embedded workbook, so Word's *Edit Data* works) and native Word shapes, not pictures. Charts and plainly coloured shapes in Word and LibreOffice files open as editable drawings, and go back unchanged unless edited.
+- **Mail merge.** The recipient list is saved with the document (DOCX) and can be removed from the ribbon.
+- **PDF.**
+  - Rotated pages get a text layer: select, highlight, underline, strike and edit text there. New text, signatures and OCR text are placed upright.
+  - Form fields created in Simple Docs now show their values in other PDF viewers.
+- **Packages and CI.**
+  - deb and rpm packages, with every library they need declared (checked by installing into clean Ubuntu 22.04/24.04 and Fedora 44).
+  - A GitHub Actions workflow builds and tests Windows, macOS and Linux installers and drafts releases. Installers are unsigned.
+- **Fixes.**
+  - Re-saving a DOCX written by Simple Docs produced duplicate relationship ids, which Word reports as a damaged file.
+  - Replaced images and charts are no longer carried along on every save.
+  - Markdown import kept SVG images as text.
+  - ODT and Markdown exports turned charts into pictures without a warning.
+  - CSV header detection miscounted delimiters inside quotes.
+
 ## 0.1.0 — 2026-10-27
 
 The first complete build. What works, what is partial, and how it was tested: [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). What each file format keeps: [COMPATIBILITY.md](COMPATIBILITY.md).

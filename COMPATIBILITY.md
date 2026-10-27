@@ -42,8 +42,10 @@ On open, every adapter produces a warning list (the ⚠ badge in the title bar).
 | Headers and footers (default / first / even), PAGE / NUMPAGES / DATE / TITLE / AUTHOR fields, page-number format | ✅ | Other fields in headers keep their last result text |
 | Footnotes and endnotes | ✅ | Custom note separators are regenerated |
 | Equations (OMML, inline and display) | ✅ | Shown and editable (converted to LaTeX); unedited equations are written back byte-for-byte; constructs outside the supported subset stay 🔒 preserved |
-| Charts, SmartArt, shapes, text boxes, VML, OLE objects | 🔒 | Raw XML and referenced parts written back |
-| Charts and shapes made in Simple Docs | 🟡 | Saved as pictures (with alt text); editable as charts only in Simple Docs |
+| Charts: clustered column/bar, line, pie | ✅ | Native DrawingML charts with an embedded workbook (Word's Edit Data works). Opened as editable charts; unedited ones written back byte for byte. Edited ones get Simple Docs' styling |
+| Shapes: the eight presets (rectangle, rounded, ellipse, triangle, diamond, arrow, star, line) with explicit colours and plain text | ✅ | Word 2010 shapes (`wps`) with a picture fallback; unedited ones written back unchanged |
+| Other charts (stacked, scatter, area, 3-D, combo), theme-styled shapes, SmartArt, text boxes, VML, OLE objects | 🔒 | Raw XML and referenced parts written back |
+| Mail-merge recipient list | ✅ | Custom XML part (Simple Docs only; Word ignores it and LibreOffice keeps it) |
 | Citations (CITATION fields) and bibliography sources (`customXml` `b:Sources`) | ✅ | APA / MLA / Chicago style choice kept; `\m` multi-source citations link their first source |
 | Mail-merge fields (MERGEFIELD) | ✅ | |
 | Editing restrictions (`w:documentProtection`: read only, comments, tracked changes) | ✅ | Password hashes are ignored (and not written) |
@@ -77,6 +79,8 @@ Preserved XML is written back only when everything it references (relationship i
 | Sections / columns | ❌ | Content kept, section formatting dropped (warned) |
 | Custom starting page number | ❌ | Not written (warned) |
 | Equations, citations, mail-merge fields | 🟡 | Saved as text (LaTeX, formatted citation, «field»), warned |
+| Charts and shapes made in Simple Docs | 🟡 | Saved as pictures, warned (DOCX keeps them editable) |
+| Mail-merge recipient list | ❌ | Not saved, warned |
 | Editing restrictions | ❌ | Not read or written |
 
 ## RTF, DOC (through LibreOffice)
@@ -96,6 +100,8 @@ These are converted to DOCX by a locally installed LibreOffice and then go throu
 | Page breaks, preserved content | — | ❌ warned |
 | Equations | ✅ `$…$` / `$$…$$` | ✅ |
 | Citations, mail-merge fields | — | 🟡 plain text, warned |
+| Charts and shapes | — | 🟡 pictures (SVG or PNG data images), warned |
+| Mail-merge recipient list | — | ❌ warned |
 | Raw HTML in the source | 🟡 shown as text | — |
 
 Source mode shows the generated Markdown with syntax highlighting and a live preview. Edits sync back to the document.
@@ -127,7 +133,7 @@ Engine: PDFium (WASM). Saving always writes a complete new file, so incremental-
 | Metadata (title, author, subject, keywords) | ✅ |
 | OCR of scanned pages into an invisible, searchable text layer | ✅ English, offline |
 | Password-protected PDFs | ✅ opened with the password; saved with the same encryption · ⚠️ permission flags not enforced |
-| Rotated pages | ✅ view, page operations · ⚠️ no text layer, so no selection, markup or text editing |
+| Rotated pages | ✅ view, page operations, selection, markup, text editing, new text, signatures, OCR · ⚠️ no new form fields (PDFium can't set the widget rotation) |
 | Printing | ✅ each page at its own size · ⚠️ printed as 150 dpi images |
 | Digital signatures (validation or signing) | ❌ not supported |
 

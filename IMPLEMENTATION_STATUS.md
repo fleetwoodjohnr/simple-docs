@@ -1,6 +1,6 @@
 # Implementation status
 
-_Last updated: 2026-10-27 · Milestones 1–5 complete (each with documented partial items; Windows/macOS installers not yet built or tested) · version 0.1.0._
+_Last updated: 2026-10-27 · Milestones 1–5 complete, plus the follow-up work in [After 0.1.0](#after-010-unreleased) · Windows/macOS: CI configured, not yet run · version 0.1.0 + unreleased changes._
 
 "Done" means implemented **and** covered by a passing automated test or a manual check recorded below. A button existing in the UI does not count.
 
@@ -9,12 +9,15 @@ _Last updated: 2026-10-27 · Milestones 1–5 complete (each with documented par
 | Suite | Result |
 |---|---|
 | `npm run typecheck` (strict, main + renderer) | ✅ clean |
-| `npm test` (vitest) | ✅ 170 / 170 (incl. 35 golden round trips in the compatibility corpus + 2 LibreOffice re-save checks) |
-| `npm run e2e:headless` (Playwright + Electron) | ✅ 32 / 32 + 1 packaged-only (every test also fails on any Content-Security-Policy violation) |
-| Same E2E suite against the **packaged** app (`SD_PACKAGED=release/linux-unpacked/simple-docs`) | ✅ 33 / 33 |
+| `npm test` (vitest) | ✅ 191 / 191 (incl. 35 golden round trips in the compatibility corpus + 2 LibreOffice re-save checks) |
+| `npm run e2e:headless` (Playwright + Electron) | ✅ 33 / 33 + 1 packaged-only (every test also fails on any Content-Security-Policy violation) |
+| Same E2E suite against the **packaged** app (`SD_PACKAGED=release/linux-unpacked/simple-docs`) | ✅ 34 / 34 |
 | AppImage smoke test (DOCX, spelling, equations, PDF export, PDFium, OCR) | ✅ |
+| deb: installed in clean Ubuntu 22.04 and 24.04 containers, every shared library resolved; smoke test on its binary | ✅ |
+| rpm: installed in a Fedora 44 container, every shared library resolved | ✅ |
+| Windows (NSIS) and macOS (dmg, zip): build + unit + E2E + packaged E2E in GitHub Actions | ⏳ workflow written, not run yet (needs the repo on GitHub) |
 | axe-core WCAG 2.2 AA (dashboard, editor + all ribbon tabs, settings, PDF workspace; light and dark) | ✅ 0 violations |
-| Independent consumer: our DOCX → LibreOffice → PDF | ✅ (in `docx.test.ts`) |
+| Independent consumer: our DOCX → LibreOffice → PDF | ✅ (in `docx.test.ts`; native charts in `docx-drawing.test.ts`: their labels come out as PDF text, and the embedded workbook reads back as the chart data) |
 | Independent consumer: our edited PDFs → poppler (`pdftotext`, `pdfinfo`) | ✅ (in `pdf.test.ts`, `ocr.test.ts`, e2e `pdf.spec.ts`) |
 
 Acceptance criteria from the brief:
@@ -159,7 +162,7 @@ PDF files open in their own workspace tab, built on PDFium compiled to WebAssemb
 ### Known limitations (M3)
 - **Text edits are line-level and do not reflow.** Replacement text is the same size and position as the line it replaces. Longer text runs past the line and nothing moves out of its way.
 - **The substitute standard fonts only cover Latin-1 (WinAnsi).** Characters outside it, such as Greek, Cyrillic or CJK, cannot be typed into a substituted line. Text is not auto-fitted either: a substituted font of a different width changes the line length.
-- **Rotated pages show no text layer.** Text selection, markup and text editing are available only on pages with 0° rotation. Rotate the page back to edit it.
+- **Rotated pages: no new form fields.** Selection, markup, text editing, new text, signatures and OCR work on rotated pages ([After 0.1.0](#after-010-unreleased)). Form fields can't be added there: this PDFium build can't set a widget's rotation (`/MK /R`), so the value would read sideways in other viewers. The Field tool says so. Text drawn at angles other than quarter turns is not grouped into lines.
 - **Redaction coverage is partly verified.** Removing text is tested. Removing images and vector graphics under a redaction area is left to PDFium's redaction routine, which no test of ours covers yet.
 - **Annotations can only be added or deleted.** Existing annotations cannot be moved, resized or edited, and comment threads (replies) are not supported.
 - **Only text and checkbox form fields are editable.** Radio buttons, combo boxes and list boxes are shown read-only, and form JavaScript is never run.
@@ -184,9 +187,9 @@ Every E2E test fails if Chromium reports a CSP violation. A test also confirms t
 - **Compare documents** (Review → Compare, or from Version history). Blocks are aligned first, then paired paragraphs are compared word by word, and lists and tables are compared recursively. Tables keep their shape. The result opens in a new tab as tracked changes, so Accept and Reject work on it as usual. The current file is compared against a saved file or a saved version. Accepting or rejecting a change that covers a whole paragraph removes the paragraph. Tested on the DOCX fixture (an edit gives exactly 1 insertion and 1 deletion, with no spurious changes).
 - **Version history** (File → Version history). A compressed snapshot is kept on every save; with AutoSave, at most one every 10 minutes. Identical saves are skipped, and up to 100 versions are kept per file, stored only on this computer. Each version has a text preview and can be restored (Ctrl+Z undoes the restore), opened as a copy, or compared with the current text.
 - **Citations and bibliography** (References). Each document has its own list of sources: books, articles, websites and reports. In-text citations and the reference list are formatted in APA 7, MLA 9 or Chicago author-date. Changing the style or editing a source updates every citation and the bibliography. DOCX round trip uses Word's own model, CITATION fields plus `customXml` `b:Sources`, and LibreOffice renders our output correctly.
-- **Mail merge** (Tools). Recipients come from CSV: quotes, embedded newlines, `,` `;` or tab delimiters, BOM. «Field» placeholders preview each recipient in place. Finish & merge creates one document with a copy per recipient, separated by page breaks. Fields round-trip as Word MERGEFIELDs.
+- **Mail merge** (Tools). Recipients come from CSV: quotes, embedded newlines, `,` `;` or tab delimiters, BOM. «Field» placeholders preview each recipient in place. Finish & merge creates one document with a copy per recipient, separated by page breaks. Fields round-trip as Word MERGEFIELDs. The recipient list is saved with the document ([After 0.1.0](#after-010-unreleased)).
 - **Equations** (Insert → Equation, Alt+=). Equations are written in LaTeX with a palette and a live preview, rendered by KaTeX with MathML for screen readers, and exported to PDF as real text. In DOCX they become **native Word equations (OMML)**. **Word equations in opened files are now displayed and editable**: OMML is converted to LaTeX, and unedited equations are written back byte-for-byte. LibreOffice renders our OMML correctly: fractions, radicals, sums and integrals with limits, matrices, accents. In Markdown they are `$…$` and `$$…$$`.
-- **Charts and shapes** (Insert). Column, bar, line and pie charts are built from pasted data. Eight shape types take fill, outline and text. Both are drawn as SVG and inserted as 3× resolution pictures that keep their data for double-click editing, with alt text generated from the data.
+- **Charts and shapes** (Insert). Column, bar, line and pie charts are built from pasted data. Eight shape types take fill, outline and text. In the editor both are 3× resolution pictures that keep their data for double-click editing, with alt text generated from the data. In DOCX they are **native Word charts and shapes** (see [After 0.1.0](#after-010-unreleased)).
 - **Cover pages** (Insert → Cover page): Classic, Color band and Minimal. They are filled in from the document properties and built from ordinary styles, so they round-trip.
 - **Restrict editing** (Review → Protect): read only, comments only, or tracked changes only. A transaction filter enforces it and a banner shows it. DOCX round trip is `w:documentProtection`; LibreOffice opens it.
 - **Accessibility checker** (Review → Accessibility). It checks:
@@ -214,8 +217,12 @@ Every E2E test fails if Chromium reports a CSP violation. A test also confirms t
   - The LaTeX→OMML subset covers fractions, scripts, radicals, n-ary operators, delimiters, matrices and cases, accents, bars, functions, text and about 150 symbols. Other LaTeX (for example `align`, `\overbrace`) is saved to DOCX as linear text, and the dialog warns before that happens.
   - Word equations with constructs outside the reverse mapping stay preserved and unchanged, but not editable.
   - ODT gets the LaTeX as text.
-- **Charts and shapes** are pictures in DOCX and ODT, not native Word or ODF charts or shapes, so they can't be edited as charts in Word. Charts and shapes from Word files are still preserved, not shown. There are no free-floating text boxes.
-- **Mail merge.** The recipient list is not saved with the document; choose it again after reopening. Merging produces one combined document only, with no per-recipient files or e-mail.
+- **Charts and shapes.**
+  - Editable charts are clustered column and bar, line and pie. Other Word charts (stacked, scatter, area, 3-D, combo, and Word 2016 chart types) stay preserved and are written back unchanged, but the editor shows a placeholder, not the chart.
+  - Shapes from files are editable when they use one of the eight preset outlines with explicit colours and plain text. Theme-styled shapes, gradients and effects stay preserved, shown as a placeholder.
+  - A chart from Word that you edit is saved with Simple Docs' styling: Word's fonts, colours and axis formats are replaced. Unedited ones go back byte for byte.
+  - ODT and Markdown get pictures, with a warning. There are no free-floating text boxes.
+- **Mail merge.** The recipient list travels in DOCX only (ODT, Markdown, HTML and text warn). Word ignores it, because Word's own mail merge links to an external data file, which isn't written. Merging produces one combined document only, with no per-recipient files or e-mail.
 - **Restrict editing has no password** (like Word's protection, it is not a security feature). Word password hashes on opened files are ignored, and ODT protection is not read or written.
 - **AI assistant.** It supports Claude only, with no local-model provider. It works on the selection as plain text: the replacement keeps paragraphs but not inline formatting, and a tracked-changes document records the replacement as a change.
 
@@ -245,14 +252,58 @@ Every E2E test fails if Chromium reports a CSP violation. A test also confirms t
 - **Release documentation.** [RELEASE.md](RELEASE.md) is the build, test, smoke-test and publish checklist, and [CHANGELOG.md](CHANGELOG.md) records the changes.
 
 ### Not done / partial (M5)
-- **Windows (NSIS) and macOS (dmg) installers** are configured but have not been built or tested; no host for either was available. Code signing and notarization are documented in RELEASE.md but not set up.
-- **deb and rpm** need real package metadata (homepage, maintainer e-mail) and `rpmbuild`. They are not built, so no placeholder metadata is published.
+- **Windows and macOS installers have not run anywhere yet.** The CI workflow that builds and tests them is written ([After 0.1.0](#after-010-unreleased)) but needs the repository on GitHub. Builds are unsigned by decision.
 - **Accessibility.** axe covers automated WCAG checks only. Screen-reader passes (NVDA, VoiceOver, Orca) and a keyboard-only walkthrough of every dialog are still to do.
+
+## After 0.1.0 (unreleased)
+
+The five open items from the 0.1.0 report, plus the bugs that came up while doing them.
+
+### Done
+- **Rotated PDF pages.**
+  - The text layer is drawn turned with the page, so selection, highlight/underline/strike and text editing work at 90°, 180° and 270°.
+  - New text, signatures and OCR text are placed upright as the page is displayed.
+  - Lines group in their own text direction, so text set at a quarter turn (like text added to a rotated page) can be selected and edited too.
+  - Tests: OCR of poppler's rendering reads text the app added to a rotated page, and the invisible OCR text lands over the drawn words (`ocr.test.ts`). An E2E test covers selecting, highlighting, editing and adding text on a rotated page and checks the saved file with `pdftotext`.
+- **Mail-merge recipients saved with the document.**
+  - The list is a document attribute, so it is undoable and kept by AutoSave, recovery and version history.
+  - In DOCX it is a custom XML part (`urn:simple-docs:mail-merge:1`, CSV inside), and LibreOffice keeps it when re-saving.
+  - The ribbon shows that the list is stored in the document, with a button to remove it.
+  - E2E: choose recipients, save, close, reopen, preview and merge without the CSV.
+- **Native Word charts and shapes.**
+  - Charts are DrawingML `c:chartSpace` parts with cached data, Simple Docs' colours and an embedded one-sheet workbook, so Word's *Edit Data* works.
+  - Shapes are Word 2010 shapes (`wps`) with preset outlines, colours and centred text, plus a picture fallback for older readers.
+  - Charts from Word or LibreOffice, and shapes with explicit colours, open as editable drawings and are written back unchanged unless edited.
+  - Tests: every chart and shape type round-trips. LibreOffice renders our charts as charts (title and labels come out as PDF text), reads the embedded workbook, and keeps both the chart and the shape when it re-saves our DOCX.
+- **deb and rpm.**
+  - Maintainer `fleetwoodjohnr@gmail.com`. The homepage is still the placeholder `https://github.com/OWNER/simple-docs`: replace it before publishing.
+  - Built in a Fedora 44 container, because fpm needs `libcrypt.so.1` and `rpmbuild`, which the build host lacks (RELEASE.md).
+  - Installing in clean containers found missing dependencies: `libgbm1` and ALSA for the deb, and ALSA, GBM and libsecret for the rpm. All are now declared.
+- **Windows and macOS through CI.** `.github/workflows/ci.yml` runs on Linux, Windows and macOS:
+  - typecheck, unit tests, E2E
+  - installers (NSIS x64; dmg and zip for arm64 and x64; AppImage, deb, rpm)
+  - the E2E suite again against each packaged app
+  - uploads the installers; a `v*` tag drafts a GitHub release.
+
+  Builds are unsigned by decision; macOS builds are signed ad hoc so Apple Silicon runs them. The tests were made portable for it: tools are found on PATH, shortcuts use ⌘ on macOS, line and document end use the macOS keys, and LF line endings are enforced.
+
+### Bugs found and fixed on the way
+- **Re-saving a DOCX written by Simple Docs duplicated relationship ids.** Word reports such files as damaged. Generated ids and part names now skip the original's, and carried parts that nothing references any more (a replaced image or chart) are dropped instead of piling up.
+- **Form fields created in the PDF workspace showed their values only inside Simple Docs.** They had no default appearance, so other viewers drew them empty. Checked by rendering with poppler and OCR.
+- **Markdown re-import turned SVG images into literal text.** markdown-it rejects SVG data URLs; they are now accepted, and the HTML is still sanitized.
+- **ODT and Markdown exports turned charts and shapes into pictures without a warning.**
+- **CSV delimiter detection counted delimiters inside quoted header fields.**
+
+### Still open
+- **Windows and macOS installers have not run yet.** CI runs them once the repository is pushed; failures there are expected to need fixes.
+- **No code signing** (by decision), so SmartScreen and Gatekeeper warn.
+- **Form fields can't be created on rotated PDF pages** (see the M3 limits).
+- **ODT charts and shapes are pictures.**
 
 ## Next recommended tasks
 
-1. Build and smoke-test the Windows and macOS installers on those platforms, and set up signing.
+1. Push to GitHub, replace the `OWNER` placeholder in `package.json`, and fix whatever the first Windows and macOS CI runs report.
 2. Do screen-reader and keyboard-only passes.
 3. Per-section page setup in the layout engine (displayed landscape sections).
-4. PDF: text layer on rotated pages, moving and resizing annotations, a warning before editing digitally signed files.
-5. Native DOCX charts (`c:chartSpace`) so charts stay editable in Word.
+4. PDF: moving and resizing annotations, a warning before editing digitally signed files, and form fields on rotated pages (needs writing the widget's `/MK` dictionary).
+5. Native ODF charts, and signing once certificates exist.

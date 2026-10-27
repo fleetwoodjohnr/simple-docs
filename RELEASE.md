@@ -1,24 +1,49 @@
 # Releasing Simple Docs
 
-This is the checklist for producing installers. Steps marked **verified** were run on Linux (Fedora, x86-64) for 0.1.0. The Windows and macOS steps follow electron-builder's documented setup but have **not** been run yet: no Windows or macOS build host was available.
+This is the checklist for producing installers.
+- **Linux** (Fedora, x86-64): steps marked **verified** were run there.
+- **Windows and macOS:** built and tested by GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)). That workflow **has not run yet**: it needs the repository on GitHub.
 
-## 1. Prerequisites
+## 1. Before the first release
 
-- Node 24+ and npm 11+. Run `npm ci` from a clean checkout. Electron downloads its binary on the first run.
-- **Linux** (verified): nothing else for AppImage. For the `pdftotext`/`pdfinfo` test checks, install poppler-utils. For the independent-consumer tests, install LibreOffice.
-- **deb / rpm** (not built for 0.1.0): fpm needs package metadata. Add a real `homepage` and an `author` with `name` and `email` to `package.json`. Install `rpmbuild` for rpm. Then set `linux.target: [AppImage, deb, rpm]` in `electron-builder.yml`.
-- **Windows** (not verified): build on Windows. For signing, set `CSC_LINK` (a .pfx path or base64) and `CSC_KEY_PASSWORD`.
-- **macOS** (not verified): build on macOS. For signing, use a Developer ID Application certificate in the keychain. For notarization, set `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID`.
-
-Without signing, the installers work, but Windows SmartScreen and macOS Gatekeeper warn users.
+- **Homepage placeholder.** Replace `https://github.com/OWNER/simple-docs` in `package.json` (`homepage`) with the real repository URL. The deb and rpm packages publish it.
+- **Maintainer.** The deb maintainer and rpm packager come from `author` in `package.json` (`Simple Docs <fleetwoodjohnr@gmail.com>`).
+- **Signing.** Builds are **unsigned** by decision, so Windows SmartScreen and macOS Gatekeeper warn users on first launch.
+  - macOS builds are signed *ad hoc* (`mac.identity: "-"`, `hardenedRuntime: false` in `electron-builder.yml`), because Apple Silicon refuses to run code with no signature at all.
+  - To sign later on Windows, add a certificate as `CSC_LINK` and `CSC_KEY_PASSWORD`.
+  - To sign later on macOS, remove the two ad-hoc lines, provide a Developer ID Application certificate, and set `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` for notarization.
+  - For both, add the values as repository secrets and pass them to the "Installers" step, then drop `CSC_IDENTITY_AUTO_DISCOVERY: 'false'`.
 
 ## 2. Version
 
 1. Bump `version` in `package.json`.
-2. Add a section to `CHANGELOG.md`.
+2. Turn the "Unreleased" section of `CHANGELOG.md` into the new version's section.
 3. Update the date line in `IMPLEMENTATION_STATUS.md`.
 
-## 3. Test (verified)
+## 3. CI: all three platforms
+
+Every push runs the `CI` workflow on `ubuntu-latest`, `windows-latest` and `macos-latest`. Each job runs:
+1. typecheck
+2. unit tests
+3. build
+4. E2E (Playwright on Electron; under xvfb on Linux)
+5. `electron-builder` for that OS
+6. the E2E suite again against the packaged app
+7. upload of the installers as artifacts
+
+The test tools are installed per OS: poppler everywhere, plus LibreOffice and `rpm` on Linux. On Windows, poppler comes from the runner's MSYS2. A failed job uploads `test-results/`, with Playwright traces.
+
+What each OS produces:
+
+| OS | Installers |
+|---|---|
+| Linux | `Simple Docs-<v>.AppImage`, `simple-docs_<v>_amd64.deb`, `simple-docs-<v>.x86_64.rpm` |
+| Windows | `Simple Docs Setup <v>.exe` (NSIS, x64, per-user or per-machine, choice of folder) |
+| macOS | `Simple Docs-<v>-arm64.dmg`, `Simple Docs-<v>.dmg` (x64), and zips of both |
+
+**Releasing:** push a tag `v<version>`. After all three jobs pass, the `release` job creates a **draft** GitHub release. The draft contains every installer, and its notes are the newest `CHANGELOG.md` section. Review the draft and publish it.
+
+## 4. Test locally (verified on Linux)
 
 ```bash
 npm run typecheck          # strict TypeScript, main + renderer
@@ -26,41 +51,59 @@ npm test                   # unit tests, incl. the compatibility corpus (golden 
 npm run e2e:headless       # build + Playwright on Electron under xvfb (CSP-violation guard on every test)
 ```
 
-The corpus goldens are in `tests/unit/__corpus__/`. If a format change alters what survives a round trip, run `npx vitest run tests/unit/corpus.test.ts -u`, review the diff of those files and commit it along with the change.
+- **Optional tools.** Tests that need poppler (`pdftotext`, `pdftoppm`) or LibreOffice (`soffice`) look for them on PATH and skip without them.
+- **Corpus goldens.** They are in `tests/unit/__corpus__/`. If a format change alters what survives a round trip, run `npx vitest run tests/unit/corpus.test.ts -u`, review the diff of those files and commit it with the change.
 
-## 4. Build
+## 5. Build locally
 
 ```bash
-npm run dist               # = npm run build && electron-builder (targets for the current OS)
-npx electron-builder --dir # unpacked app only, quickest for smoke tests
+npm run dist                       # = npm run build && electron-builder (targets for the current OS)
+npx electron-builder --linux dir   # unpacked app only, quickest for smoke tests
 ```
 
-Output goes to `release/`. On Linux that is `Simple Docs-<version>.AppImage` (about 150 MB) and `linux-unpacked/`.
+Output goes to `release/`.
 
-What the package contains:
-- **Main-process dependencies.** The renderer is bundled by Vite, so only main-process dependencies are packaged: `@anthropic-ai/sdk`, `tesseract.js` and the English OCR model.
-- **The OCR worker and everything it requires**, unpacked from the asar archive. A worker thread can't start from inside the asar. If a new version of tesseract.js adds dependencies, add them to `asarUnpack`. The packaged smoke test catches this: an OCR worker that can't load its dependencies used to hang silently, and now fails after 30 seconds.
-
-## 5. Smoke-test the packaged app (verified on Linux)
+**deb and rpm on a host without fpm's libraries (verified).** On Fedora, electron-builder's bundled fpm needs `libcrypt.so.1` (libxcrypt-compat), and rpm needs `rpmbuild`. Without installing either on the host, package the unpacked app in a throwaway container:
 
 ```bash
-# the focused packaged test: DOCX, spelling, equations, PDF export, PDFium, OCR
-SD_PACKAGED=$PWD/release/linux-unpacked/simple-docs xvfb-run -a npx playwright test packaged
+npx electron-builder --linux dir
+podman run --rm --security-opt label=disable -v "$PWD":/src -v "$HOME/.cache/electron-builder":/root/.cache/electron-builder -w /src \
+  registry.fedoraproject.org/fedora-toolbox:44 bash -c \
+  "dnf install -y -q nodejs24 libxcrypt-compat rpm-build binutils && node-24 node_modules/.bin/electron-builder --linux deb rpm --prepackaged release/linux-unpacked"
+```
+
+**What the package contains:**
+- **Main-process dependencies only.** The renderer is bundled by Vite, so only `@anthropic-ai/sdk`, `tesseract.js` and the English OCR model are packaged.
+- **The OCR worker, unpacked.** The OCR worker and everything it requires are unpacked from the asar archive, because a worker thread can't start from inside the asar. If a new version of tesseract.js adds dependencies, add them to `asarUnpack`. The packaged smoke test catches a missing one: OCR start-up fails after 30 seconds instead of hanging.
+- **Explicit deb and rpm dependencies.** They are listed in `electron-builder.yml`, because electron-builder's defaults miss ALSA and GBM (and libsecret on rpm). Clean installs found this.
+
+## 6. Smoke-test the packages (verified on Linux)
+
+```bash
 # the whole E2E suite against the packaged binary
 SD_PACKAGED=$PWD/release/linux-unpacked/simple-docs xvfb-run -a npx playwright test
 # the AppImage itself (no FUSE needed)
 APPIMAGE_EXTRACT_AND_RUN=1 SD_PACKAGED="$PWD/release/Simple Docs-<version>.AppImage" xvfb-run -a npx playwright test packaged
+# deb / rpm: install into clean containers and check that every shared library resolves
+podman run --rm -v "$PWD/release":/rel:ro quay.io/toolbx/ubuntu-toolbox:24.04 bash -c \
+  'apt-get update -qq && apt-get install -y /rel/simple-docs_<version>_amd64.deb && ldd "/opt/Simple Docs/simple-docs" | grep "not found"; true'
+podman run --rm -v "$PWD/release":/rel:ro registry.fedoraproject.org/fedora-toolbox:44 bash -c \
+  'dnf install -y /rel/simple-docs-<version>.x86_64.rpm && ldd "/opt/Simple Docs/simple-docs" | grep "not found"; true'
 ```
 
-For 0.1.0, all 33 E2E tests passed against `linux-unpacked`, and the packaged test passed against the AppImage.
+Results so far:
+- All 34 E2E tests pass against `linux-unpacked`.
+- The packaged test passes against the AppImage and against the binary from the deb.
+- The deb installs with every library resolved on Ubuntu 22.04 and 24.04, and the rpm on Fedora 44.
 
-## 6. Manual checks before publishing
+## 7. Manual checks before publishing
 
-- Open a real-world DOCX from Word and an ODT from LibreOffice, save each, then reopen the result in Word or LibreOffice.
-- Print one page to a real printer, and export a PDF and open it in another viewer.
-- Turn the AI assistant on with a real key, run one request, then turn it off again.
-- Check the app's privacy promise: with the assistant off, no network traffic leaves the app (for example with `nethogs` or Little Snitch).
+- **Files from other apps.** Open a real-world DOCX from Word and an ODT from LibreOffice, save each, then reopen the result in Word or LibreOffice. In Word, check a chart made in Simple Docs: *Edit Data* should open its workbook.
+- **Print and PDF.** Print one page to a real printer. Export a PDF and open it in another viewer.
+- **AI assistant.** Turn it on with a real key, run one request, then turn it off again.
+- **Privacy.** With the assistant off, no network traffic leaves the app (check with, for example, `nethogs` or Little Snitch).
+- **Windows and macOS.** Install the CI-built installers once by hand: file associations, the first-launch warning for unsigned builds, and the window controls.
 
-## 7. Publish
+## 8. Publish
 
-Attach the installers to the release and include the `CHANGELOG.md` section. Link `COMPATIBILITY.md` for what each format keeps.
+Publish the draft release that CI created, or attach the installers to a release by hand with the `CHANGELOG.md` section. Link `COMPATIBILITY.md` for what each format keeps.
