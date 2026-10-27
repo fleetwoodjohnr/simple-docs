@@ -120,3 +120,25 @@ describe('DOCX tracked changes', () => {
     expect(marksOf('added words')).toEqual([['insertion', 'Editor']])
   })
 })
+
+describe('DOCX sections', () => {
+  it('keeps a mid-document landscape section and writes it back', async () => {
+    const { unzipSync, strFromU8, zipSync, strToU8 } = await import('fflate')
+    const zip = unzipSync(exportDocx(richDoc()).data)
+    // Make the page break before "After the break" a landscape section break, as Word would.
+    const xml = strFromU8(zip['word/document.xml']).replace(
+      '<w:p><w:r><w:br w:type="page"/></w:r></w:p>',
+      '<w:p><w:pPr><w:sectPr><w:type w:val="nextPage"/><w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/><w:cols w:num="2" w:space="720"/></w:sectPr></w:pPr></w:p>'
+    )
+    zip['word/document.xml'] = strToU8(xml)
+    const { doc, warnings } = importDocx(zipSync(zip))
+    const sb = find(doc, (n) => n.type === 'sectionBreak')
+    expect(sb).toHaveLength(1)
+    expect(sb[0].attrs).toMatchObject({ kind: 'nextPage', label: 'landscape, 2 columns' })
+    expect(warnings.map((w) => w.message).join()).toMatch(/Sections are kept/)
+    const again = strFromU8(unzipSync(exportDocx(doc).data)['word/document.xml'])
+    expect(again).toContain('w:orient="landscape"')
+    expect(again).toContain('<w:cols w:num="2"')
+    expect(importDocx(exportDocx(doc).data).doc.content).toEqual(doc.content)
+  })
+})

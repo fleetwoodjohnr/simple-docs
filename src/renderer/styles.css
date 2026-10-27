@@ -784,3 +784,19 @@ body {
 .sd-doc [data-table-style='striped'] th {
   background: #e9ebf3;
 }
+
+/* ================= section breaks ================= */
+.sd-doc .sd-section-break {
+  margin: 4pt 0;
+  border-top: 1px dashed #9aa3b8;
+  font: 10px/1.6 var(--font-sans);
+  color: #7a8399;
+  text-align: center;
+  user-select: none;
+}
+.sd-doc .sd-section-break.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+}
+.print-page .sd-section-break {
+  visibility: hidden;
+}

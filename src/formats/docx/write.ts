@@ -289,6 +289,12 @@ class Writer {
         return '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="C8C8D0"/></w:pBdr></w:pPr></w:p>'
       case 'pageBreak':
         return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>'
+      case 'sectionBreak': {
+        const a = n.attrs ?? {}
+        if (a.format === 'docx' && a.raw) return `<w:p><w:pPr>${a.raw}</w:pPr></w:p>`
+        // A section that inherits the document's page setup.
+        return `<w:p><w:pPr>${this.sectPr(null).replace('<w:sectPr>', `<w:sectPr><w:type w:val="${a.kind ?? 'nextPage'}"/>`)}</w:pPr></w:p>`
+      }
       case 'table':
         return this.table(n)
       case 'toc':

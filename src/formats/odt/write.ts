@@ -298,6 +298,10 @@ class OdtWriter {
       case 'pageBreak':
         this.pendingBreak = true
         return ''
+      case 'sectionBreak':
+        this.w.add('loss', 'Section breaks are saved as page breaks in ODT')
+        if (n.attrs?.kind !== 'continuous') this.pendingBreak = true
+        return ''
       case 'table':
         return this.table(n)
       case 'toc':

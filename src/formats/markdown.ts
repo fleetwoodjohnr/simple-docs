@@ -213,7 +213,8 @@ class Serializer {
       case 'horizontalRule':
         return '---'
       case 'pageBreak':
-        this.w.add('loss', 'Page breaks cannot be represented in Markdown')
+      case 'sectionBreak':
+        this.w.add('loss', 'Page and section breaks cannot be represented in Markdown')
         return null
       case 'table':
         return this.table(n)

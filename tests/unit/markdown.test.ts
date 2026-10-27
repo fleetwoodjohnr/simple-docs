@@ -19,7 +19,7 @@ describe('Markdown export', () => {
   it('reports what Markdown cannot hold', () => {
     const msgs = warnings.map((w) => w.message).join('\n')
     expect(msgs).toMatch(/Underline/)
-    expect(msgs).toMatch(/Page breaks/)
+    expect(msgs).toMatch(/Page and section breaks/)
     expect(msgs).toMatch(/Merged table cells/)
   })
 })

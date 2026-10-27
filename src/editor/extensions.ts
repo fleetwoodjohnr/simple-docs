@@ -225,6 +225,36 @@ export const PageBreak = Node.create({
   }
 })
 
+export type SectionKind = 'nextPage' | 'continuous' | 'oddPage' | 'evenPage'
+
+/**
+ * End of a document section. Pagination treats it as a page break (unless continuous).
+ * The section's own settings (page size/orientation, columns, numbering) are kept verbatim
+ * in `raw` for the original format; the editor shows every section with the document's page setup.
+ */
+export const SectionBreak = Node.create({
+  name: 'sectionBreak',
+  group: 'block',
+  atom: true,
+  selectable: true,
+  addAttributes() {
+    return {
+      kind: { default: 'nextPage' },
+      format: { default: null },
+      raw: { default: '' },
+      label: { default: '' }
+    }
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-section-break]', getAttrs: (el: HTMLElement) => ({ kind: el.getAttribute('data-kind') ?? 'nextPage' }) }]
+  },
+  renderHTML({ node }) {
+    const k = node.attrs.kind as SectionKind
+    const name = { nextPage: 'next page', continuous: 'continuous', oddPage: 'odd page', evenPage: 'even page' }[k] ?? 'next page'
+    return ['div', { 'data-section-break': '', 'data-kind': k, class: 'sd-section-break', contenteditable: 'false', title: node.attrs.label || undefined }, `Section break (${name})${node.attrs.label ? ` · ${node.attrs.label}` : ''}`]
+  }
+})
+
 /** Content from an imported file that the editor cannot edit but must keep (raw XML etc.). */
 const preserved = (inline: boolean) =>
   Node.create({
@@ -430,6 +460,7 @@ export function createExtensions(opts: ExtensionOptions = {}): Extensions {
     SdTableHeader,
     TableStyles,
     PageBreak,
+    SectionBreak,
     PreservedBlock,
     PreservedInline,
     Field,

@@ -899,10 +899,13 @@ class Reader {
         out.push(...listCtx.flush(), node)
       }
     })
-    if (this.pendingSectionBreak) {
-      this.pendingSectionBreak = false
+    if (this.pendingSection) {
       listCtx.close()
-      out.push(...listCtx.flush(), { type: 'pageBreak' })
+      // The paragraph that only carried the section's settings is not content.
+      const last = out[out.length - 1]
+      if (last?.type === 'paragraph' && !last.content?.length) out.pop()
+      out.push(...listCtx.flush(), this.pendingSection)
+      this.pendingSection = null
     }
     return out
   }
@@ -1008,11 +1011,17 @@ class Reader {
   }
 
   sectionBreak(sectPr: El) {
-    const type = wval(child(sectPr, NS.w, 'type'))
-    this.w.add('loss', 'Multiple sections are merged; section-specific page setup uses the last section')
-    if (type !== 'continuous') this.pendingSectionBreak = true
+    const type = wval(child(sectPr, NS.w, 'type')) ?? 'nextPage'
+    const sz = child(sectPr, NS.w, 'pgSz')
+    const landscape = attr(sz, NS.w, 'orient') === 'landscape'
+    const cols = num(attr(child(sectPr, NS.w, 'cols'), NS.w, 'num')) ?? 1
+    const label = [landscape ? 'landscape' : '', cols > 1 ? `${cols} columns` : ''].filter(Boolean).join(', ')
+    // Header/footer references are dropped: a section without them inherits the previous section's.
+    const raw = serialize(sectPr).replace(/<w:(headerReference|footerReference)\b[^>]*\/>/g, '')
+    this.pendingSection = { type: 'sectionBreak', attrs: { kind: ['nextPage', 'continuous', 'oddPage', 'evenPage'].includes(type) ? type : 'nextPage', format: 'docx', raw, label } }
+    this.w.add('loss', 'Sections are kept, but every section is shown with the document’s page setup')
   }
-  pendingSectionBreak = false
+  pendingSection: JSONContent | null = null
 
   pageSetup(sectPr: El | null): PageSetup {
     const page = makePageSetup()

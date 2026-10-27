@@ -326,7 +326,7 @@ export function measureUnits(view: EditorView, noteHeight?: NoteHeightFn, fromPo
             { contentPos: p + 1, node }
           )
         )
-      } else if (name === 'pageBreak') {
+      } else if (name === 'pageBreak' || (name === 'sectionBreak' && node.attrs.kind !== 'continuous')) {
         units.push(lazyUnit(d.dom, { pos: p, kind: 'pagebreak', ...flags }))
       } else if (node.isBlock && node.isAtom) {
         units.push(lazyUnit(d.dom, { pos: at, kind: 'atom', ...flags }))

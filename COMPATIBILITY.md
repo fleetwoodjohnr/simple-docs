@@ -29,14 +29,15 @@ On open, every adapter produces a warning list (the ⚠ badge in the title bar).
 | Checklists | ✅ | Written as `w14:checkbox` content controls |
 | Tables: grid widths, header rows, colspan, rowspan (vMerge), cell shading, vertical alignment | ✅ | |
 | Nested tables | ✅ | |
-| Table borders and styles | 🟡 | Written as a single-line grid with a styled header row |
+| Table styles (grid / no borders / horizontal lines / striped) | ✅ | Other Word table styles are shown as a grid |
 | Floating tables | 🟡 | Placed inline |
 | Inline images (PNG, JPEG, GIF, BMP, WebP) | ✅ | |
 | Images with square/tight wrap | ✅ | Mapped to wrap left/right |
 | Behind-text / in-front images | 🟡 | Shown inline (warned) |
 | EMF/WMF/TIFF images | 🔒 | Preserved (not displayed) |
 | Hyperlinks, external and internal anchors | ✅ | |
-| Page breaks; section breaks | ✅ / 🟡 | A section break becomes a page break; the last section's page setup is used |
+| Page breaks | ✅ | |
+| Section breaks (with orientation, size, columns, numbering) | 🟡 | Kept and written back verbatim; the editor shows all sections with the document's page setup |
 | Page size, orientation, margins, header/footer distance, gutter | ✅ | |
 | Headers and footers (default / first / even), PAGE / NUMPAGES / DATE / TITLE / AUTHOR fields, page-number format | ✅ | Other fields in headers keep their last result text |
 | Footnotes and endnotes | ✅ | Custom note separators are regenerated |
@@ -47,7 +48,7 @@ On open, every adapter produces a warning list (the ⚠ badge in the title bar).
 | Tracked insertions/deletions | ✅ | Tracked formatting changes from Word are shown as accepted (noted) |
 | Bookmarks | ❌ | Dropped silently (they have no visible content); M2 |
 | Document properties (title, subject, author, keywords, description, dates) | ✅ | |
-| Multiple columns | ❌ | Shown as one column (warned) |
+| Multiple columns | 🟡 | Kept on save; shown as one column (warned) |
 
 Preserved XML is written back only when everything it references (relationship ids, footnotes or endnotes part) still exists. Otherwise, for example after pasting into another document, it falls back to its text with a warning.
 

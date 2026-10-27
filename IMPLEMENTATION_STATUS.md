@@ -1,6 +1,6 @@
 # Implementation status
 
-_Last updated: 2026-10-27 · Milestone 1 complete · Milestone 2 in progress._
+_Last updated: 2026-10-27 · Milestones 1 and 2 complete (M2 with two documented partial items) · Milestone 3 next._
 
 "Done" means implemented **and** covered by a passing automated test or a manual check recorded below. A button existing in the UI does not count.
 
@@ -9,8 +9,8 @@ _Last updated: 2026-10-27 · Milestone 1 complete · Milestone 2 in progress._
 | Suite | Result |
 |---|---|
 | `npm run typecheck` (strict, main + renderer) | ✅ clean |
-| `npm test` (vitest) | ✅ 64 / 64 |
-| `npm run e2e:headless` (Playwright + Electron) | ✅ 13 / 13 |
+| `npm test` (vitest) | ✅ 72 / 72 |
+| `npm run e2e:headless` (Playwright + Electron) | ✅ 15 / 15 |
 | Independent consumer: our DOCX → LibreOffice → PDF | ✅ (in `docx.test.ts`) |
 
 Acceptance criteria from the brief:
@@ -99,7 +99,7 @@ Two optimizations got there. ProseMirror `posAtCoords` (O(characters)) was repla
 - **Images** are stored inline as data URLs. Simple, but large image-heavy documents use more memory.
 - **Unit placeholders.** The References and Review tabs show only working items (links, outline, word count, read-aloud, compatibility). TOC, footnotes, comments and track changes are M2.
 
-## Milestone 2 — Advanced document editing 🟡 in progress
+## Milestone 2 — Advanced document editing ✅ (two items partial, see below)
 
 ### Done (each with unit + E2E tests)
 - **Headers & footers**: edited in place (double-click a margin or Insert → Header/Footer); default / different first page / odd-even; fields PAGE, NUMPAGES, DATE, TITLE, AUTHOR; Insert → Page number presets; page-number format (1, i, I, a, A) and start value; rendered on sheets and in PDF; DOCX header/footer parts (with their own image relationships), `titlePg`, `evenAndOddHeaders`, `pgNumType` read and written.
@@ -108,12 +108,15 @@ Two optimizations got there. ProseMirror `posAtCoords` (O(characters)) was repla
 - **Comments**: Ctrl+Alt+M on a selection; threaded replies, resolve/reopen, delete, next/previous, right-panel Comments tab; overlapping ranges; DOCX `comments.xml` + `commentsExtended.xml` (threads, resolved state).
 - **Track changes**: Ctrl+Shift+T; insertions/deletions recorded per author (minute-resolution timestamps so typing merges), deleting your own insertion is a real delete, one undo step per edit; accept/reject at cursor or all, next/previous change, Markup/Final view, status-bar indicator; DOCX `w:ins`/`w:del`/`w:trackRevisions` round trip; Markdown/TXT export the final text.
 - **Native ODT reader/writer** (no LibreOffice): styles, formatting, lists, tables with spans, images, links, notes, comments with replies, headers/footers with fields, page layout, TOC, page breaks, metadata; unknown ODF content preserved. Tested against a LibreOffice-authored fixture, by round trip, and by LibreOffice rendering our output.
+- **Table tools**: header rows repeat at the top of continuation pages (screen, print and PDF; the layout reserves their height); table styles Grid / Plain / Horizontal lines / Striped (DOCX + ODT round trip); sort by the current column (numeric-aware, header kept, refuses vertical merges); distribute columns; text ↔ table (keeps formatting); cell vertical alignment.
+- **Style editor**: Modify style / New style (name, based-on, next style, font, size, B/I/U, color, alignment, spacing, indents, keep options, live preview); "Update style to match selection" folds direct formatting into the style and clears it from the paragraph. Undoable; every paragraph using the style updates.
+- **Section breaks (partial)**: section breaks from DOCX are kept as nodes with their original settings (orientation, size, columns, numbering) and written back verbatim; they paginate as next/odd/even page or continuous breaks. The editor shows every section with the document's page setup (reported in the compatibility dialog). New section breaks are not yet offered in the UI.
 - **Spell checking (offline)**: nspell in a Web Worker with bundled English (US/UK) Hunspell dictionaries; other languages use system Hunspell dictionaries on Linux; wavy underlines, right-click suggestions, Add to dictionary (persisted), Ignore all. Chromium's own spellchecker is disabled (it would download dictionaries).
 
-### Remaining in M2
-7. Grammar checking — harper.js evaluated (Apache-2.0) but its package is ~95 MB unpacked; deferred until a slimmer build is chosen.
-8. Style editor dialog and custom styles; advanced tables (borders, padding, sort, distribute, text↔table, repeated header row on continuation pages, can't-split rows).
-10. Section breaks with per-section page setup and columns (currently: last section's setup, warned).
+### Partial / deferred in M2
+- **Grammar checking** — harper.js (Apache-2.0, offline WASM) evaluated; its package is ~95 MB unpacked, so it is deferred until a slimmer build is selected.
+- **Per-section page setup and columns** — preserved and round-tripped, not displayed (every section uses the document's page setup in the editor). Doing it properly needs per-section text widths in the single-column flow.
+- **Rows taller than a page** are not split (they overflow the page).
 
 ### Performance note
 Pagination is now **incremental**: units are measured lazily, a pass resumes one page before the edited range and stops as soon as a new break coincides with an old one past the edit (the rest of the old layout is reused, shifted). Full passes still run for page-setup/style changes, font and image loads. On the 240-page benchmark with spell checking on (~5,000 misspelling decorations): keystroke → frame median **42 ms** (was 66 ms), full pass 38 ms; the E2E test asserts the incremental layout equals a fresh full pass after a large edit.
@@ -142,6 +145,6 @@ See the plan in the README and the original brief.
 
 ## Next recommended tasks
 
-1. Style editor + table tools (M2 item 8), including repeated header rows in the paginator (the row-spacer widget can carry a cloned header).
-2. Section breaks with per-section page setup (M2 item 10).
+1. Milestone 3: PDF workspace on PDFium WASM (`@embedpdf/pdfium`), starting with viewing, page operations and annotations, then form filling, true redaction and existing-text editing.
+2. Per-section page setup in the layout engine (displayed landscape sections).
 4. Then Milestone 3 (PDF workspace on PDFium WASM).

@@ -69,6 +69,7 @@ export function docToText(doc: JSONContent): string {
           for (const row of n.content ?? []) lines.push(indent + (row.content ?? []).map((c) => (c.content ?? []).map((b) => inlineText(b.content)).join(' ')).join('\t'))
           break
         case 'pageBreak':
+        case 'sectionBreak':
           lines.push('\f')
           break
         case 'horizontalRule':
