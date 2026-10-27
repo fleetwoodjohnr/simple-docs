@@ -49,20 +49,35 @@ export interface Break {
   height: number
 }
 
+/** Resume a previous layout from a page before the edit instead of recomputing everything. */
+export interface Resume {
+  /** Breaks kept unchanged (pages before the resume page). */
+  prefix: Break[]
+  /** Natural y where the resume page's content starts. */
+  start: number
+  /** The previous layout's breaks, positions already mapped to the current document. */
+  prev: Break[]
+  /** End of the edited range: old breaks may be reused only after it. */
+  changeEnd: number
+}
+
 export interface Layout {
   breaks: Break[]
   pageCount: number
   /** Indexes of pages whose content overflows (a unit taller than a page). */
   overflow: number[]
+  /** True when an incremental pass stopped early and reused the old tail. */
+  reused?: boolean
 }
 
 const EPS = 0.5
 
-export function computeBreaks(units: Unit[], m: PageMetrics): Layout {
-  const breaks: Break[] = []
+export function computeBreaks(units: Unit[], m: PageMetrics, resume?: Resume): Layout {
+  const breaks: Break[] = resume ? [...resume.prefix] : []
   const overflow: number[] = []
   const sep = m.noteSep ?? 12
-  let start = m.contentTop
+  let start = resume ? resume.start : m.contentTop
+  let reused = false
   /** Height of footnotes already placed on the current page. */
   let noteH = 0
   const area = (h: number) => (h > 0 ? h + sep : 0)
@@ -70,21 +85,33 @@ export function computeBreaks(units: Unit[], m: PageMetrics): Layout {
   /** Notes of `u` whose reference lies in [from, to) on the current page. */
   const notesIn = (u: Unit, from: number, to: number) => (u.notes ?? []).reduce((s, n) => (n.y >= from - EPS && n.y < to - EPS ? s + n.h : s), 0)
 
-  const newPage = (pos: number, kind: BreakKind, s: number) => {
+  /** Start a new page; returns true when the rest of the old layout was reused (stop). */
+  const newPage = (pos: number, kind: BreakKind, s: number): boolean => {
     breaks.push({ pos, kind, start: s, height: m.stride - (s - start) })
     start = s
     noteH = 0
+    // Past the edit, a page that starts where an old page started is followed by the same pages.
+    if (resume && pos > resume.changeEnd) {
+      const j = resume.prev.findIndex((b) => b.pos === pos && b.kind === kind)
+      if (j >= 0) {
+        const d = s - resume.prev[j].start
+        for (const b of resume.prev.slice(j + 1)) breaks.push({ ...b, start: b.start + d })
+        reused = true
+        return true
+      }
+    }
+    return false
   }
   const blockKind = (u: Unit): BreakKind => (u.kind === 'row' ? 'row' : 'block')
 
   let forced = false
-  for (let k = 0; k < units.length; k++) {
+  outer: for (let k = 0; k < units.length; k++) {
     const u = units[k]
     if (u.kind === 'pagebreak') {
       forced = true
       continue
     }
-    if ((forced || u.breakBefore) && u.top > start + EPS) newPage(u.pos, blockKind(u), u.top)
+    if ((forced || u.breakBefore) && u.top > start + EPS && newPage(u.pos, blockKind(u), u.top)) break outer
     forced = false
 
     for (;;) {
@@ -111,7 +138,7 @@ export function computeBreaks(units: Unit[], m: PageMetrics): Layout {
           const orphans = f === 0 && u.widowControl !== false ? 2 : 1
           if (lines.length - s < widows) s = lines.length - widows
           if (s - f >= orphans && lines[s].top > start + EPS && lines[s].pos > 0) {
-            newPage(lines[s].pos, 'inline', lines[s].top)
+            if (newPage(lines[s].pos, 'inline', lines[s].top)) break outer
             continue
           }
         }
@@ -120,7 +147,7 @@ export function computeBreaks(units: Unit[], m: PageMetrics): Layout {
       let b = k
       while (b > 0 && units[b - 1].keepNext && units[b - 1].kind !== 'pagebreak' && units[b - 1].top > start + EPS) b--
       if (units[b].top > start + EPS) {
-        newPage(units[b].pos, blockKind(units[b]), units[b].top)
+        if (newPage(units[b].pos, blockKind(units[b]), units[b].top)) break outer
         // Units between the chain start and k are re-placed on the new page.
         for (let j = b; j < k; j++) noteH += notesIn(units[j], start, Infinity)
         continue
@@ -130,7 +157,7 @@ export function computeBreaks(units: Unit[], m: PageMetrics): Layout {
         const lines = u.lines()
         const s = lines.findIndex((l) => l.top > start + EPS && l.bottom > limitWith(notesIn(u, start, l.top)) + EPS)
         if (s > 0 && lines[s].pos > 0) {
-          newPage(lines[s].pos, 'inline', lines[s].top)
+          if (newPage(lines[s].pos, 'inline', lines[s].top)) break outer
           continue
         }
       }
@@ -139,7 +166,7 @@ export function computeBreaks(units: Unit[], m: PageMetrics): Layout {
       break
     }
   }
-  return { breaks, pageCount: breaks.length + 1, overflow }
+  return { breaks, pageCount: breaks.length + 1, overflow, reused }
 }
 
 export function sameBreaks(a: Break[], b: Break[]): boolean {

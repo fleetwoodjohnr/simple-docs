@@ -82,6 +82,13 @@ test('performance: 300-page document', async () => {
     console.log(`PERF pages=${pages} fullPagination=${pass.toFixed(1)}ms keystrokeMedian=${median.toFixed(1)}ms keystrokeMax=${latencies.at(-1)!.toFixed(1)}ms`)
     expect(pages).toBeGreaterThan(200)
     expect(pass).toBeLessThan(1500)
+    // Incremental layout after edits must equal a fresh full pass.
+    await withEditor(page, `(e) => { e.chain().setTextSelection(Math.floor(e.state.doc.content.size / 3)).insertContent('${'Inserted words that push text across a page boundary. '.repeat(12)}').run() }`)
+    await settle(page, 800)
+    const breaksJson = `(e) => JSON.stringify(e.state.plugins.map((p) => p.getState(e.state)).find((s) => s && Array.isArray(s.breaks)).breaks.map((b) => [b.pos, b.kind, Math.round(b.height)]))`
+    const incremental = await withEditor<string>(page, breaksJson)
+    await withEditor(page, `(e) => e.commands.repaginate()`)
+    expect(await withEditor<string>(page, breaksJson)).toBe(incremental)
   } finally {
     await quit(app)
   }

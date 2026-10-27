@@ -9,7 +9,7 @@ _Last updated: 2026-10-27 · Milestone 1 complete · Milestone 2 in progress (6 
 | Suite | Result |
 |---|---|
 | `npm run typecheck` (strict, main + renderer) | ✅ clean |
-| `npm test` (vitest) | ✅ 55 / 55 |
+| `npm test` (vitest) | ✅ 57 / 57 |
 | `npm run e2e:headless` (Playwright + Electron) | ✅ 13 / 13 |
 | Independent consumer: our DOCX → LibreOffice → PDF | ✅ (in `docx.test.ts`) |
 
@@ -116,7 +116,7 @@ Two optimizations got there. ProseMirror `posAtCoords` (O(characters)) was repla
 10. Section breaks with per-section page setup and columns (currently: last section's setup, warned).
 
 ### Performance note
-With spell checking on, the 240-page benchmark is: full pagination 54 ms, keystroke → frame median 66 ms (max 96 ms), up from 45 ms. The spell plugin rescans the whole document 400 ms after typing stops; scoping the rescan to changed ranges is the next optimization.
+Pagination is now **incremental**: units are measured lazily, a pass resumes one page before the edited range and stops as soon as a new break coincides with an old one past the edit (the rest of the old layout is reused, shifted). Full passes still run for page-setup/style changes, font and image loads. On the 240-page benchmark with spell checking on (~5,000 misspelling decorations): keystroke → frame median **42 ms** (was 66 ms), full pass 38 ms; the E2E test asserts the incremental layout equals a fresh full pass after a large edit.
 
 ## Milestone 2 — original plan (for reference)
 
@@ -144,5 +144,4 @@ See the plan in the README and the original brief.
 
 1. Native ODT reader/writer (M2 item 9) to drop the LibreOffice requirement for acceptance items 12–13.
 2. Style editor + table tools (M2 item 8), including repeated header rows in the paginator (the row-spacer widget can carry a cloned header).
-3. Incremental spell-check rescans (changed ranges only) to bring large-document keystroke latency back under 50 ms.
 4. Then Milestone 3 (PDF workspace on PDFium WASM).

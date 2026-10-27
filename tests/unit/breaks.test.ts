@@ -96,3 +96,36 @@ describe('footnotes', () => {
     expect(computeBreaks(units, M).pageCount).toBe(1)
   })
 })
+
+describe('incremental re-layout', () => {
+  const doc = (heights: number[]) => stack(heights.map((h) => ({ h, lineH: 10 })))
+  const heights = Array.from({ length: 60 }, (_, i) => 20 + ((i * 7) % 5) * 10)
+
+  it('matches a full pass after an edit, and reuses the tail', () => {
+    const before = computeBreaks(doc(heights), M)
+    const edited = [...heights]
+    edited[20] += 30 // a paragraph grows by three lines
+    const full = computeBreaks(doc(edited), M)
+    const k = Math.max(0, before.breaks.filter((b) => b.pos <= 20000).length - 1)
+    const from = before.breaks[k - 1]
+    const units = doc(edited).filter((u) => u.pos >= from.pos)
+    const inc = computeBreaks(units, M, { prefix: before.breaks.slice(0, k), start: from.start, prev: before.breaks, changeEnd: 20000 })
+    expect(inc.breaks.map((b) => [b.pos, b.kind, Math.round(b.height)])).toEqual(full.breaks.map((b) => [b.pos, b.kind, Math.round(b.height)]))
+  })
+
+  it('stops early when the old layout re-converges', () => {
+    const before = computeBreaks(doc(heights), M)
+    const edited = [...heights]
+    edited[3] += 0 // no geometric change
+    let measured = 0
+    const units = doc(edited).map((u) => {
+      const top = u.top
+      const bottom = u.bottom
+      return Object.defineProperties({ ...u }, { top: { get: () => (measured++, top) }, bottom: { get: () => bottom } }) as typeof u
+    })
+    const inc = computeBreaks(units, M, { prefix: [], start: M.contentTop, prev: before.breaks, changeEnd: 3000 })
+    expect(inc.reused).toBe(true)
+    expect(inc.breaks).toEqual(before.breaks)
+    expect(measured).toBeLessThan(units.length)
+  })
+})
