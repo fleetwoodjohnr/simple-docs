@@ -1,0 +1,10 @@
+# export warnings
+(none)
+
+# after round trip
+paragraph: Title of the Essay
+paragraph: Author · Course · Date
+paragraph: Introduce the topic and state the thesis.
+paragraph: Develop the first argument with evidence.
+paragraph: Address a counterargument.
+paragraph: Conclude by restating the thesis in light of the evidence.

@@ -1,0 +1,44 @@
+# export warnings
+loss: Citations are saved as plain text (their link to the sources list is not kept)
+loss: Equations are saved as LaTeX text in ODT
+loss: Mail-merge fields are saved as «name» text in ODT
+loss: Tracked changes are saved as accepted text in ODT
+
+# after round trip
+h1: Kitchen sink
+paragraph: Plain, [bold]{bold}, [italic]{italic}, [underlined]{underline}, [red]{textStyle} and [a link]{link}.
+paragraph: [Commented text]{comment} then inserted and  words.
+h2: Lists
+bulletList
+  listItem
+    paragraph: One
+    bulletList
+      listItem
+        paragraph: Nested
+  listItem
+    paragraph: Two
+orderedList(start 3)
+  listItem
+    paragraph: Third
+  listItem
+    paragraph: Fourth
+h2: Table
+table
+  tableRow
+    tableHeader
+      paragraph: Item
+    tableHeader
+      paragraph: Qty
+  tableRow
+    tableCell(colspan 2)
+      paragraph: Merged
+  tableRow
+    tableCell
+      paragraph: Apples
+    tableCell
+      paragraph: 4
+paragraph: Footnote here⟨note The note.⟩.
+paragraph: Energy E=mc^2 and a citation (Lovelace, 1843, p. 12).
+paragraph: Dear «Name»,
+pageBreak
+paragraph: Second page.

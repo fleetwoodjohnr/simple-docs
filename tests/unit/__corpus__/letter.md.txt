@@ -1,0 +1,16 @@
+# export warnings
+loss: Paragraph alignment, spacing, indents and shading are not kept in Markdown
+
+# after round trip
+paragraph: Your Name
+paragraph: Street Address
+paragraph: City, State ZIP
+paragraph: January 15, 2026
+paragraph: Recipient Name
+paragraph: Company
+paragraph: Address
+paragraph: Dear Recipient,
+paragraph: Begin with the reason you are writing. Keep the opening short and specific.
+paragraph: Use the body to provide the details, and close with the action you would like the reader to take.
+paragraph: Sincerely,
+paragraph: Your Name

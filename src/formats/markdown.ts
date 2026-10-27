@@ -58,8 +58,49 @@ function taskLists(html: string): string {
   return doc.body.innerHTML
 }
 
+/**
+ * GFM footnotes: `[^id]` references and `[^id]: text` definitions (indented lines continue a definition).
+ * Definitions are lifted out, references become placeholders, and the placeholders become note nodes.
+ */
+function footnotes(text: string): { text: string; notes: string[] } {
+  const defs = new Map<string, string>()
+  const kept: string[] = []
+  let fence = false
+  let current: string | null = null
+  for (const line of text.split('\n')) {
+    if (/^\s*(```|~~~)/.test(line)) fence = !fence
+    const def = !fence && /^\[\^([^\]\s]+)\]:\s?(.*)$/.exec(line)
+    if (def) {
+      current = def[1]
+      defs.set(current, def[2])
+    } else if (current && /^( {4}|\t)/.test(line) && !fence) defs.set(current, `${defs.get(current)}\n${line.replace(/^( {4}|\t)/, '')}`)
+    else if (current && !line.trim()) defs.set(current, `${defs.get(current)}\n`)
+    else {
+      current = null
+      kept.push(line)
+    }
+  }
+  if (!defs.size) return { text, notes: [] }
+  const notes: string[] = []
+  fence = false
+  const body = kept
+    .map((line) => {
+      if (/^\s*(```|~~~)/.test(line)) fence = !fence
+      return fence ? line : line.replace(/\[\^([^\]\s]+)\]/g, (m, id: string) => (defs.has(id) ? `SDNOTE${notes.push(defs.get(id)!.trim()) - 1}SDEND` : m))
+    })
+    .join('\n')
+  return { text: body, notes }
+}
+
 export function markdownToDoc(text: string): JSONContent {
-  return htmlToDoc(taskLists(md.render(text)))
+  const fn = footnotes(text)
+  let html = taskLists(md.render(fn.text))
+  if (fn.notes.length)
+    html = html.replace(/SDNOTE(\d+)SDEND/g, (_m, i: string) => {
+      const content = markdownToDoc(fn.notes[Number(i)]).content ?? []
+      return `<sup data-note="footnote" data-content="${md.utils.escapeHtml(JSON.stringify(content))}"></sup>`
+    })
+  return htmlToDoc(html)
 }
 
 export function importMarkdown(data: Uint8Array): ImportResult {
@@ -127,7 +168,11 @@ class Serializer {
       if (node.marks?.some((m) => m.type === 'deletion' || m.type === 'insertion')) this.w.add('info', 'Tracked changes are exported as the final text')
       if (node.marks?.some((m) => m.type === 'deletion')) continue
       const marks = (node.marks ?? []).filter((m) => {
-        if (m.type === 'insertion' || m.type === 'comment') return false
+        if (m.type === 'insertion') return false
+        if (m.type === 'comment') {
+          this.w.add('loss', 'Comments cannot be represented in Markdown')
+          return false
+        }
         if (SUPPORTED_MARKS.includes(m.type)) return true
         this.w.add('loss', `${MARK_NAMES[m.type] ?? m.type} cannot be represented in Markdown`)
         return false

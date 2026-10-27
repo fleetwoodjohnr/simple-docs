@@ -1,0 +1,24 @@
+# export warnings
+(none)
+
+# after round trip
+paragraph: Project Report
+paragraph: Prepared January 15, 2026
+paragraph: Executive summary
+paragraph: Summarize the purpose, key findings and recommendations in a few sentences. Readers who stop here should still understand the outcome.
+paragraph: Background
+paragraph: Describe the context and the question this report answers.
+paragraph: Findings
+paragraph: Key metrics
+paragraph: Metric	Target	Actual
+paragraph: Adoption	60%	—
+paragraph: Satisfaction	4.5	—
+paragraph: Cost	$120k	—
+paragraph
+paragraph: Observations
+paragraph: • First observation
+paragraph: • Second observation
+paragraph: • Third observation
+paragraph: Recommendations
+paragraph: 1. Recommendation one
+paragraph: 2. Recommendation two

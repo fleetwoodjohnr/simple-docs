@@ -1,0 +1,16 @@
+# export warnings
+loss: All formatting, images and tables are reduced to plain text
+
+# after round trip
+paragraph: Meeting Notes
+paragraph: Date: January 15, 2026
+paragraph: Attendees: Names
+paragraph: Agenda
+paragraph: 1. Updates
+paragraph: 2. Discussion
+paragraph: 3. Next steps
+paragraph: Discussion
+paragraph: Notes from the meeting.
+paragraph: Action items
+paragraph: [ ] Owner — action — due date
+paragraph: [ ] Owner — action — due date

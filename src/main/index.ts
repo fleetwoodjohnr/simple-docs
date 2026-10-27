@@ -95,6 +95,15 @@ function createWindow(settings: Settings) {
     e.preventDefault()
     mainWindow?.webContents.send('app:close-request')
   })
+  // A crashed renderer reloads; the app then offers the recovery snapshots (written every few seconds).
+  const crashes: number[] = []
+  mainWindow.webContents.on('render-process-gone', (_e, details) => {
+    if (details.reason === 'clean-exit') return
+    crashes.push(Date.now())
+    while (crashes.length && Date.now() - crashes[0] > 60_000) crashes.shift()
+    if (crashes.length <= 3) mainWindow?.reload()
+    else void dialog.showMessageBox({ type: 'error', message: 'Simple Docs keeps crashing.', detail: 'Your recent changes are kept in recovery snapshots. Restart the app to restore them.' })
+  })
   mainWindow.on('closed', () => {
     mainWindow = null
   })

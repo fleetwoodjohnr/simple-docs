@@ -61,7 +61,8 @@ export const Footnote = Node.create({
     }
   },
   parseHTML() {
-    return [{ tag: 'sup[data-note]' }]
+    // Above the superscript mark's plain `sup` rule, or pasted/imported notes become empty superscript.
+    return [{ tag: 'sup[data-note]', priority: 60 }]
   },
   renderHTML({ node, HTMLAttributes }) {
     return ['sup', { ...HTMLAttributes, 'data-note': node.attrs.kind, class: 'sd-note-ref', contenteditable: 'false' }]

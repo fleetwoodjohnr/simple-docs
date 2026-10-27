@@ -28,7 +28,8 @@ const revisionMark = (name: string, tag: string, cls: string) =>
       }
     },
     parseHTML() {
-      return [{ tag: `${tag}[data-rev]` }]
+      // Above the underline/strike marks' plain `ins`/`del` rules.
+      return [{ tag: `${tag}[data-rev]`, priority: 60 }]
     },
     renderHTML({ mark }) {
       return [tag, { 'data-rev': '', 'data-author': mark.attrs.author, 'data-date': mark.attrs.date, class: cls, title: `${mark.attrs.author}${mark.attrs.date ? ' · ' + new Date(mark.attrs.date).toLocaleString() : ''}` }, 0]

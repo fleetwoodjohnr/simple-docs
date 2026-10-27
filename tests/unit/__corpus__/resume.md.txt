@@ -1,0 +1,22 @@
+# export warnings
+loss: Paragraph alignment, spacing, indents and shading are not kept in Markdown
+loss: Paragraph styles (Subtitle, Quote, Caption, custom styles) become plain paragraphs
+
+# after round trip
+h1: Your Name
+paragraph: [email@example.com]{link} · (555) 123-4567 · City, Country
+h2: Experience
+paragraph: [Job Title]{bold} — Company, 2022–present
+bulletList
+  listItem
+    paragraph: Achievement with a measurable result
+  listItem
+    paragraph: Another achievement
+paragraph: [Job Title]{bold} — Company, 2019–2022
+bulletList
+  listItem
+    paragraph: Achievement with a measurable result
+h2: Education
+paragraph: [Degree]{bold} — University, Year
+h2: Skills
+paragraph: Skill · Skill · Skill · Skill

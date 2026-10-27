@@ -1,0 +1,49 @@
+# export warnings
+info: Tracked changes are exported as the final text
+loss: Citations are saved as plain text in Markdown
+loss: Comments cannot be represented in Markdown
+loss: Fonts, sizes and colors cannot be represented in Markdown
+loss: Mail-merge fields are saved as «name» text in Markdown
+loss: Merged table cells are split in Markdown
+loss: Page and section breaks cannot be represented in Markdown
+loss: Underline cannot be represented in Markdown
+
+# after round trip
+h1: Kitchen sink
+paragraph: Plain, [bold]{bold}, [italic]{italic}, underlined, red and [a link]{link}.
+paragraph: Commented text then inserted and words.
+h2: Lists
+bulletList
+  listItem
+    paragraph: One
+    bulletList
+      listItem
+        paragraph: Nested
+  listItem
+    paragraph: Two
+orderedList(start 3)
+  listItem
+    paragraph: Third
+  listItem
+    paragraph: Fourth
+h2: Table
+table
+  tableRow
+    tableHeader
+      paragraph: Item
+    tableHeader
+      paragraph: Qty
+  tableRow
+    tableCell
+      paragraph: Merged
+    tableCell
+      paragraph
+  tableRow
+    tableCell
+      paragraph: Apples
+    tableCell
+      paragraph: 4
+paragraph: Footnote here⟨note The note.⟩.
+paragraph: Energy ⟨math E=mc^2⟩ and a citation (Lovelace, 1843, p. 12).
+paragraph: Dear «Name»,
+paragraph: Second page.

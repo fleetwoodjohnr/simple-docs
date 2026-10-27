@@ -18,18 +18,25 @@ export async function atomicWrite(target: string, data: Uint8Array | string): Pr
   } catch {
     /* new file */
   }
-  const fh = await fs.open(tmp, fsc.O_CREAT | fsc.O_WRONLY | fsc.O_TRUNC, mode ?? 0o644)
   try {
-    await fh.writeFile(data)
-    await fh.sync()
-  } finally {
-    await fh.close()
-  }
-  try {
+    const fh = await fs.open(tmp, fsc.O_CREAT | fsc.O_WRONLY | fsc.O_TRUNC, mode ?? 0o644)
+    try {
+      await fh.writeFile(data)
+      await fh.sync()
+    } finally {
+      await fh.close()
+    }
     await fs.rename(tmp, target)
   } catch (err) {
+    // A failed write (disk full, permissions…) leaves the original untouched and no temp file behind.
     await fs.rm(tmp, { force: true })
     throw err
+  }
+  // Persist the rename itself (POSIX); not supported for directories on Windows.
+  if (process.platform !== 'win32') {
+    const d = await fs.open(dir, 'r').catch(() => null)
+    await d?.sync().catch(() => {})
+    await d?.close()
   }
 }
 

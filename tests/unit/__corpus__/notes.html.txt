@@ -1,0 +1,23 @@
+# export warnings
+(none)
+
+# after round trip
+paragraph(Title): Meeting Notes
+paragraph: [Date: ]{bold}January 15, 2026
+paragraph: [Attendees: ]{bold}Names
+h2: Agenda
+orderedList
+  listItem
+    paragraph: Updates
+  listItem
+    paragraph: Discussion
+  listItem
+    paragraph: Next steps
+h2: Discussion
+paragraph: Notes from the meeting.
+h2: Action items
+taskList
+  taskItem
+    paragraph: Owner — action — due date
+  taskItem
+    paragraph: Owner — action — due date

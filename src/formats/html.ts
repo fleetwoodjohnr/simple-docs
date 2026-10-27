@@ -75,5 +75,12 @@ ${body}
 </body>
 </html>
 `
-  return { data: new TextEncoder().encode(html), warnings: [] }
+  const w = new Warnings()
+  const comments = doc.attrs?.comments as Record<string, unknown> | null
+  if (comments && Object.keys(comments).length) w.add('loss', 'Comment threads are not kept in HTML (the commented text is)')
+  const hf = doc.attrs?.hf as Record<string, { content?: unknown[] } | null> | null
+  if (hf && Object.values(hf).some((v) => v && typeof v === 'object' && JSON.stringify(v).includes('"text"'))) w.add('loss', 'Headers and footers are not kept in HTML')
+  const sources = doc.attrs?.sources as Record<string, unknown> | null
+  if (sources && Object.keys(sources).length) w.add('loss', 'The sources list behind citations is not kept in HTML (each citation keeps its text)')
+  return { data: new TextEncoder().encode(html), warnings: w.list() }
 }

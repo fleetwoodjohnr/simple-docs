@@ -1,0 +1,25 @@
+# export warnings
+loss: All formatting, images and tables are reduced to plain text
+
+# after round trip
+paragraph: Kitchen sink
+paragraph: Plain, bold, italic, underlined, red and a link.
+paragraph: Commented text then inserted and  words.
+paragraph: Lists
+paragraph: • One
+paragraph:     • Nested
+paragraph: • Two
+paragraph: 3. Third
+paragraph: 4. Fourth
+paragraph: Table
+paragraph: Item	Qty
+paragraph: Merged
+paragraph: Apples	4
+paragraph: Footnote here[1].
+paragraph: Energy E=mc^2 and a citation (Lovelace, 1843, p. 12).
+paragraph: Dear «Name»,
+pageBreak
+paragraph: Second page.
+paragraph
+paragraph: ———
+paragraph: [1] The note.

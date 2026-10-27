@@ -1,0 +1,16 @@
+# export warnings
+loss: All formatting, images and tables are reduced to plain text
+
+# after round trip
+paragraph: Your Name
+paragraph: email@example.com · (555) 123-4567 · City, Country
+paragraph: Experience
+paragraph: Job Title — Company, 2022–present
+paragraph: • Achievement with a measurable result
+paragraph: • Another achievement
+paragraph: Job Title — Company, 2019–2022
+paragraph: • Achievement with a measurable result
+paragraph: Education
+paragraph: Degree — University, Year
+paragraph: Skills
+paragraph: Skill · Skill · Skill · Skill
