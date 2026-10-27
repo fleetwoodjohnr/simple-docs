@@ -64,7 +64,7 @@ export const SdDocument = Node.create({
   topNode: true,
   content: 'block+',
   addAttributes() {
-    return { page: { default: null }, styles: { default: null }, meta: { default: null }, hf: { default: null }, comments: { default: null }, trackChanges: { default: false }, protection: { default: null }, sources: { default: null }, citationStyle: { default: null } }
+    return { page: { default: null }, styles: { default: null }, meta: { default: null }, hf: { default: null }, comments: { default: null }, trackChanges: { default: false }, protection: { default: null }, sources: { default: null }, citationStyle: { default: null }, mergeData: { default: null } }
   }
 })
 

@@ -1,6 +1,9 @@
 # export warnings
 (none)
 
+# document data
+sources: Lov43 · recipients: 2 rows of Name, City
+
 # after round trip
 h1: Kitchen sink
 paragraph: Plain, [bold]{bold}, [italic]{italic}, [underlined]{underline}, [red]{textStyle} and [a link]{link}.

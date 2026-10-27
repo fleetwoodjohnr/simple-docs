@@ -44,6 +44,12 @@ export async function importBytes(format: FormatId, data: Uint8Array, lo: LibreO
 }
 
 export async function exportBytes(format: FormatId, doc: JSONContent, carry: unknown, lo: LibreOfficeBridge): Promise<ExportResult> {
+  const out = await exportAs(format, doc, carry, lo)
+  if (doc.attrs?.mergeData && format !== 'docx') out.warnings.push({ level: 'loss', message: 'The mail-merge recipient list isn’t saved in this format (DOCX keeps it)' })
+  return out
+}
+
+async function exportAs(format: FormatId, doc: JSONContent, carry: unknown, lo: LibreOfficeBridge): Promise<ExportResult> {
   switch (format) {
     case 'docx':
       return exportDocx(doc, (carry as DocxCarry | undefined) ?? null)

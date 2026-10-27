@@ -6,7 +6,11 @@ loss: Fonts, sizes and colors cannot be represented in Markdown
 loss: Mail-merge fields are saved as «name» text in Markdown
 loss: Merged table cells are split in Markdown
 loss: Page and section breaks cannot be represented in Markdown
+loss: The mail-merge recipient list isn’t saved in this format (DOCX keeps it)
 loss: Underline cannot be represented in Markdown
+
+# document data
+sources: none · recipients: none
 
 # after round trip
 h1: Kitchen sink

@@ -1,6 +1,9 @@
 # export warnings
 loss: Paragraph alignment, spacing, indents and shading are not kept in Markdown
 
+# document data
+sources: none · recipients: none
+
 # after round trip
 paragraph: Title of the Essay
 paragraph: Author · Course · Date

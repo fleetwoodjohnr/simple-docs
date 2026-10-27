@@ -34,6 +34,7 @@ const KITCHEN_SINK: JSONContent = {
     meta: { title: 'Kitchen sink', author: 'Corpus' },
     sources: { Lov43: { type: 'book', authors: ['Lovelace, Ada'], title: 'Notes', year: '1843', publisher: 'Taylor' } },
     citationStyle: 'apa',
+    mergeData: { name: 'people.csv', fields: ['Name', 'City'], rows: [{ Name: 'Ada', City: 'London' }, { Name: 'Grace, "Amazing"', City: 'Arlington' }] },
     comments: { c1: { author: 'Reviewer', date: '2026-01-01T00:00:00.000Z', text: 'Check this', resolved: false, replies: [] } }
   },
   content: [
@@ -101,7 +102,9 @@ describe('compatibility corpus (golden round trips)', () => {
         const out = await exportBytes(fmt, doc, null, noLo)
         const back = await importBytes(fmt, out.data, noLo)
         const warnings = [...new Set(out.warnings.map((w) => `${w.level}: ${w.message}`))].sort()
-        await expect(`# export warnings\n${warnings.join('\n') || '(none)'}\n\n# after round trip\n${outline(back.doc)}`).toMatchFileSnapshot(`__corpus__/${name}.${fmt}.txt`)
+        const a = back.doc.attrs ?? {}
+        const data = `sources: ${Object.keys(a.sources ?? {}).join(', ') || 'none'} · recipients: ${a.mergeData ? `${a.mergeData.rows.length} rows of ${a.mergeData.fields.join(', ')}` : 'none'}`
+        await expect(`# export warnings\n${warnings.join('\n') || '(none)'}\n\n# document data\n${data}\n\n# after round trip\n${outline(back.doc)}`).toMatchFileSnapshot(`__corpus__/${name}.${fmt}.txt`)
       })
 })
 
@@ -123,5 +126,7 @@ describe.skipIf(!hasSoffice)('LibreOffice re-save (independent writer)', () => {
       const words = (s: string) => s.replace(/\s+/g, ' ').trim()
       for (const piece of ['Kitchen sink', 'Plain, bold, italic, underlined, red and a link.', 'Nested', 'Fourth', 'Merged', 'Apples', 'Second page.', 'Dear'])
         expect(words(text(back))).toContain(piece)
+      // LibreOffice carries custom XML parts through a DOCX re-save (ODT never had them).
+      if (fmt === 'docx') expect(back.attrs?.mergeData?.rows).toHaveLength(2)
     }, 180_000)
 })

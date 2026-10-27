@@ -1,6 +1,10 @@
 # export warnings
 loss: Comment threads are not kept in HTML (the commented text is)
+loss: The mail-merge recipient list isn’t saved in this format (DOCX keeps it)
 loss: The sources list behind citations is not kept in HTML (each citation keeps its text)
+
+# document data
+sources: none · recipients: none
 
 # after round trip
 h1: Kitchen sink

@@ -1,6 +1,9 @@
 # export warnings
 loss: All formatting, images and tables are reduced to plain text
 
+# document data
+sources: none · recipients: none
+
 # after round trip
 paragraph: Your Name
 paragraph: email@example.com · (555) 123-4567 · City, Country

@@ -5,6 +5,7 @@ import { Warnings, type ImportResult } from '../types'
 import type { CommentMap } from '@/editor/comments'
 import { parseSources } from './sources'
 import { ommlToLatex } from '@/editor/math/omml'
+import { MERGE_NS, parseCsv, type MergeData } from '@/editor/mailmerge'
 import { NS, attr, child, children, elements, find, findAll, is, mimeFromExt, num, onOff, parseXml, serialize, textOf, toBase64, wval, type El } from './xml'
 
 // DOCX (WordprocessingML) → editor JSON. Unsupported elements are kept verbatim as
@@ -1259,9 +1260,17 @@ export function importDocx(data: Uint8Array): ImportResult {
   const body = find(doc.documentElement, NS.w, 'body')
   if (!body) throw new Error('The document body is missing.')
   const content = r.blocks(body)
-  // Word's bibliography sources (customXml <b:Sources>).
+  // Custom XML: Word's bibliography sources (<b:Sources>) and our mail-merge recipient list.
   let bib: ReturnType<typeof parseSources> = null
-  for (const [p, bytes] of Object.entries(files)) if (/^customXml\/item\d*\.xml$/.test(p)) bib ??= parseSources(parseXml(strFromU8(bytes)) as unknown as Document)
+  let mergeData: MergeData | null = null
+  for (const [p, bytes] of Object.entries(files)) {
+    if (!/^customXml\/item\d*\.xml$/.test(p)) continue
+    const xml = parseXml(strFromU8(bytes))
+    if (is(xml.documentElement, MERGE_NS, 'recipients')) {
+      const { fields, rows } = parseCsv(textOf(xml.documentElement))
+      if (fields.length) mergeData = { name: attr(xml.documentElement, null, 'name') || 'Recipients', fields, rows }
+    } else bib ??= parseSources(xml as unknown as Document)
+  }
 
   const finalSect = child(body, NS.w, 'sectPr')
   const page = r.pageSetup(finalSect)
@@ -1291,7 +1300,7 @@ export function importDocx(data: Uint8Array): ImportResult {
 
   const carry: DocxCarry = { parts: files, rels: [...r.rels.values()], sectPrExtra: extra, overrides, converted: [...(hfResult?.parts ?? []), ...r.noteParts, ...r.commentParts] }
   return {
-    doc: { type: 'doc', attrs: { page, styles: r.styles, meta: r.meta(), hf: hfResult?.hf ?? null, comments: Object.keys(r.comments).length ? r.comments : null, trackChanges, protection, sources: bib && Object.keys(bib.sources).length ? bib.sources : null, citationStyle: bib?.style ?? null }, content: content.length ? content : [{ type: 'paragraph' }] },
+    doc: { type: 'doc', attrs: { page, styles: r.styles, meta: r.meta(), hf: hfResult?.hf ?? null, comments: Object.keys(r.comments).length ? r.comments : null, trackChanges, protection, sources: bib && Object.keys(bib.sources).length ? bib.sources : null, citationStyle: bib?.style ?? null, mergeData }, content: content.length ? content : [{ type: 'paragraph' }] },
     warnings: r.w.list(),
     carry
   }

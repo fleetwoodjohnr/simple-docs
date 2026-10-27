@@ -1,5 +1,8 @@
 # export warnings
 (none)
 
+# document data
+sources: none · recipients: none
+
 # after round trip
 paragraph

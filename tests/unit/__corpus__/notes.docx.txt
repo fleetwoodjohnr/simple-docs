@@ -1,6 +1,9 @@
 # export warnings
 (none)
 
+# document data
+sources: none · recipients: none
+
 # after round trip
 paragraph(Title): Meeting Notes
 paragraph: [Date: ]{bold}January 15, 2026

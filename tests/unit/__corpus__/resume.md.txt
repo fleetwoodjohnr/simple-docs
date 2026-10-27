@@ -2,6 +2,9 @@
 loss: Paragraph alignment, spacing, indents and shading are not kept in Markdown
 loss: Paragraph styles (Subtitle, Quote, Caption, custom styles) become plain paragraphs
 
+# document data
+sources: none · recipients: none
+
 # after round trip
 h1: Your Name
 paragraph: [email@example.com]{link} · (555) 123-4567 · City, Country

@@ -1,6 +1,9 @@
 # export warnings
 loss: All formatting, images and tables are reduced to plain text
 
+# document data
+sources: none · recipients: none
+
 # after round trip
 paragraph: Meeting Notes
 paragraph: Date: January 15, 2026

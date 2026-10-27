@@ -6,6 +6,9 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 // Mail merge: «field» placeholders filled from a CSV data source, previewed in place and
 // merged into one new document (one copy per record, separated by page breaks).
 
+/** Namespace of the custom XML part that carries the recipient list in DOCX files. */
+export const MERGE_NS = 'urn:simple-docs:mail-merge:1'
+
 export interface MergeData {
   name: string
   fields: string[]
@@ -15,7 +18,8 @@ export interface MergeData {
 /** RFC 4180 CSV (quoted fields, "" escapes, newlines in quotes); delimiter detected among , ; and tab. */
 export function parseCsv(text: string): { fields: string[]; rows: Record<string, string>[] } {
   text = text.replace(/^﻿/, '')
-  const firstLine = text.split(/\r?\n/, 1)[0] ?? ''
+  // Delimiters inside quoted header fields don't count.
+  const firstLine = (text.split(/\r?\n/, 1)[0] ?? '').replace(/"[^"]*"/g, '')
   const delim = [',', ';', '\t'].sort((a, b) => firstLine.split(b).length - firstLine.split(a).length)[0]
   const records: string[][] = []
   let row: string[] = []
@@ -41,6 +45,12 @@ export function parseCsv(text: string): { fields: string[]; rows: Record<string,
   const nonEmpty = records.filter((r) => r.some((v) => v.trim() !== ''))
   const header = (nonEmpty.shift() ?? []).map((h, i) => h.trim() || `Column ${i + 1}`)
   return { fields: header, rows: nonEmpty.map((r) => Object.fromEntries(header.map((h, i) => [h, r[i] ?? '']))) }
+}
+
+/** RFC 4180 CSV: the inverse of parseCsv (header line, then one line per row; fields quoted when needed). */
+export function toCsv({ fields, rows }: Pick<MergeData, 'fields' | 'rows'>): string {
+  const cell = (v: string) => (/[",\r\n;\t]/.test(v) || v !== v.trim() ? `"${v.replace(/"/g, '""')}"` : v)
+  return [fields, ...rows.map((r) => fields.map((f) => r[f] ?? ''))].map((line) => line.map(cell).join(',')).join('\r\n') + '\r\n'
 }
 
 export const MergeField = Node.create({
@@ -128,5 +138,6 @@ export function mergeDocuments(doc: JSONContent, rows: Record<string, string>[])
     if (i) content.push({ type: 'pageBreak' })
     for (const block of doc.content ?? []) content.push(...fill(structuredClone(block), row))
   })
-  return { ...doc, content: content.length ? content : [{ type: 'paragraph' }] }
+  // The merged letters are finished documents: they don't carry the recipient list along.
+  return { ...doc, attrs: { ...doc.attrs, mergeData: null }, content: content.length ? content : [{ type: 'paragraph' }] }
 }

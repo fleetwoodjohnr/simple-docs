@@ -1,6 +1,9 @@
 # export warnings
 (none)
 
+# document data
+sources: none · recipients: none
+
 # after round trip
 paragraph: Project Report
 paragraph: Prepared January 15, 2026

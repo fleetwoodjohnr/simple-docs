@@ -2,7 +2,11 @@
 loss: Citations are saved as plain text (their link to the sources list is not kept)
 loss: Equations are saved as LaTeX text in ODT
 loss: Mail-merge fields are saved as «name» text in ODT
+loss: The mail-merge recipient list isn’t saved in this format (DOCX keeps it)
 loss: Tracked changes are saved as accepted text in ODT
+
+# document data
+sources: none · recipients: none
 
 # after round trip
 h1: Kitchen sink

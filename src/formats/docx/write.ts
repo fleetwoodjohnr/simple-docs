@@ -8,6 +8,7 @@ import type { CommentMap } from '@/editor/comments'
 import { itemPropsXml, sourcesXml } from './sources'
 import type { CitationStyle, SourceMap } from '@/editor/citations'
 import { latexToOmml } from '@/editor/math/omml'
+import { MERGE_NS, toCsv, type MergeData } from '@/editor/mailmerge'
 import { escXml as x, extFromMime, imageSize, parseDataUrl } from './xml'
 
 // Editor JSON → DOCX. Element order inside pPr/rPr follows the OOXML schema
@@ -797,15 +798,21 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
     if (hf?.differentOddEven) st = insertSetting(st, '<w:evenAndOddHeaders/>', ['bookFoldRevPrinting', 'bookFoldPrinting', 'bookFoldPrintingSheets', 'drawingGridHorizontalSpacing', 'drawingGridVerticalSpacing', 'displayHorizontalDrawingGridEvery', 'displayVerticalDrawingGridEvery', 'doNotUseMarginsForDrawingGridOrigin', 'doNotShadeFormData', 'noPunctuationKerning', 'characterSpacingControl', 'compat', 'rsids'])
     files['word/settings.xml'] = strToU8(st)
   }
-  // Bibliography sources for Word's citation tools (customXml parts from the original file are not carried).
+  // Custom XML data (customXml parts from the original file are not carried): bibliography sources
+  // for Word's citation tools, and the mail-merge recipient list (ours; Word keeps it untouched).
+  const customXml: [string, string][] = []
   const sources = doc.attrs?.sources as SourceMap | null
-  if (sources && Object.keys(sources).length) {
-    files['customXml/item1.xml'] = strToU8(sourcesXml(sources, (doc.attrs?.citationStyle as CitationStyle | null) ?? 'apa'))
-    files['customXml/itemProps1.xml'] = strToU8(itemPropsXml('{6A3F5C1E-5D2B-4C8A-9E1F-3B7D2A4C9E10}'))
-    files['customXml/_rels/item1.xml.rels'] = strToU8(relationshipsXml([{ id: 'rId1', type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXmlProps', target: 'itemProps1.xml' }]))
-    overridesExtra['customXml/itemProps1.xml'] = 'application/vnd.openxmlformats-officedocument.customXmlProperties+xml'
-    wr.rels.push({ id: 'sdRsources', type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml', target: '../customXml/item1.xml' })
-  }
+  if (sources && Object.keys(sources).length) customXml.push([sourcesXml(sources, (doc.attrs?.citationStyle as CitationStyle | null) ?? 'apa'), '{6A3F5C1E-5D2B-4C8A-9E1F-3B7D2A4C9E10}'])
+  const merge = doc.attrs?.mergeData as MergeData | null
+  if (merge?.fields.length) customXml.push([`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<sd:recipients xmlns:sd="${MERGE_NS}" name="${x(merge.name)}">${x(toCsv(merge)).replace(/\r/g, '&#13;')}</sd:recipients>`, '{3C1B7E52-9A4D-4F0E-8B6A-2D5C9E1F7A30}'])
+  customXml.forEach(([xml, guid], k) => {
+    const n = k + 1
+    files[`customXml/item${n}.xml`] = strToU8(xml)
+    files[`customXml/itemProps${n}.xml`] = strToU8(itemPropsXml(guid))
+    files[`customXml/_rels/item${n}.xml.rels`] = strToU8(relationshipsXml([{ id: 'rId1', type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXmlProps', target: `itemProps${n}.xml` }]))
+    overridesExtra[`customXml/itemProps${n}.xml`] = 'application/vnd.openxmlformats-officedocument.customXmlProperties+xml'
+    wr.rels.push({ id: `sdRcustomXml${n}`, type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml', target: `../customXml/item${n}.xml` })
+  })
   files['word/styles.xml'] = strToU8(wr.stylesXml())
   if (wr.lists.length) files['word/numbering.xml'] = strToU8(wr.numberingXml())
   Object.assign(files, wr.media)

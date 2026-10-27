@@ -1,5 +1,9 @@
 # export warnings
 loss: All formatting, images and tables are reduced to plain text
+loss: The mail-merge recipient list isn’t saved in this format (DOCX keeps it)
+
+# document data
+sources: none · recipients: none
 
 # after round trip
 paragraph: Kitchen sink

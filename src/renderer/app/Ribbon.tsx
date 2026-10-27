@@ -19,8 +19,8 @@ import { PROTECTION_LABELS, setProtection, type ProtectionMode } from '@/editor/
 import { COVER_PAGES } from '@/editor/templates'
 import { CITATION_STYLES, insertBibliography, setCitationStyle, styleOf } from '@/editor/citations'
 import { openSources } from './Citations'
-import { insertMergeField } from '@/editor/mailmerge'
-import { finishMerge, previewRecord, selectRecipients } from '../state/mailmerge'
+import { insertMergeField, type MergeData } from '@/editor/mailmerge'
+import { finishMerge, previewRecord, removeRecipients, selectRecipients } from '../state/mailmerge'
 import { setTableStyle, TABLE_STYLES, type TableStyle } from '@/editor/tables'
 
 const TABS: { id: RibbonTab; label: string }[] = [
@@ -1008,14 +1008,20 @@ export function fitWidth() {
 function MailMergeGroup() {
   const editor = useBodyEditor()
   const active = useApp((x) => x.active)
-  const m = useApp((x) => x.merge[x.active])
+  const preview = useApp((x) => x.merge[x.active]?.preview ?? null)
+  const data = useEditorState({ editor, selector: ({ editor: e }) => (e?.state.doc.attrs.mergeData as MergeData | null) ?? null }) ?? null
   if (!editor) return null
-  const fields = m?.data.fields ?? []
+  const fields = data?.fields ?? []
   return (
     <Group label="Mail merge">
-      <TextBtn icon={<Users />} label={m ? `${m.data.name}: ${m.data.rows.length} recipients` : 'Choose a CSV file with one row per recipient'} onClick={() => void selectRecipients(active)}>
-        {m ? `${m.data.rows.length} recipients` : 'Recipients…'}
+      <TextBtn icon={<Users />} label={data ? `${data.name}: ${data.rows.length} recipients, saved in this document. Choose another list` : 'Choose a CSV file with one row per recipient'} onClick={() => void selectRecipients(active)}>
+        {data ? `${data.rows.length} recipients` : 'Recipients…'}
       </TextBtn>
+      {data && (
+        <IconBtn label="Remove the recipient list from this document" size="sm" onClick={() => removeRecipients(active)} data-testid="merge-remove">
+          <Trash2 className="size-3.5" />
+        </IconBtn>
+      )}
       <Menu>
         <DropBtn label="Insert merge field" icon={<Braces />}>
           Insert field
@@ -1024,18 +1030,18 @@ function MailMergeGroup() {
           {fields.length ? fields.map((f) => <MenuItem key={f} onSelect={() => insertMergeField(editor, f)}>{f}</MenuItem>) : <MenuLabel>Choose recipients first</MenuLabel>}
         </MenuContent>
       </Menu>
-      {m && (
+      {data && (
         <>
-          <TextBtn icon={<Eye />} active={m.preview !== null} label="Show the values of a recipient in place of the fields" onClick={() => previewRecord(m.preview === null ? 0 : null, active)}>
+          <TextBtn icon={<Eye />} active={preview !== null} label="Show the values of a recipient in place of the fields" onClick={() => previewRecord(preview === null ? 0 : null, active)}>
             Preview
           </TextBtn>
-          {m.preview !== null && (
+          {preview !== null && (
             <span className="flex items-center text-[12px] tabular-nums text-text-2">
-              <IconBtn label="Previous recipient" size="sm" onClick={() => previewRecord(m.preview! - 1, active)}>
+              <IconBtn label="Previous recipient" size="sm" onClick={() => previewRecord(preview - 1, active)}>
                 <ChevronLeft className="size-3.5" />
               </IconBtn>
-              {m.preview + 1}/{m.data.rows.length}
-              <IconBtn label="Next recipient" size="sm" onClick={() => previewRecord(m.preview! + 1, active)}>
+              {preview + 1}/{data.rows.length}
+              <IconBtn label="Next recipient" size="sm" onClick={() => previewRecord(preview + 1, active)}>
                 <ChevronRight className="size-3.5" />
               </IconBtn>
             </span>

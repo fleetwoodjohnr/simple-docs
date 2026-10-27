@@ -1,6 +1,9 @@
 # export warnings
 loss: Paragraph styles (Subtitle, Quote, Caption, custom styles) become plain paragraphs
 
+# document data
+sources: none · recipients: none
+
 # after round trip
 h1: Project Report
 paragraph: Prepared January 15, 2026

@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import type { Editor } from '@tiptap/core'
 import { DEFAULT_SETTINGS, type OpenedFile, type RecentFile, type RecoveryEntry, type Settings } from '@/shared/ipc-types'
 import type { FormatId, FormatWarning } from '@/formats/types'
-import type { MergeData } from '@/editor/mailmerge'
 
 export type RibbonTab = 'home' | 'insert' | 'layout' | 'references' | 'review' | 'view' | 'tools'
 export type LeftPanel = 'outline' | 'pages' | 'recent'
@@ -74,8 +73,8 @@ export interface AppState {
   hf: { tabId: string; kind: 'header' | 'footer'; page: number } | null
   /** Show tracked deletions and insertion styling (false = "final" view). */
   showMarkup: boolean
-  /** Mail-merge data source and previewed record, per document tab (not saved). */
-  merge: Record<string, { data: MergeData; preview: number | null }>
+  /** Previewed mail-merge record per document tab (the recipient list itself is the doc attribute `mergeData`). */
+  merge: Record<string, { preview: number | null }>
   /** Footnote/endnote being edited (document position of its reference). */
   note: { tabId: string; pos: number } | null
 }

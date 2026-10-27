@@ -41,7 +41,8 @@ export function normalizeDoc(doc: JSONContent, o: NewDocOptions = {}): JSONConte
       trackChanges: attrs.trackChanges ?? false,
       protection: attrs.protection ?? null,
       sources: attrs.sources ?? null,
-      citationStyle: attrs.citationStyle ?? null
+      citationStyle: attrs.citationStyle ?? null,
+      mergeData: attrs.mergeData ?? null
     },
     content: doc.content?.length ? doc.content : [{ type: 'paragraph' }]
   }

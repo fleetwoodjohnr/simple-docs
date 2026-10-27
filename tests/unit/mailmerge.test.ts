@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { Editor, type JSONContent } from '@tiptap/core'
 import { strFromU8, unzipSync } from 'fflate'
 import { createExtensions } from '@/editor/extensions'
-import { insertMergeField, mergeDocuments, mergeFieldsIn, parseCsv, setMergePreview } from '@/editor/mailmerge'
+import { insertMergeField, mergeDocuments, mergeFieldsIn, parseCsv, setMergePreview, toCsv } from '@/editor/mailmerge'
+import { exportBytes } from '@/formats/registry'
 import { exportDocx } from '@/formats/docx/write'
 import { importDocx } from '@/formats/docx/read'
 
@@ -19,6 +20,35 @@ describe('CSV parsing', () => {
   it('detects semicolon and tab delimiters', () => {
     expect(parseCsv('a;b\n1;2').rows).toEqual([{ a: '1', b: '2' }])
     expect(parseCsv('a\tb\n1\t2').rows).toEqual([{ a: '1', b: '2' }])
+  })
+})
+
+describe('recipient list saved with the document', () => {
+  const data = {
+    name: 'people.csv',
+    fields: ['Name', 'City; region', 'Note'],
+    rows: [
+      { Name: 'Lovelace, Ada', 'City; region': 'London', Note: 'said "hi"\r\nthen left' },
+      { Name: ' Turing ', 'City; region': '', Note: '<b>&amp;</b>' }
+    ]
+  }
+
+  it('toCsv is the inverse of parseCsv (quotes, delimiters, newlines, spaces)', () => {
+    expect(parseCsv(toCsv(data))).toEqual({ fields: data.fields, rows: data.rows })
+  })
+
+  it('travels in DOCX as a custom XML part; other formats warn that it is not kept', async () => {
+    const doc: JSONContent = { type: 'doc', attrs: { mergeData: data }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Dear ' }, { type: 'mergeField', attrs: { name: 'Name' } }] }] }
+    const out = exportDocx(doc)
+    const files = unzipSync(out.data)
+    const part = Object.keys(files).find((p) => /^customXml\/item\d+\.xml$/.test(p) && strFromU8(files[p]).includes('urn:simple-docs:mail-merge:1'))!
+    expect(part).toBeTruthy()
+    expect(strFromU8(files['[Content_Types].xml'])).toContain(part.replace('item', 'itemProps'))
+    expect(importDocx(out.data).doc.attrs?.mergeData).toEqual(data)
+    expect(out.warnings.map((w) => w.message).join()).not.toMatch(/recipient/)
+    const lo = { available: async () => false, convert: async () => new Uint8Array() }
+    for (const fmt of ['odt', 'md', 'html', 'txt'] as const) expect((await exportBytes(fmt, doc, null, lo)).warnings.map((w) => w.message)).toContain('The mail-merge recipient list isn’t saved in this format (DOCX keeps it)')
+    expect(mergeDocuments(doc, data.rows).attrs?.mergeData).toBeNull()
   })
 })
 

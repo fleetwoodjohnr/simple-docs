@@ -160,8 +160,9 @@ test('citations: add a source, cite it, switch style, insert a bibliography', as
   }
 })
 
-test('mail merge: CSV recipients, insert fields, preview, merge into a new document', async () => {
+test('mail merge: CSV recipients, insert fields, preview, merge into a new document; the list is saved with the DOCX', async () => {
   const { app, page } = await launch()
+  const file = path.join(tempDir(), 'letter.docx')
   try {
     await page.keyboard.press('Control+n')
     await doc(page).click()
@@ -178,6 +179,20 @@ test('mail merge: CSV recipients, insert fields, preview, merge into a new docum
     await expect(doc(page)).toHaveText('Dear «Name» of «City»')
     await page.getByRole('button', { name: 'Preview', exact: true }).click()
     await expect(doc(page)).toHaveText('Dear Lovelace, Ada of London', { useInnerText: true })
+    await page.getByRole('button', { name: 'Next recipient' }).click()
+    await expect(doc(page)).toHaveText('Dear Alan Turing of Wilmslow', { useInnerText: true })
+
+    // Save, close and reopen: the recipients come back with the document, no CSV needed.
+    await stubDialogs(app, { save: file, open: [] })
+    await page.keyboard.press('Control+s')
+    await expect(page.getByTestId('save-status')).toHaveText(/Saved/)
+    await page.keyboard.press('Control+w')
+    await stubDialogs(app, { open: [file] })
+    await page.keyboard.press('Control+o')
+    await page.getByRole('tab', { name: 'Tools', exact: true }).click()
+    await expect(page.getByRole('button', { name: /3 recipients/ })).toBeVisible()
+    await expect(doc(page)).toHaveText('Dear «Name» of «City»')
+    await page.getByRole('button', { name: 'Preview', exact: true }).click()
     await page.getByRole('button', { name: 'Next recipient' }).click()
     await expect(doc(page)).toHaveText('Dear Alan Turing of Wilmslow', { useInnerText: true })
     await page.getByRole('button', { name: 'Finish & merge' }).click()
