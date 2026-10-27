@@ -1,0 +1,115 @@
+// Contract between the main process and the renderer. The preload script exposes
+// `window.simpleDocs` implementing `SimpleDocsApi`; main validates every argument.
+
+export interface OpenedFile {
+  path: string
+  name: string
+  data: Uint8Array
+  mtime: number
+}
+
+export interface RecentFile {
+  path: string
+  name: string
+  openedAt: number
+  pinned?: boolean
+  favorite?: boolean
+  thumbnail?: string
+}
+
+export interface RecoveryEntry {
+  id: string
+  savedAt: number
+  /** JSON produced by the renderer (document + tab metadata). */
+  payload: string
+}
+
+export type ThemeSetting = 'system' | 'light' | 'dark'
+
+export interface Settings {
+  theme: ThemeSetting
+  accent: string
+  defaultFont: string
+  defaultFontSize: number
+  defaultPageSize: 'letter' | 'a4' | 'legal' | 'a3'
+  defaultMargins: 'normal' | 'narrow' | 'moderate' | 'wide'
+  defaultSaveFormat: 'docx' | 'odt' | 'md' | 'html' | 'txt'
+  autosave: boolean
+  autosaveIntervalSec: number
+  recoveryIntervalSec: number
+  spellcheck: boolean
+  language: string
+  authorName: string
+  showRuler: boolean
+  ribbonCollapsed: boolean
+  reduceMotion: boolean
+  uiScale: number
+  shortcuts: Record<string, string>
+  quickAccess: string[]
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  theme: 'system',
+  accent: '#5b5bd6',
+  defaultFont: 'Calibri',
+  defaultFontSize: 11,
+  defaultPageSize: 'letter',
+  defaultMargins: 'normal',
+  defaultSaveFormat: 'docx',
+  autosave: true,
+  autosaveIntervalSec: 30,
+  recoveryIntervalSec: 5,
+  spellcheck: true,
+  language: 'en-US',
+  authorName: '',
+  showRuler: true,
+  ribbonCollapsed: false,
+  reduceMotion: false,
+  uiScale: 1,
+  shortcuts: {},
+  quickAccess: ['file.save', 'edit.undo', 'edit.redo']
+}
+
+export interface PdfOptions {
+  title?: string
+}
+
+export interface SimpleDocsApi {
+  platform: 'darwin' | 'win32' | 'linux' | string
+  openDialog(): Promise<OpenedFile[]>
+  readFile(path: string): Promise<OpenedFile>
+  saveDialog(defaultName: string, extensions: string[]): Promise<string | null>
+  writeFile(path: string, data: Uint8Array): Promise<{ mtime: number }>
+  /** Resolve a dropped File to its path and grant access to it. */
+  grantDroppedFile(file: File): string | null
+
+  recentList(): Promise<RecentFile[]>
+  recentAdd(entry: RecentFile): Promise<RecentFile[]>
+  recentUpdate(path: string, patch: Partial<RecentFile>): Promise<RecentFile[]>
+  recentRemove(path: string): Promise<RecentFile[]>
+
+  recoveryWrite(id: string, payload: string): Promise<void>
+  recoveryList(): Promise<RecoveryEntry[]>
+  recoveryRemove(id: string): Promise<void>
+
+  settingsGet(): Promise<Settings>
+  settingsSet(patch: Partial<Settings>): Promise<Settings>
+
+  exportPdf(options: PdfOptions): Promise<Uint8Array>
+  print(): Promise<boolean>
+  capturePage(rect: { x: number; y: number; width: number; height: number }): Promise<string>
+
+  libreOfficeAvailable(): Promise<boolean>
+  libreOfficeConvert(data: Uint8Array, fromExt: string, toExt: string): Promise<Uint8Array>
+
+  windowMinimize(): void
+  windowToggleMaximize(): void
+  windowClose(): void
+  setTitleBarColors(colors: { color: string; symbolColor: string }): void
+  openExternal(url: string): Promise<void>
+
+  onOpenFiles(cb: (files: OpenedFile[]) => void): () => void
+  onCloseRequest(cb: () => void): () => void
+  onMenuCommand(cb: (id: string) => void): () => void
+  confirmClose(): void
+}
