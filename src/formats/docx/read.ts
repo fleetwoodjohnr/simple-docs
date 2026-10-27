@@ -3,6 +3,7 @@ import type { JSONContent } from '@tiptap/core'
 import { makePageSetup, PAGE_SIZES, type DocMeta, type HeadersFooters, type PageNumberFormat, type PageSetup, type ParaProps, type RunProps, type StyleDef, type StyleMap } from '@/editor/model'
 import { Warnings, type ImportResult } from '../types'
 import type { CommentMap } from '@/editor/comments'
+import { parseSources } from './sources'
 import { NS, attr, child, children, elements, find, findAll, is, mimeFromExt, num, onOff, parseXml, serialize, textOf, toBase64, wval, type El } from './xml'
 
 // DOCX (WordprocessingML) → editor JSON. Unsupported elements are kept verbatim as
@@ -673,8 +674,12 @@ class Reader {
           }
           case 'fldSimple': {
             const kind = this.inHF ? fieldKind(attr(e, NS.w, 'instr') ?? '') : null
+            const cite = this.inHF ? null : citationFrom(attr(e, NS.w, 'instr') ?? '')
             if (kind) push({ type: 'field', attrs: { kind } })
-            else {
+            else if (cite) {
+              push(cite)
+              this.inlines(e, out, linkMark, { inInstr: false, instr: '', skip: true, citation: cite })
+            } else {
               this.w.add('info', 'Fields (references, cross-references) are kept as their current text')
               this.inlines(e, out, linkMark, field)
             }
@@ -734,6 +739,10 @@ class Reader {
     if (child(child(r, NS.w, 'rPr'), NS.w, 'rPrChange')) this.w.add('info', 'Tracked formatting changes from Word are shown as accepted')
     const push = (n: JSONContent) => out[out.length - 1].push(n)
     const text = (t: string) => {
+      if (field.citation && field.skip && !field.inInstr) {
+        field.citation.attrs!.text += t
+        return
+      }
       if (!t || field.inInstr || field.skip) return
       push(marks.length ? { type: 'text', text: t, marks: marks.map((m) => ({ ...m })) } : { type: 'text', text: t })
     }
@@ -787,11 +796,19 @@ class Reader {
             else if (t === 'separate' || (t === 'end' && field.inInstr)) {
               field.inInstr = false
               const kind = this.inHF ? fieldKind(field.instr) : null
+              const cite = this.inHF ? null : citationFrom(field.instr)
               if (kind) {
                 push({ type: 'field', attrs: { kind } })
                 field.skip = t === 'separate'
+              } else if (cite) {
+                push(cite)
+                field.citation = cite
+                field.skip = t === 'separate'
               } else if (field.instr.trim()) this.w.add('info', 'Fields (references, cross-references) are kept as their current text')
-            } else if (t === 'end') field.skip = false
+            } else if (t === 'end') {
+              field.skip = false
+              field.citation = undefined
+            }
             continue
           }
           case 'drawing': {
@@ -1143,8 +1160,18 @@ class ListBuilder {
 interface FieldState {
   inInstr: boolean
   instr: string
+  /** Citation node collecting the field's displayed text. */
+  citation?: JSONContent
   /** Skipping the cached result of a field we turned into a live field node. */
   skip: boolean
+}
+
+/** A CITATION field becomes a citation node (its first source; the displayed text is collected separately). */
+function citationFrom(instr: string): JSONContent | null {
+  const m = /^\s*CITATION\s+(\S+)(.*)$/i.exec(instr)
+  if (!m) return null
+  const pages = /\\p\s+(?:"([^"]*)"|(\S+))/.exec(m[2])
+  return { type: 'citation', attrs: { source: m[1], pages: pages ? pages[1] ?? pages[2] : null, text: '' } }
 }
 
 /** Map a Word field instruction to one of our live fields. */
@@ -1214,6 +1241,9 @@ export function importDocx(data: Uint8Array): ImportResult {
   const body = find(doc.documentElement, NS.w, 'body')
   if (!body) throw new Error('The document body is missing.')
   const content = r.blocks(body)
+  // Word's bibliography sources (customXml <b:Sources>).
+  let bib: ReturnType<typeof parseSources> = null
+  for (const [p, bytes] of Object.entries(files)) if (/^customXml\/item\d*\.xml$/.test(p)) bib ??= parseSources(parseXml(strFromU8(bytes)) as unknown as Document)
 
   const finalSect = child(body, NS.w, 'sectPr')
   const page = r.pageSetup(finalSect)
@@ -1243,7 +1273,7 @@ export function importDocx(data: Uint8Array): ImportResult {
 
   const carry: DocxCarry = { parts: files, rels: [...r.rels.values()], sectPrExtra: extra, overrides, converted: [...(hfResult?.parts ?? []), ...r.noteParts, ...r.commentParts] }
   return {
-    doc: { type: 'doc', attrs: { page, styles: r.styles, meta: r.meta(), hf: hfResult?.hf ?? null, comments: Object.keys(r.comments).length ? r.comments : null, trackChanges, protection }, content: content.length ? content : [{ type: 'paragraph' }] },
+    doc: { type: 'doc', attrs: { page, styles: r.styles, meta: r.meta(), hf: hfResult?.hf ?? null, comments: Object.keys(r.comments).length ? r.comments : null, trackChanges, protection, sources: bib && Object.keys(bib.sources).length ? bib.sources : null, citationStyle: bib?.style ?? null }, content: content.length ? content : [{ type: 'paragraph' }] },
     warnings: r.w.list(),
     carry
   }

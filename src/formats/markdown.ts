@@ -142,6 +142,9 @@ class Serializer {
           const n = this.notes.length + 1
           this.notes.push(node.attrs?.content as JSONContent[])
           out += `[^${n}]`
+        } else if (node.type === 'citation') {
+          this.w.add('loss', 'Citations are saved as plain text in Markdown')
+          out += escapeText(String(node.attrs?.text ?? ''))
         } else if (node.type === 'preservedInline') {
           this.w.add('loss', 'Preserved content from the original file cannot be represented in Markdown')
           out += escapeText(String(node.attrs?.text ?? ''))

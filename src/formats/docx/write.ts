@@ -5,6 +5,8 @@ import { effectiveListType, DEFAULT_BULLETS, type ListType } from '@/editor/numb
 import { Warnings, type ExportResult } from '../types'
 import { HIGHLIGHT_NAMES, type DocxCarry } from './read'
 import type { CommentMap } from '@/editor/comments'
+import { itemPropsXml, sourcesXml } from './sources'
+import type { CitationStyle, SourceMap } from '@/editor/citations'
 import { escXml as x, extFromMime, imageSize, parseDataUrl } from './xml'
 
 // Editor JSON → DOCX. Element order inside pPr/rPr follows the OOXML schema
@@ -179,6 +181,13 @@ class Writer {
         this.notes[kind].push(`<w:${kind} w:id="${id}">${body}</w:${kind}>`)
         this.usedNotes.add(kind)
         return `<w:r><w:rPr><w:rStyle w:val="${refStyle}"/></w:rPr><w:${kind}Reference w:id="${id}"/></w:r>`
+      }
+      case 'citation': {
+        const a = n.attrs ?? {}
+        const rpr = this.rPr(n.marks as Mark[])
+        const r = (inner: string) => `<w:r>${rpr}${inner}</w:r>`
+        const instr = ` CITATION ${a.source} \\l 1033 ${a.pages ? `\\p "${a.pages}" ` : ''}`
+        return r('<w:fldChar w:fldCharType="begin"/>') + r(`<w:instrText xml:space="preserve">${x(instr)}</w:instrText>`) + r('<w:fldChar w:fldCharType="separate"/>') + r(`<w:t xml:space="preserve">${x(String(a.text ?? ''))}</w:t>`) + r('<w:fldChar w:fldCharType="end"/>')
       }
       case 'field': {
         const instr = ({ page: 'PAGE', pages: 'NUMPAGES', date: 'DATE \\@ "MMMM d, yyyy"', title: 'TITLE', author: 'AUTHOR' } as Record<string, string>)[String(n.attrs?.kind)] ?? 'PAGE'
@@ -774,6 +783,15 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
     if (edit) st = insertSetting(st, `<w:documentProtection w:edit="${edit}" w:enforcement="1"/>`, ['autoFormatOverride', 'styleLockTheme', 'styleLockQFSet', 'defaultTabStop', 'autoHyphenation', 'consecutiveHyphenLimit', 'hyphenationZone', 'doNotHyphenateCaps', 'showEnvelope', 'summaryLength', 'clickAndTypeStyle', 'defaultTableStyle', 'evenAndOddHeaders', 'bookFoldRevPrinting', 'bookFoldPrinting', 'bookFoldPrintingSheets', 'drawingGridHorizontalSpacing', 'drawingGridVerticalSpacing', 'characterSpacingControl', 'compat', 'rsids'])
     if (hf?.differentOddEven) st = insertSetting(st, '<w:evenAndOddHeaders/>', ['bookFoldRevPrinting', 'bookFoldPrinting', 'bookFoldPrintingSheets', 'drawingGridHorizontalSpacing', 'drawingGridVerticalSpacing', 'displayHorizontalDrawingGridEvery', 'displayVerticalDrawingGridEvery', 'doNotUseMarginsForDrawingGridOrigin', 'doNotShadeFormData', 'noPunctuationKerning', 'characterSpacingControl', 'compat', 'rsids'])
     files['word/settings.xml'] = strToU8(st)
+  }
+  // Bibliography sources for Word's citation tools (customXml parts from the original file are not carried).
+  const sources = doc.attrs?.sources as SourceMap | null
+  if (sources && Object.keys(sources).length) {
+    files['customXml/item1.xml'] = strToU8(sourcesXml(sources, (doc.attrs?.citationStyle as CitationStyle | null) ?? 'apa'))
+    files['customXml/itemProps1.xml'] = strToU8(itemPropsXml('{6A3F5C1E-5D2B-4C8A-9E1F-3B7D2A4C9E10}'))
+    files['customXml/_rels/item1.xml.rels'] = strToU8(relationshipsXml([{ id: 'rId1', type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXmlProps', target: 'itemProps1.xml' }]))
+    overridesExtra['customXml/itemProps1.xml'] = 'application/vnd.openxmlformats-officedocument.customXmlProperties+xml'
+    wr.rels.push({ id: 'sdRsources', type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml', target: '../customXml/item1.xml' })
   }
   files['word/styles.xml'] = strToU8(wr.stylesXml())
   if (wr.lists.length) files['word/numbering.xml'] = strToU8(wr.numberingXml())

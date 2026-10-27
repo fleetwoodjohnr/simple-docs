@@ -601,6 +601,19 @@ body {
   padding: 0;
 }
 
+/* ================= citations ================= */
+.sd-doc .sd-citation {
+  border-radius: 2px;
+  cursor: default;
+}
+.sd-doc .sd-citation:hover,
+.sd-doc .sd-citation.ProseMirror-selectednode {
+  background: var(--accent-soft);
+}
+.print-page .sd-citation {
+  background: none !important;
+}
+
 /* ================= table of contents ================= */
 .sd-doc .sd-toc {
   margin: 0 0 12pt;

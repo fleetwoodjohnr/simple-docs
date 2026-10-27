@@ -210,6 +210,9 @@ class OdtWriter {
         return '<text:line-break/>'
       case 'image':
         return this.image(n)
+      case 'citation':
+        this.w.add('loss', 'Citations are saved as plain text (their link to the sources list is not kept)')
+        return odfText(String(n.attrs?.text ?? ''))
       case 'field': {
         const k = String(n.attrs?.kind)
         if (k === 'page') return '<text:page-number text:select-page="current">1</text:page-number>'

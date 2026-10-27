@@ -1,13 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Editor } from '@tiptap/core'
-import { BookImage, Lock, GitCompare, Accessibility,
+import { BookMarked, Library, BookImage, Lock, GitCompare, Accessibility,
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, CalendarDays, CaseSensitive, ChevronDown, ChevronUp, ClipboardPaste, Code2, Columns3, Copy, Eraser, Eye, FileDown, Focus,
   Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Info, Italic, Keyboard, Link2, List, ListChecks, ListOrdered, Maximize2, Minus, Moon, PaintBucket, Paintbrush, PanelLeft,
   PanelRight, Pilcrow, Plus, Printer, Quote, Redo2, Replace, Ruler, Scissors, Search, Settings, Sigma, SquareDashed, Strikethrough, Subscript, Superscript, Table2, Type, Underline, Undo2,
   Volume2, WrapText, ZoomIn, ZoomOut, BookOpen, PanelTop, PanelBottom, Hash, ListTree, RefreshCw, MessageSquarePlus, MessagesSquare, CheckCheck, XCircle, ArrowUpToLine, ArrowDownToLine, FilePenLine, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, ArrowDownAZ, ArrowUpZA, FileCode2, ShieldCheck, Merge, Split, Trash2, Rows3, AlignStartVertical, AlignEndVertical, RectangleHorizontal, RectangleVertical
 } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
-import { useApp, set, updateSettings, type RibbonTab } from '../state/store'
+import { bodyEditor, useApp, set, updateSettings, type RibbonTab } from '../state/store'
 import { insertCoverPage, applyStyle, changeCase, FONT_SIZES, insertPageNumber, runCommand, shortcutFor, SYMBOLS, updateBlocks, zoomTo } from './commands'
 import { useActiveEditor, useBodyEditor, useSnapshot, type Snapshot } from './hooks'
 import { useEditorState } from '@tiptap/react'
@@ -17,6 +17,8 @@ import { pageOf } from '@/layout/plugin'
 import { fontStack } from '@/editor/styles-css'
 import { PROTECTION_LABELS, setProtection, type ProtectionMode } from '@/editor/protection'
 import { COVER_PAGES } from '@/editor/templates'
+import { CITATION_STYLES, insertBibliography, setCitationStyle, styleOf } from '@/editor/citations'
+import { openSources } from './Citations'
 import { setTableStyle, TABLE_STYLES, type TableStyle } from '@/editor/tables'
 
 const TABS: { id: RibbonTab; label: string }[] = [
@@ -749,6 +751,24 @@ function LayoutTab({ editor, s }: { editor: Editor; s: Snapshot }) {
   )
 }
 
+function CitationStyleMenu() {
+  const editor = useBodyEditor()
+  const style = useEditorState({ editor, selector: ({ editor: e }) => (e ? styleOf(e.state.doc) : 'apa') }) ?? 'apa'
+  if (!editor) return null
+  return (
+    <Menu>
+      <DropBtn label="Citation style">{CITATION_STYLES.find((c) => c.id === style)!.label}</DropBtn>
+      <MenuContent>
+        {CITATION_STYLES.map((c) => (
+          <MenuItem key={c.id} onSelect={() => setCitationStyle(editor, c.id)} className={c.id === style ? 'text-accent' : ''}>
+            {c.label}
+          </MenuItem>
+        ))}
+      </MenuContent>
+    </Menu>
+  )
+}
+
 function ReferencesTab() {
   return (
     <>
@@ -768,6 +788,20 @@ function ReferencesTab() {
         <TextBtn icon={<BookOpen />} label="Open the navigation pane (document outline)" onClick={() => set({ leftPanel: 'outline' })}>
           Outline
         </TextBtn>
+      </Group>
+      <Sep />
+      <Group label="Citations">
+        <TextBtn icon={<Quote />} label="Cite a source at the cursor" onClick={() => openSources(true)}>
+          Insert citation
+        </TextBtn>
+        <TextBtn icon={<BookMarked />} label="Add, edit and delete the sources of this document" onClick={() => openSources(false)}>
+          Sources
+        </TextBtn>
+        <CitationStyleMenu />
+        <TextBtn icon={<Library />} label="Insert a reference list of all sources" onClick={() => bodyEditor() && insertBibliography(bodyEditor()!)}>
+          Bibliography
+        </TextBtn>
+        <Cmd id="references.updateCitations" label="Update citations and bibliography" icon={<RefreshCw className="size-4" />} />
       </Group>
       <Sep />
       <Group label="Notes">

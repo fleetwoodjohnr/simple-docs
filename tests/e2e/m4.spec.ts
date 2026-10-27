@@ -130,3 +130,30 @@ test('cover page: inserted from document properties onto its own page', async ()
     await quit(app)
   }
 })
+
+test('citations: add a source, cite it, switch style, insert a bibliography', async () => {
+  const { app, page } = await launch()
+  try {
+    await page.keyboard.press('Control+n')
+    await doc(page).click()
+    await page.keyboard.type('Programs can weave patterns ')
+    await page.getByRole('tab', { name: 'References', exact: true }).click()
+    await page.getByRole('button', { name: 'Insert citation' }).click()
+    await page.getByLabel('Authors').fill('Lovelace, Ada')
+    await page.getByRole('dialog').getByLabel('Title', { exact: true }).fill('Notes on the Analytical Engine')
+    await page.getByLabel('Year').fill('1843')
+    await page.getByLabel('Publisher').fill('Taylor')
+    await page.getByTestId('save-source').click()
+    await expect(doc(page).locator('.sd-citation')).toHaveText('(Lovelace, 1843)')
+    await page.getByRole('button', { name: 'Bibliography', exact: true }).click()
+    await expect(doc(page)).toContainText('References')
+    await expect(doc(page)).toContainText('Lovelace, A. (1843). Notes on the Analytical Engine. Taylor.')
+    await page.getByRole('button', { name: 'Citation style' }).click()
+    await page.getByRole('menuitem', { name: /MLA/ }).click()
+    await expect(doc(page).locator('.sd-citation')).toHaveText('(Lovelace)')
+    await expect(doc(page)).toContainText('Works Cited')
+    await expect(doc(page)).toContainText('Lovelace, Ada. Notes on the Analytical Engine. Taylor, 1843.')
+  } finally {
+    await quit(app)
+  }
+})

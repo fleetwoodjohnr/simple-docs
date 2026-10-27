@@ -10,6 +10,7 @@ import { distributeColumns, setCellAlign, sortTable, tableToText, textToTable } 
 import { updateStyleFromSelection } from '@/editor/style-ops'
 import { emptyHF, resolveStyle, type HeadersFooters, type HFKind, type StyleMap } from '@/editor/model'
 import { COVER_PAGES } from '@/editor/templates'
+import { refreshCitations } from '@/editor/citations'
 import { bodyEditor } from '../state/store'
 
 // Central command registry. Ribbon buttons, menus, the floating toolbar, the
@@ -470,6 +471,7 @@ function reviewAt(accept: boolean) {
 def({ id: 'review.comment', label: 'New comment', shortcut: 'Mod-Alt-m', run: () => newComment() })
 def({ id: 'review.nextComment', label: 'Next comment', run: () => stepComment(1) })
 def({ id: 'review.prevComment', label: 'Previous comment', run: () => stepComment(-1) })
+def({ id: 'references.updateCitations', label: 'Update citations and bibliography', run: () => void bodyEditor()?.view.dispatch(refreshCitations(bodyEditor()!)) })
 def({ id: 'review.compare', label: 'Compare with another document…', run: () => docs.compareWithFile() })
 def({ id: 'review.a11y', label: 'Check accessibility', needsEditor: false, run: () => set((s) => ({ rightPanel: s.rightPanel === 'a11y' ? null : 'a11y' })), isActive: () => get().rightPanel === 'a11y' })
 def({ id: 'review.showComments', label: 'Show comments', needsEditor: false, run: () => set((s) => ({ rightPanel: s.rightPanel === 'comments' ? null : 'comments' })), isActive: () => get().rightPanel === 'comments' })

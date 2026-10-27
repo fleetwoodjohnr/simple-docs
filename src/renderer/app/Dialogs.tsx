@@ -12,6 +12,7 @@ import { FORMAT_LABELS } from '@/formats/types'
 import type { Settings } from '@/shared/ipc-types'
 import { refreshSpelling, resetSpelling } from '../spell/client'
 import { HistoryDialog } from './History'
+import { SourcesDialog } from './Citations'
 
 const close = () => set({ dialog: null })
 
@@ -39,6 +40,8 @@ export function Dialogs() {
       return <PdfPasswordDialog d={d} />
     case 'history':
       return <HistoryDialog />
+    case 'sources':
+      return <SourcesDialog insert={d.insert} />
     default:
       return null
   }
