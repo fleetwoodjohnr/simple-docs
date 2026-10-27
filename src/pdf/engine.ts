@@ -25,6 +25,15 @@ export interface TextRun {
   start: number
   end: number
   fontSize: number
+  /** Text direction in page space, counter-clockwise: 0 (left to right), 90, 180 or 270. */
+  angle: number
+}
+
+type Box = [number, number, number, number]
+/** Bounds of an [l, t, r, b] box turned by q quarter turns (counter-clockwise). */
+function turn([l, t, r, b]: Box, q: number): Box {
+  const pts = ([[l, t], [r, b]] as [number, number][]).map(([x, y]) => [[x, y], [-y, x], [-x, -y], [y, -x]][((q % 4) + 4) % 4])
+  return [Math.min(pts[0][0], pts[1][0]), Math.max(pts[0][1], pts[1][1]), Math.max(pts[0][0], pts[1][0]), Math.min(pts[0][1], pts[1][1])]
 }
 
 export type AnnotKind = 'highlight' | 'underline' | 'strikeout' | 'squiggly' | 'note' | 'freetext' | 'ink' | 'square' | 'other'
@@ -258,8 +267,11 @@ export class PdfDocument {
       this.withTextPage(page, (tp) => {
         const n = this.m.FPDFText_CountChars(tp)
         const out: TextRun[] = []
-        let cur: TextRun | null = null
+        // Grouping happens in each run's own frame (its text turned to run left to right), so text set
+        // at a quarter turn in page space (as on rotated pages) groups like any other.
+        let cur: (TextRun & { f: Box }) | null = null
         let curObj = 0
+        const runs: (TextRun & { f: Box })[] = []
         this.e.withBuf(32, (b) => {
           for (let k = 0; k < n; k++) {
             const code = this.m.FPDFText_GetUnicode(tp, k)
@@ -272,37 +284,42 @@ export class PdfDocument {
               cur = null
               continue
             }
-            const sameLine = cur && Math.abs(cur.box[3] - bot) < (t - bot) * 0.6
+            // PDFium measures the angle clockwise.
+            const q = (4 - (Math.round(Math.max(0, this.m.FPDFText_GetCharAngle(tp, k)) / (Math.PI / 2)) % 4)) % 4
+            const f = turn([l, t, r, bot], -q)
+            const sameLine = cur && cur.angle === q * 90 && Math.abs(cur.f[3] - f[3]) < (f[1] - f[3]) * 0.6
             if (!cur || obj !== curObj || !sameLine) {
-              cur = { text: '', box: [l, t, r, bot], start: k, end: k, fontSize: this.m.FPDFText_GetFontSize(tp, k) }
-              out.push(cur)
+              cur = { text: '', box: [l, t, r, bot], f, start: k, end: k, fontSize: this.m.FPDFText_GetFontSize(tp, k), angle: q * 90 }
+              runs.push(cur)
               curObj = obj
             }
             cur.text += ch
             cur.end = k + 1
-            cur.box = [Math.min(cur.box[0], l), Math.max(cur.box[1], t), Math.max(cur.box[2], r), Math.min(cur.box[3], bot)]
+            cur.f = [Math.min(cur.f[0], f[0]), Math.max(cur.f[1], f[1]), Math.max(cur.f[2], f[2]), Math.min(cur.f[3], f[3])]
           }
         })
-        return out.filter((r) => r.text.trim())
+        for (const { f, ...run } of runs) if (run.text.trim()) out.push({ ...run, box: turn(f, run.angle / 90) })
+        return out
       })
     )
   }
 
   /** Runs merged into visual lines (same baseline, close together) — what a reader thinks of as "a line of text". */
   lines(i: number): TextRun[] {
-    const out: TextRun[] = []
-    for (const r of this.runs(i)) {
+    const out: (TextRun & { f: Box })[] = []
+    for (const run of this.runs(i)) {
+      const r = { ...run, f: turn(run.box, -run.angle / 90) }
       const prev = out[out.length - 1]
       // Tolerances scale with the font size (glyph boxes of punctuation are tiny).
       const fs = Math.max(prev?.fontSize ?? 0, r.fontSize, 4)
-      if (prev && Math.abs(prev.box[3] - r.box[3]) < fs * 0.4 && r.box[0] - prev.box[2] < fs * 1.2 && r.box[0] >= prev.box[2] - fs) {
-        const gap = r.box[0] - prev.box[2]
+      if (prev && prev.angle === r.angle && Math.abs(prev.f[3] - r.f[3]) < fs * 0.4 && r.f[0] - prev.f[2] < fs * 1.2 && r.f[0] >= prev.f[2] - fs) {
+        const gap = r.f[0] - prev.f[2]
         prev.text += (gap > r.fontSize * 0.2 && !/\s$/.test(prev.text) && !/^\s/.test(r.text) ? ' ' : '') + r.text
         prev.end = r.end
-        prev.box = [Math.min(prev.box[0], r.box[0]), Math.max(prev.box[1], r.box[1]), Math.max(prev.box[2], r.box[2]), Math.min(prev.box[3], r.box[3])]
-      } else out.push({ ...r })
+        prev.f = [Math.min(prev.f[0], r.f[0]), Math.max(prev.f[1], r.f[1]), Math.max(prev.f[2], r.f[2]), Math.min(prev.f[3], r.f[3])]
+      } else out.push(r)
     }
-    return out
+    return out.map(({ f, ...r }) => ({ ...r, box: turn(f, r.angle / 90) }))
   }
 
   /** Case-insensitive search; returns per-page hit boxes. */
@@ -415,21 +432,36 @@ export class PdfDocument {
     })
   }
 
-  /** Add new text as page content (one text object per line) with a standard font. Baseline of the first line at (x, y). */
+  /** Add new text as page content (one text object per line) with a standard font. Baseline of the first line at (x, y); upright as the page is displayed. */
   addText(i: number, x: number, y: number, text: string, size = 12, color: [number, number, number, number] = [0, 0, 0, 255], fontName = 'Helvetica'): boolean {
     return this.withPage(i, (page) => {
       const font = this.m.FPDFText_LoadStandardFont(this.ptr, fontName)
+      const [c, s] = this.upright(page)
       text.split('\n').forEach((line, k) => {
         const obj = this.m.FPDFPageObj_CreateTextObj(this.ptr, font, size)
         const w = this.e.wide(line)
         this.m.FPDFText_SetText(obj, w)
         this.e.free(w)
-        this.e.withBuf(24, (p) => (this.e.setFloats(p, [1, 0, 0, 1, x, y - k * size * 1.25]), this.m.FPDFPageObj_SetMatrix(obj, p)))
+        const down = k * size * 1.25
+        this.e.withBuf(24, (p) => (this.e.setFloats(p, [c, s, -s, c, x + s * down, y - c * down]), this.m.FPDFPageObj_SetMatrix(obj, p)))
         this.m.FPDFPageObj_SetFillColor(obj, color[0], color[1], color[2], color[3])
         this.m.FPDFPage_InsertObject(page, obj)
       })
       return this.m.FPDFPage_GenerateContent(page)
     })
+  }
+
+  /** cos and sin of the page's /Rotate: content drawn with [c, s, -s, c] reads upright on screen. */
+  private upright(page: number): [number, number] {
+    const q = this.m.FPDFPage_GetRotation(page)
+    return [[1, 0, -1, 0][q] ?? 1, [0, 1, 0, -1][q] ?? 0]
+  }
+
+  /** Corner of a page-space rect that is bottom-left on screen, given upright() of its page. */
+  private static screenOrigin([l, t, r, b]: [number, number, number, number], c: number, s: number): [number, number] {
+    const corners: [number, number][] = [[l, b], [l, t], [r, b], [r, t]]
+    const key = ([x, y]: [number, number]) => c * x + s * y + (-s * x + c * y)
+    return corners.reduce((a, p) => (key(p) < key(a) ? p : a))
   }
 
   // ---------- redaction ----------
@@ -585,19 +617,22 @@ export class PdfDocument {
   addInvisibleText(i: number, words: { text: string; rect: [number, number, number, number] }[]): boolean {
     return this.withPage(i, (page) => {
       const font = this.m.FPDFText_LoadStandardFont(this.ptr, 'Helvetica')
+      const [c, s] = this.upright(page)
       for (const { text, rect } of words) {
         const [l, t, r, b] = rect
-        const h = t - b
-        if (h <= 0 || r <= l) continue
+        if (t <= b || r <= l) continue
+        // On a page shown rotated by 90/270 degrees, a line on screen runs along page y.
+        const [len, h] = s ? [t - b, r - l] : [r - l, t - b]
         const obj = this.m.FPDFPageObj_CreateTextObj(this.ptr, font, h)
         const w = this.e.wide(text)
         this.m.FPDFText_SetText(obj, w)
         this.e.free(w)
-        // Stretch horizontally so the word covers its box (selection and search hits line up with the image).
+        // Stretch along the line so the word covers its box (selection and search hits line up with the image).
         const natural = this.e.withBuf(16, (p) => (this.m.FPDFPageObj_GetBounds(obj, p, p + 4, p + 8, p + 12) ? this.e.floats(p, 4) : null))
         const nw = natural ? natural[2] - natural[0] : 0
-        const sx = nw > 0 ? (r - l) / nw : 1
-        this.e.withBuf(24, (p) => (this.e.setFloats(p, [sx, 0, 0, 1, l, b + h * 0.2]), this.m.FPDFPageObj_SetMatrix(obj, p)))
+        const sx = nw > 0 ? len / nw : 1
+        const [ox, oy] = PdfDocument.screenOrigin(rect, c, s)
+        this.e.withBuf(24, (p) => (this.e.setFloats(p, [sx * c, sx * s, -s, c, ox - s * h * 0.2, oy + c * h * 0.2]), this.m.FPDFPageObj_SetMatrix(obj, p)))
         this.m.FPDFTextObj_SetTextRenderMode(obj, 3) // invisible
         this.m.FPDFPage_InsertObject(page, obj)
       }
@@ -618,6 +653,8 @@ export class PdfDocument {
         try {
           this.e.withBuf(16, (p) => (this.e.setFloats(p, rect), this.m.FPDFAnnot_SetRect(a, p)))
           this.m.FPDFAnnot_SetFlags(a, 4)
+          // Without a default appearance (font, size, colour) no viewer can draw the field's value.
+          this.m.EPDFAnnot_SetDefaultAppearance(a, 4 /* Helvetica */, Math.max(6, Math.min(12, (rect[1] - rect[3]) * 0.7)), 0, 0, 0)
           this.m.EPDFAnnot_GenerateFormFieldAP(a)
           return true
         } finally {
@@ -629,7 +666,7 @@ export class PdfDocument {
   }
 
   // ---------- images ----------
-  /** Place a PNG on the page (e.g. a signature) at rect (points). */
+  /** Place a PNG on the page (e.g. a signature) filling rect (points), upright as the page is displayed. */
   addPng(i: number, png: Uint8Array, rect: [number, number, number, number]): boolean {
     return this.withPage(i, (page) => {
       const obj = this.m.FPDFPageObj_NewImageObj(this.ptr)
@@ -639,7 +676,11 @@ export class PdfDocument {
       })
       if (!ok) return false
       const [l, t, r, b] = rect
-      this.m.FPDFImageObj_SetMatrix(obj, r - l, 0, 0, t - b, l, b)
+      const [c, s] = this.upright(page)
+      // Upright as displayed: on a page rotated by 90/270 degrees the image's width runs along page y.
+      const [w, h] = s ? [t - b, r - l] : [r - l, t - b]
+      const [ox, oy] = PdfDocument.screenOrigin(rect, c, s)
+      this.m.FPDFImageObj_SetMatrix(obj, w * c, w * s, -h * s, h * c, ox, oy)
       this.m.FPDFPage_InsertObject(page, obj)
       return this.m.FPDFPage_GenerateContent(page)
     })

@@ -94,6 +94,22 @@ describe('PDF engine (PDFium)', () => {
     doc.close()
   })
 
+  it('groups text set at a quarter turn (text added to a rotated page) into lines and edits it', () => {
+    const doc = engine.create()
+    doc.insertBlank(0, 612, 792)
+    doc.rotate(0, 90)
+    doc.addText(0, 200, 72, 'Rotated page text', 20)
+    const [line] = doc.lines(0)
+    expect(line).toMatchObject({ text: 'Rotated page text', angle: 90 })
+    const [l, t, r, b] = line.box
+    expect(t - b).toBeGreaterThan(3 * (r - l)) // runs along page y
+    expect(l).toBeGreaterThan(175)
+    expect(r).toBeLessThan(210)
+    expect(doc.editText(0, line.start, 'Changed text', line.end).ok).toBe(true)
+    expect(doc.lines(0)).toMatchObject([{ text: 'Changed text', angle: 90 }])
+    doc.close()
+  })
+
   it('rotates, inserts, deletes, reorders, merges and extracts pages', () => {
     const doc = engine.open(fixture)
     doc.rotate(0, 90)

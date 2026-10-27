@@ -121,6 +121,75 @@ test('acceptance 15–16: open a PDF, annotate, edit text, redact, save and reop
   }
 })
 
+test('rotated page: select, highlight, edit and add text, upright on screen', async () => {
+  const dir = tempDir()
+  const file = path.join(dir, 'rotated.pdf')
+  copyFileSync(fixture, file)
+  const { app, page } = await launch()
+  try {
+    await stubDialogs(app, { open: [file] })
+    await page.keyboard.press('Control+o')
+    const page1 = page.locator('[data-pdf-page="0"]')
+    await expect(page1).toBeVisible()
+    await page.getByTestId('rotate-0').click({ force: true })
+    await settle(page, 800)
+    const shown = (await page1.boundingBox())!
+    expect(shown.width).toBeGreaterThan(shown.height)
+
+    // The text layer is there, turned with the page: a line of text is taller than wide on screen.
+    await page.getByTestId('pdf-tool-highlight').click()
+    const word = page1.locator('span[data-run]').filter({ hasText: /^Centered paragraph\.$/ }).first()
+    const wb = (await word.boundingBox())!
+    expect(wb.height).toBeGreaterThan(wb.width * 2)
+    await word.evaluate((el) => {
+      const r = document.createRange()
+      r.selectNodeContents(el)
+      window.getSelection()!.removeAllRanges()
+      window.getSelection()!.addRange(r)
+    })
+    await word.dispatchEvent('mouseup')
+    await expect(page.getByTestId('pdf-comments')).toContainText('highlight')
+
+    await page.getByTestId('pdf-tool-edit').click()
+    await settle(page, 400)
+    if (shotDir) await page.screenshot({ path: path.join(shotDir, 'pdf-rotated-text-layer.png') })
+    await page1.locator('span[data-run]').filter({ hasText: /^Introduction$/ }).first().click()
+    await page.getByTestId('pdf-input').fill('Overview')
+    await page.keyboard.press('Enter')
+    await settle(page, 600)
+
+    // New text reads left to right on screen: its line in the text layer is wider than tall.
+    await page.getByTestId('pdf-tool-text').click()
+    await page.mouse.click(shown.x + 80, shown.y + 80)
+    await page.getByTestId('pdf-input').fill('Added upright')
+    await page.keyboard.press('Enter')
+    await settle(page, 600)
+    await page.getByTestId('pdf-tool-select').click()
+    const added = (await page1.locator('span[data-run]').filter({ hasText: /^Added upright$/ }).first().boundingBox())!
+    expect(added.width).toBeGreaterThan(added.height * 3)
+    expect(Math.abs(added.x - (shown.x + 80))).toBeLessThan(12)
+
+    // Fields would read sideways in other viewers: the tool says so instead.
+    await page.getByTestId('pdf-tool-field').click()
+    await page.mouse.move(shown.x + 300, shown.y + 300)
+    await page.mouse.down()
+    await page.mouse.move(shown.x + 500, shown.y + 330, { steps: 4 })
+    await page.mouse.up()
+    await expect(page.getByText(/can’t be added to a rotated page/)).toBeVisible()
+
+    await page.getByTestId('pdf-save').click()
+    await expect(page.getByTestId('save-status')).toHaveText(/Saved/, { timeout: 15_000 })
+    if (existsSync('/usr/bin/pdftotext')) {
+      const txt = pdftotext(file, 1)
+      expect(txt).toContain('Overview')
+      expect(txt).not.toContain('Introduction')
+      expect(txt).toContain('Added upright')
+    }
+  } finally {
+    await quit(app)
+  }
+})
+
 test('OCR: a scanned PDF becomes searchable and keeps its text after save', async () => {
   const dir = tempDir()
   const file = path.join(dir, 'scan.pdf')

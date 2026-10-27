@@ -501,6 +501,8 @@ function PdfPage({ index, info, ctx }: { index: number; info: { width: number; h
         await ctx.mutate(() => pdf.crop(doc, index, rect), [index], true)
         ctx.setTool('select')
       } else if (tool === 'field') {
+        // PDFium can't set a widget's /MK rotation, so the value would read sideways in other viewers.
+        if (map.rotation) return toast('Form fields can’t be added to a rotated page yet. Rotate the page back to add one.', 'info')
         const w = rect[2] - rect[0]
         const box = w <= 24 && Math.abs(w - (rect[1] - rect[3])) < 6
         const name = `${box ? 'Check' : 'Text'}${Object.values(ctx.fields).flat().length + 1}`
@@ -519,8 +521,7 @@ function PdfPage({ index, info, ctx }: { index: number; info: { width: number; h
     const [x, y] = local(e)
     if (tool === 'note' || tool === 'text') setInput({ x, y, kind: tool, value: '' })
     else if (tool === 'sign' && ctx.signature) {
-      const [px, py] = map.toPdf(x, y)
-      await ctx.mutate(() => pdf.addPng(doc, index, ctx.signature!, [px, py + 25, px + 150, py - 25]), [index])
+      await ctx.mutate(() => pdf.addPng(doc, index, ctx.signature!, map.screenToRect([x, y - 25 * s], [x + 150 * s, y + 25 * s])), [index])
       ctx.setTool('select')
     }
   }
@@ -531,9 +532,10 @@ function PdfPage({ index, info, ctx }: { index: number; info: { width: number; h
     const cur = input
     setInput(null)
     if (!v.trim() && cur.kind !== 'edit') return
-    const [px, py] = map.toPdf(cur.x, cur.y)
-    if (cur.kind === 'note') await ctx.mutate(() => pdf.addAnnotation(doc, index, 'note', { rect: [px, py, px + 20, py - 20], contents: v, author: ctx.author }), [index])
-    else if (cur.kind === 'text') await ctx.mutate(() => pdf.addText(doc, index, px, py - 12, v, 12), [index])
+    // Anchors are placed on screen and mapped, so they land the same way on rotated pages.
+    const [bx, by] = map.toPdf(cur.x, cur.y + 12 * s)
+    if (cur.kind === 'note') await ctx.mutate(() => pdf.addAnnotation(doc, index, 'note', { rect: map.screenToRect([cur.x, cur.y], [cur.x + 20 * s, cur.y + 20 * s]), contents: v, author: ctx.author }), [index])
+    else if (cur.kind === 'text') await ctx.mutate(() => pdf.addText(doc, index, bx, by, v, 12), [index])
     else if (cur.kind === 'edit' && cur.run && v !== cur.run.text) {
       let res: { ok: boolean; method: string; fontName: string } | null = null
       await ctx.mutate(async () => (res = await pdf.editText(doc, index, cur.run!.start, v, cur.run!.end)), [index])
@@ -545,7 +547,6 @@ function PdfPage({ index, info, ctx }: { index: number; info: { width: number; h
   }
 
   const hitsHere = ctx.hits.flatMap((hh, k) => (hh.page === index ? hh.boxes.map((b) => ({ b, current: k === ctx.hitIndex })) : []))
-  const canText = map.rotation === 0
 
   return (
     <div
@@ -561,10 +562,14 @@ function PdfPage({ index, info, ctx }: { index: number; info: { width: number; h
     >
       <canvas ref={canvas} className="absolute inset-0 h-full w-full" aria-label={`Page ${index + 1}`} />
       {/* Selectable text layer */}
-      {needsText && canText && (
+      {needsText && (
         <div className="absolute inset-0 select-text" style={{ lineHeight: 1 }}>
           {runs.map((r, k) => {
             const box = map.rectToScreen(r.box)
+            // Draw each run as left-to-right text, then turn it by the page's rotation less the run's own direction.
+            const [along, across] = [(r.box[2] - r.box[0]) * s, (r.box[1] - r.box[3]) * s]
+            const [rw, rh] = r.angle % 180 ? [across, along] : [along, across]
+            const turn = (((map.rotation - r.angle) % 360) + 360) % 360
             return (
               <span
                 key={k}
@@ -575,7 +580,7 @@ function PdfPage({ index, info, ctx }: { index: number; info: { width: number; h
                   setInput({ x: box.left, y: box.top, kind: 'edit', value: r.text, run: r })
                 }}
                 className={cx('absolute whitespace-pre text-transparent selection:bg-[#4f7cff55]', tool === 'edit' && 'cursor-text rounded-[2px] hover:bg-accent-soft hover:outline hover:outline-1 hover:outline-accent')}
-                style={{ left: box.left, top: box.top, height: box.height, width: box.width, fontSize: box.height * 0.92, fontFamily: 'sans-serif' }}
+                style={{ left: box.left + (box.width - rw) / 2, top: box.top + (box.height - rh) / 2, width: rw, height: rh, fontSize: rh * 0.92, fontFamily: 'sans-serif', transform: turn ? `rotate(${turn}deg)` : undefined }}
               >
                 {r.text}
               </span>
