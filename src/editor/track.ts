@@ -153,6 +153,19 @@ export function listChanges(doc: PMNode): Change[] {
   return out
 }
 
+/**
+ * When [from, to) is the entire content of a textblock, the range of the block to remove with it:
+ * climbs through single-child wrappers (a list item) but never empties a table cell or the document.
+ */
+function wholeBlock(doc: PMNode, from: number, to: number): [number, number] | null {
+  const $from = doc.resolve(from)
+  if (!$from.parent.isTextblock || from !== $from.start() || to !== $from.end()) return null
+  let d = $from.depth
+  const keeps = (n: PMNode) => n.type.name === 'tableCell' || n.type.name === 'tableHeader' || n.type.name === 'doc'
+  while (d > 1 && $from.node(d - 1).childCount === 1 && !keeps($from.node(d - 1))) d--
+  return $from.node(d - 1).childCount > 1 ? [$from.before(d), $from.after(d)] : null
+}
+
 /** Accept or reject the given changes (all of them when omitted). */
 export function resolveChanges(editor: Editor, accept: boolean, changes = listChanges(editor.state.doc)) {
   if (!changes.length) return false
@@ -160,7 +173,10 @@ export function resolveChanges(editor: Editor, accept: boolean, changes = listCh
   const tr = editor.state.tr.setMeta(INTERNAL, true)
   for (const c of [...changes].sort((a, b) => b.from - a.from)) {
     const remove = (accept && c.kind === 'deletion') || (!accept && c.kind === 'insertion')
-    if (remove) tr.delete(c.from, c.to)
+    if (remove) {
+      const block = wholeBlock(tr.doc, c.from, c.to)
+      tr.delete(...(block ?? [c.from, c.to]))
+    }
     else tr.removeMark(c.from, c.to, schema.marks[c.kind])
   }
   editor.view.dispatch(tr)

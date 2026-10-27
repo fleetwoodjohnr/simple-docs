@@ -56,6 +56,15 @@ export function HistoryDialog() {
           >
             Open as copy
           </Btn>
+          <Btn
+            disabled={!preview}
+            onClick={() => {
+              close()
+              docs.compareWith(preview!, `${tab.title} (${stamp(Number(selected))})`)
+            }}
+          >
+            Compare with current
+          </Btn>
           <Btn onClick={close}>Close</Btn>
           <Btn
             variant="primary"

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Editor } from '@tiptap/core'
-import { Accessibility,
+import { GitCompare, Accessibility,
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, CalendarDays, CaseSensitive, ChevronDown, ChevronUp, ClipboardPaste, Code2, Columns3, Copy, Eraser, Eye, FileDown, Focus,
   Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Info, Italic, Keyboard, Link2, List, ListChecks, ListOrdered, Maximize2, Minus, Moon, PaintBucket, Paintbrush, PanelLeft,
   PanelRight, Pilcrow, Plus, Printer, Quote, Redo2, Replace, Ruler, Scissors, Search, Settings, Sigma, SquareDashed, Strikethrough, Subscript, Superscript, Table2, Type, Underline, Undo2,
@@ -830,6 +830,18 @@ function ReviewTab() {
         <TextBtn icon={<Eye />} active={useApp((x) => x.showMarkup)} onClick={() => runCommand('review.markup')} label="Show insertions and deletions (off = final text)">
           Markup
         </TextBtn>
+      </Group>
+      <Sep />
+      <Group label="Compare">
+        <Menu>
+          <DropBtn label="Compare" icon={<GitCompare />}>
+            Compare
+          </DropBtn>
+          <MenuContent>
+            <MenuItem onSelect={() => runCommand('review.compare')}>With another document…</MenuItem>
+            <MenuItem onSelect={() => runCommand('file.history')}>With a saved version…</MenuItem>
+          </MenuContent>
+        </Menu>
       </Group>
       <Sep />
       <Group label="Comments">

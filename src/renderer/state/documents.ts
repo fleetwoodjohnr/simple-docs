@@ -7,6 +7,7 @@ import type { OpenedFile, RecoveryEntry } from '@/shared/ipc-types'
 import { docScope } from '../app/DocumentView'
 import { checker } from '../spell/client'
 import { HOME, carries, editors, get, pdfSessions, set, toast, updateTab, type TabMeta } from './store'
+import { compareDocuments } from '@/editor/compare'
 import { pdf, renderPng } from '../pdf/client'
 
 const api = () => window.simpleDocs
@@ -192,6 +193,36 @@ export async function openFiles(files: OpenedFile[]) {
     } catch (e) {
       toast(`Could not open ${f.name}: ${(e as Error).message}`, 'error')
     }
+  }
+}
+
+// ---------- compare ----------
+
+/** Open a new tab showing what changed from `original` to the active document, as tracked changes. */
+export function compareWith(original: JSONContent, originalName: string, id = get().active) {
+  const editor = editors.get(id)
+  const tab = get().tabs.find((t) => t.id === id)
+  if (!editor || !tab) return
+  // Normalize both sides through the schema so default attributes compare equal.
+  const norm = (json: JSONContent) => editor.schema.nodeFromJSON(normalizeDoc(json, docOptions())).toJSON() as JSONContent
+  const date = new Date(Math.floor(Date.now() / 60_000) * 60_000).toISOString()
+  const r = compareDocuments(norm(original), norm(editor.getJSON()), { author: tab.title, date })
+  newDocument(r.doc, `${originalName} → ${tab.title} (comparison)`)
+  set({ showMarkup: true })
+  const n = r.insertions + r.deletions
+  toast(n || r.objects ? `${r.insertions} insertion${r.insertions === 1 ? '' : 's'}, ${r.deletions} deletion${r.deletions === 1 ? '' : 's'}${r.objects ? `, ${r.objects} changed image${r.objects === 1 ? '' : 's'} or object${r.objects === 1 ? '' : 's'} (shown as revised)` : ''}. Review them with Accept / Reject.` : 'The documents have the same text.', 'info')
+}
+
+export async function compareWithFile(id = get().active) {
+  try {
+    const [f] = await api().openDialog()
+    if (!f) return
+    const format = formatFromPath(f.name)
+    if (!format || /\.pdf$/i.test(f.name)) return toast(`${f.name}: choose a document (DOCX, ODT, Markdown…) to compare`, 'error')
+    const r = await importBytes(format, f.data, lo)
+    compareWith(r.doc, baseName(f.name), id)
+  } catch (e) {
+    toast((e as Error).message, 'error')
   }
 }
 

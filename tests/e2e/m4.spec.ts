@@ -62,3 +62,22 @@ test('version history keeps each save and restores an older one (undoable)', asy
     await quit(app)
   }
 })
+
+test('compare: an edited DOCX against the original file opens a comparison with tracked changes', async () => {
+  const { app, page } = await launch()
+  const fixture = path.join(__dirname, '../fixtures/complex.docx')
+  try {
+    await stubDialogs(app, { open: [fixture] })
+    await page.keyboard.press('Control+o')
+    await expect(doc(page)).toContainText('Fixture Report')
+    await withEditor(page, `(e) => { let pos = 0; e.state.doc.descendants((n, p) => { if (!pos && n.isText && n.text.includes('Centered paragraph')) pos = p }); e.chain().insertContentAt({ from: pos, to: pos + 8 }, 'Middle').run() }`)
+    await stubDialogs(app, { open: [fixture] })
+    await page.evaluate(() => (window as unknown as { __sd: { runCommand: (id: string) => void } }).__sd.runCommand('review.compare'))
+    await expect(page.getByRole('tab', { name: /comparison/ })).toBeVisible()
+    await expect(doc(page).locator('.sd-del')).toHaveText('Centered')
+    await expect(doc(page).locator('.sd-ins')).toHaveText('Middle')
+    await expect(page.getByText(/1 insertion, 1 deletion/)).toBeVisible()
+  } finally {
+    await quit(app)
+  }
+})

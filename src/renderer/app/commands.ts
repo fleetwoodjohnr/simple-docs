@@ -458,6 +458,7 @@ function reviewAt(accept: boolean) {
 def({ id: 'review.comment', label: 'New comment', shortcut: 'Mod-Alt-m', run: () => newComment() })
 def({ id: 'review.nextComment', label: 'Next comment', run: () => stepComment(1) })
 def({ id: 'review.prevComment', label: 'Previous comment', run: () => stepComment(-1) })
+def({ id: 'review.compare', label: 'Compare with another document…', run: () => docs.compareWithFile() })
 def({ id: 'review.a11y', label: 'Check accessibility', needsEditor: false, run: () => set((s) => ({ rightPanel: s.rightPanel === 'a11y' ? null : 'a11y' })), isActive: () => get().rightPanel === 'a11y' })
 def({ id: 'review.showComments', label: 'Show comments', needsEditor: false, run: () => set((s) => ({ rightPanel: s.rightPanel === 'comments' ? null : 'comments' })), isActive: () => get().rightPanel === 'comments' })
 
