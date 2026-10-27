@@ -768,8 +768,10 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
   // settings.xml flags we own (removed, then re-added where CT_Settings' element order allows).
   {
     let st = files['word/settings.xml'] ? strFromU8(files['word/settings.xml']) : ''
-    st = st.replace(/<w:evenAndOddHeaders[^>]*\/>/g, '').replace(/<w:trackRevisions[^>]*\/>/g, '')
+    st = st.replace(/<w:evenAndOddHeaders[^>]*\/>/g, '').replace(/<w:trackRevisions[^>]*\/>/g, '').replace(/<w:documentProtection\b[^>]*\/>/g, '')
     if (doc.attrs?.trackChanges) st = insertSetting(st, '<w:trackRevisions/>', ['doNotTrackMoves', 'doNotTrackFormatting', 'documentProtection', 'autoFormatOverride', 'styleLockTheme', 'styleLockQFSet', 'defaultTabStop'])
+    const edit = { readOnly: 'readOnly', comments: 'comments', tracked: 'trackedChanges' }[doc.attrs?.protection as string]
+    if (edit) st = insertSetting(st, `<w:documentProtection w:edit="${edit}" w:enforcement="1"/>`, ['autoFormatOverride', 'styleLockTheme', 'styleLockQFSet', 'defaultTabStop', 'autoHyphenation', 'consecutiveHyphenLimit', 'hyphenationZone', 'doNotHyphenateCaps', 'showEnvelope', 'summaryLength', 'clickAndTypeStyle', 'defaultTableStyle', 'evenAndOddHeaders', 'bookFoldRevPrinting', 'bookFoldPrinting', 'bookFoldPrintingSheets', 'drawingGridHorizontalSpacing', 'drawingGridVerticalSpacing', 'characterSpacingControl', 'compat', 'rsids'])
     if (hf?.differentOddEven) st = insertSetting(st, '<w:evenAndOddHeaders/>', ['bookFoldRevPrinting', 'bookFoldPrinting', 'bookFoldPrintingSheets', 'drawingGridHorizontalSpacing', 'drawingGridVerticalSpacing', 'displayHorizontalDrawingGridEvery', 'displayVerticalDrawingGridEvery', 'doNotUseMarginsForDrawingGridOrigin', 'doNotShadeFormData', 'noPunctuationKerning', 'characterSpacingControl', 'compat', 'rsids'])
     files['word/settings.xml'] = strToU8(st)
   }

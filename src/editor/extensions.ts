@@ -16,6 +16,7 @@ import { Footnote, NoteClicks } from './notes'
 import { Comment } from './comments'
 import { Deletion, Insertion, TrackChanges } from './track'
 import { TableStyles } from './tables'
+import { Protection } from './protection'
 
 // ---------- helpers ----------
 
@@ -60,7 +61,7 @@ export const SdDocument = Node.create({
   topNode: true,
   content: 'block+',
   addAttributes() {
-    return { page: { default: null }, styles: { default: null }, meta: { default: null }, hf: { default: null }, comments: { default: null }, trackChanges: { default: false } }
+    return { page: { default: null }, styles: { default: null }, meta: { default: null }, hf: { default: null }, comments: { default: null }, trackChanges: { default: false }, protection: { default: null } }
   }
 })
 
@@ -473,6 +474,7 @@ export function createExtensions(opts: ExtensionOptions = {}): Extensions {
     Insertion,
     Deletion,
     TrackChanges,
+    Protection,
     TabKey,
     Numbering,
     ...(opts.placeholder ? [Placeholder.configure({ placeholder: opts.placeholder, showOnlyWhenEditable: true })] : [])

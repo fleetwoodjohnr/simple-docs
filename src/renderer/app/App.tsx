@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { CheckCircle2, AlertCircle, Info, Minimize2, FileUp } from 'lucide-react'
-import { HOME, useApp, set, get, editors, type TabMeta } from '../state/store'
+import { CheckCircle2, AlertCircle, Info, Minimize2, FileUp, Lock } from 'lucide-react'
+import type { Editor } from '@tiptap/core'
+import { useEditorState } from '@tiptap/react'
+import { HOME, useApp, set, get, editors, toast, type TabMeta } from '../state/store'
 import * as docs from '../state/documents'
 import { handleKeydown, runCommand, applyPainter } from './commands'
 import { DocumentView } from './DocumentView'
@@ -14,9 +16,30 @@ import { FindBar, FloatingToolbar, EditorContextMenu } from './Overlays'
 import { SourceEditor } from './SourceEditor'
 import { TooltipProvider, Btn, cx } from '../ui'
 import { setTrackAuthor } from '@/editor/track'
+import { PROTECTION_LABELS, setProtection, setProtectionNotice, type ProtectionMode } from '@/editor/protection'
 import { PdfWorkspace } from '../pdf/PdfWorkspace'
 
 setTrackAuthor(() => get().settings.authorName || 'Author')
+let lastNotice = 0
+setProtectionNotice((mode) => {
+  if (Date.now() - lastNotice < 4000) return
+  lastNotice = Date.now()
+  toast(mode === 'tracked' ? 'This document only allows tracked changes: tracking stays on and changes cannot be accepted or rejected.' : `This document is protected (${PROTECTION_LABELS[mode].toLowerCase()}). Review → Protect → Stop protection to edit.`, 'info')
+})
+
+function ProtectionBar({ editor }: { editor: Editor }) {
+  const mode = useEditorState({ editor, selector: ({ editor: e }) => (e.state.doc.attrs.protection as ProtectionMode | null) ?? null })
+  if (!mode) return null
+  return (
+    <div className="absolute inset-x-0 top-0 z-20 flex h-8 items-center justify-center gap-2 border-b border-border bg-panel/95 text-[12px] text-text-2 backdrop-blur" data-testid="protection-bar">
+      <Lock className="size-3.5" />
+      Protected: {PROTECTION_LABELS[mode]}
+      <button className="ml-1 rounded px-1.5 font-medium text-accent hover:bg-accent-soft" onClick={() => setProtection(editor, null)}>
+        Stop protection
+      </button>
+    </div>
+  )
+}
 
 async function boot() {
   const api = window.simpleDocs
@@ -69,6 +92,7 @@ function DocTabView({ tab, hidden }: { tab: TabMeta; hidden: boolean }) {
               <DocumentView tabId={tab.id} editor={editor} zoom={zoom} showMarks={showMarks} showBoundaries={showBoundaries} showRuler={showRuler} onZoomChange={(z) => set({ zoom: z })} />
             </div>
           </EditorContextMenu>
+          <ProtectionBar editor={editor} />
           {!hidden && <FindBar editor={editor} />}
           {!hidden && <FloatingToolbar editor={editor} />}
         </>

@@ -2,6 +2,7 @@ import { Extension, Mark, type Editor } from '@tiptap/core'
 import type { Mark as PMMark, MarkType, Node as PMNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey, TextSelection, type Transaction } from '@tiptap/pm/state'
 import { ReplaceStep } from '@tiptap/pm/transform'
+import { RESOLVE_CHANGES } from './protection'
 
 // Track changes. While the doc attribute `trackChanges` is on, user edits are rewritten
 // right after they apply (same undo step): deleted content is put back and marked as a
@@ -170,7 +171,7 @@ function wholeBlock(doc: PMNode, from: number, to: number): [number, number] | n
 export function resolveChanges(editor: Editor, accept: boolean, changes = listChanges(editor.state.doc)) {
   if (!changes.length) return false
   const { schema } = editor.state
-  const tr = editor.state.tr.setMeta(INTERNAL, true)
+  const tr = editor.state.tr.setMeta(INTERNAL, true).setMeta(RESOLVE_CHANGES, true)
   for (const c of [...changes].sort((a, b) => b.from - a.from)) {
     const remove = (accept && c.kind === 'deletion') || (!accept && c.kind === 'insertion')
     if (remove) {

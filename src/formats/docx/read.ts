@@ -1222,6 +1222,11 @@ export function importDocx(data: Uint8Array): ImportResult {
   const evenAndOdd = !!settingsXml && /<w:evenAndOddHeaders(?![^>]*w:val="(0|false)")/.test(settingsXml)
   const hfResult = r.headersFooters(finalSect, evenAndOdd)
   const trackChanges = !!settingsXml && /<w:trackRevisions(?![^>]*w:val="(0|false)")/.test(settingsXml)
+  // Enforced editing restrictions (password hashes are ignored: protection is not security).
+  const prot = settingsXml ? /<w:documentProtection\b([^>]*)>/.exec(settingsXml)?.[1] ?? '' : ''
+  const enforced = /w:enforcement="(1|true|on)"/.test(prot)
+  const edit = /w:edit="(\w+)"/.exec(prot)?.[1]
+  const protection = !enforced ? null : edit === 'comments' ? 'comments' : edit === 'trackedChanges' ? 'tracked' : edit === 'readOnly' || edit === 'forms' ? 'readOnly' : null
   // Header/footer references, titlePg and pgNumType are regenerated from the model on save.
   const extra = finalSect
     ? elements(finalSect)
@@ -1238,7 +1243,7 @@ export function importDocx(data: Uint8Array): ImportResult {
 
   const carry: DocxCarry = { parts: files, rels: [...r.rels.values()], sectPrExtra: extra, overrides, converted: [...(hfResult?.parts ?? []), ...r.noteParts, ...r.commentParts] }
   return {
-    doc: { type: 'doc', attrs: { page, styles: r.styles, meta: r.meta(), hf: hfResult?.hf ?? null, comments: Object.keys(r.comments).length ? r.comments : null, trackChanges }, content: content.length ? content : [{ type: 'paragraph' }] },
+    doc: { type: 'doc', attrs: { page, styles: r.styles, meta: r.meta(), hf: hfResult?.hf ?? null, comments: Object.keys(r.comments).length ? r.comments : null, trackChanges, protection }, content: content.length ? content : [{ type: 'paragraph' }] },
     warnings: r.w.list(),
     carry
   }

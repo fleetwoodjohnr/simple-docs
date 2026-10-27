@@ -81,3 +81,32 @@ test('compare: an edited DOCX against the original file opens a comparison with 
     await quit(app)
   }
 })
+
+test('protect: read only blocks typing, survives a DOCX round trip, and can be stopped', async () => {
+  const { app, page } = await launch()
+  const file = path.join(tempDir(), 'locked.docx')
+  try {
+    await page.keyboard.press('Control+n')
+    await doc(page).click()
+    await page.keyboard.type('Final wording.')
+    await page.getByRole('tab', { name: 'Review', exact: true }).click()
+    await page.getByRole('button', { name: 'Protect' }).click()
+    await page.getByRole('menuitem', { name: 'Read only' }).click()
+    await expect(page.getByTestId('protection-bar')).toContainText('Read only')
+    await expect(doc(page)).toHaveAttribute('contenteditable', 'false')
+    await stubDialogs(app, { save: file })
+    await page.keyboard.press('Control+s')
+    await expect(page.getByTestId('save-status')).toHaveText(/Saved/)
+    await page.keyboard.press('Control+w')
+    await stubDialogs(app, { open: [file] })
+    await page.keyboard.press('Control+o')
+    await expect(page.getByTestId('protection-bar')).toContainText('Read only')
+    await page.getByTestId('protection-bar').getByRole('button', { name: 'Stop protection' }).click()
+    await doc(page).click()
+    await page.keyboard.press('End')
+    await page.keyboard.type(' Edited.')
+    await expect(doc(page)).toHaveText('Final wording. Edited.')
+  } finally {
+    await quit(app)
+  }
+})

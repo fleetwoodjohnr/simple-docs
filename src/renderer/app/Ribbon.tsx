@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Editor } from '@tiptap/core'
-import { GitCompare, Accessibility,
+import { Lock, GitCompare, Accessibility,
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, CalendarDays, CaseSensitive, ChevronDown, ChevronUp, ClipboardPaste, Code2, Columns3, Copy, Eraser, Eye, FileDown, Focus,
   Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Info, Italic, Keyboard, Link2, List, ListChecks, ListOrdered, Maximize2, Minus, Moon, PaintBucket, Paintbrush, PanelLeft,
   PanelRight, Pilcrow, Plus, Printer, Quote, Redo2, Replace, Ruler, Scissors, Search, Settings, Sigma, SquareDashed, Strikethrough, Subscript, Superscript, Table2, Type, Underline, Undo2,
@@ -15,6 +15,7 @@ import { ColorGrid, IconBtn, Menu, MenuCheck, MenuContent, MenuItem, MenuLabel, 
 import { MARGIN_PRESETS, PAGE_SIZES, withOrientation, withSize, type PageSetup, type StyleMap, resolveStyle } from '@/editor/model'
 import { pageOf } from '@/layout/plugin'
 import { fontStack } from '@/editor/styles-css'
+import { PROTECTION_LABELS, setProtection, type ProtectionMode } from '@/editor/protection'
 import { setTableStyle, TABLE_STYLES, type TableStyle } from '@/editor/tables'
 
 const TABS: { id: RibbonTab; label: string }[] = [
@@ -68,14 +69,14 @@ function TextBtn({ icon, children, onClick, active, label, shortcut }: { icon?: 
   )
 }
 
-function DropBtn({ icon, children, label }: { icon?: ReactNode; children?: ReactNode; label: string }) {
+function DropBtn({ icon, children, label, active }: { icon?: ReactNode; children?: ReactNode; label: string; active?: boolean }) {
   return (
     <MenuTrigger asChild>
       <button
         type="button"
         aria-label={label}
         onMouseDown={(e) => e.preventDefault()}
-        className="flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-[12.5px] text-text-2 transition-colors hover:bg-hover hover:text-text data-[state=open]:bg-hover [&>svg:first-child]:size-4"
+        className={cx('flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-[12.5px] text-text-2 transition-colors hover:bg-hover hover:text-text data-[state=open]:bg-hover [&>svg:first-child]:size-4', active && 'bg-accent-soft text-accent')}
       >
         {icon}
         {children}
@@ -787,6 +788,33 @@ function Note({ children }: { children: ReactNode }) {
   )
 }
 
+function ProtectMenu() {
+  const editor = useBodyEditor()
+  const mode = useEditorState({ editor, selector: ({ editor: e }) => (e?.state.doc.attrs.protection as ProtectionMode | null) ?? null }) ?? null
+  if (!editor) return null
+  return (
+    <Menu>
+      <DropBtn label={mode ? 'Protected' : 'Protect'} icon={<Lock />} active={!!mode}>
+        {mode ? 'Protected' : 'Protect'}
+      </DropBtn>
+      <MenuContent>
+        <MenuLabel>Allow only</MenuLabel>
+        {(Object.keys(PROTECTION_LABELS) as ProtectionMode[]).map((m) => (
+          <MenuItem key={m} onSelect={() => setProtection(editor, m)} className={mode === m ? 'text-accent' : ''}>
+            {PROTECTION_LABELS[m]}
+          </MenuItem>
+        ))}
+        {mode && (
+          <>
+            <MenuSep />
+            <MenuItem onSelect={() => setProtection(editor, null)}>Stop protection</MenuItem>
+          </>
+        )}
+      </MenuContent>
+    </Menu>
+  )
+}
+
 function ReviewTab() {
   return (
     <>
@@ -830,6 +858,10 @@ function ReviewTab() {
         <TextBtn icon={<Eye />} active={useApp((x) => x.showMarkup)} onClick={() => runCommand('review.markup')} label="Show insertions and deletions (off = final text)">
           Markup
         </TextBtn>
+      </Group>
+      <Sep />
+      <Group label="Protect">
+        <ProtectMenu />
       </Group>
       <Sep />
       <Group label="Compare">
