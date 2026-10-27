@@ -4,6 +4,8 @@ import { exportDocx } from './docx/write'
 import { exportHtml, importHtml } from './html'
 import { exportMarkdown, importMarkdown } from './markdown'
 import { exportText, importText } from './text'
+import { importOdt } from './odt/read'
+import { exportOdt } from './odt/write'
 import type { ExportResult, FormatId, ImportResult } from './types'
 
 /** Bridge to the optional LibreOffice converter in the main process. */
@@ -12,7 +14,7 @@ export interface LibreOfficeBridge {
   convert(data: Uint8Array, from: string, to: string): Promise<Uint8Array>
 }
 
-const VIA_LIBREOFFICE: FormatId[] = ['odt', 'rtf', 'doc']
+const VIA_LIBREOFFICE: FormatId[] = ['rtf', 'doc']
 
 async function needLibreOffice(lo: LibreOfficeBridge, fmt: FormatId) {
   if (!(await lo.available())) {
@@ -30,6 +32,8 @@ export async function importBytes(format: FormatId, data: Uint8Array, lo: LibreO
       return importHtml(data)
     case 'txt':
       return importText(data)
+    case 'odt':
+      return importOdt(data)
     default: {
       await needLibreOffice(lo, format)
       const docx = await lo.convert(data, format, 'docx')
@@ -49,6 +53,8 @@ export async function exportBytes(format: FormatId, doc: JSONContent, carry: unk
       return exportHtml(doc)
     case 'txt':
       return exportText(doc)
+    case 'odt':
+      return exportOdt(doc)
     default: {
       if (!VIA_LIBREOFFICE.includes(format)) throw new Error(`Cannot save as ${format}`)
       if (format === 'doc') throw new Error('Saving in the legacy .doc format is not supported. Save as DOCX instead.')

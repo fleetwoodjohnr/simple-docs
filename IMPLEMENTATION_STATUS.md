@@ -1,6 +1,6 @@
 # Implementation status
 
-_Last updated: 2026-10-27 · Milestone 1 complete · Milestone 2 in progress (6 of 9 items done)._
+_Last updated: 2026-10-27 · Milestone 1 complete · Milestone 2 in progress._
 
 "Done" means implemented **and** covered by a passing automated test or a manual check recorded below. A button existing in the UI does not count.
 
@@ -9,7 +9,7 @@ _Last updated: 2026-10-27 · Milestone 1 complete · Milestone 2 in progress (6 
 | Suite | Result |
 |---|---|
 | `npm run typecheck` (strict, main + renderer) | ✅ clean |
-| `npm test` (vitest) | ✅ 57 / 57 |
+| `npm test` (vitest) | ✅ 64 / 64 |
 | `npm run e2e:headless` (Playwright + Electron) | ✅ 13 / 13 |
 | Independent consumer: our DOCX → LibreOffice → PDF | ✅ (in `docx.test.ts`) |
 
@@ -25,7 +25,7 @@ Acceptance criteria from the brief:
 | 6 | Margins | ✅ (via ribbon) | e2e `acceptance 1–11` |
 | 7–9 | Save DOCX, close, reopen, content and formatting intact | ✅ | e2e `acceptance 1–11`, unit `docx.test.ts` |
 | 10–11 | Export PDF; page count and per-page content | ✅ PDF pages = editor pages | e2e `acceptance 1–11` (`pdfinfo`, `pdftotext`) |
-| 12–13 | Open ODT, edit, save | ✅ via the LibreOffice bridge (native ODT is M2) | e2e `acceptance 12–13` |
+| 12–13 | Open ODT, edit, save | ✅ native ODT engine (no LibreOffice) | e2e `acceptance 12–13`, unit `odt.test.ts` |
 | 14 | Markdown import/export | ✅ | e2e `acceptance 14` |
 | 15–16 | Annotate PDF, save, reopen | ⏳ Milestone 3 | — |
 | 17 | Undo/redo | ✅ | e2e `acceptance 17 & 19` |
@@ -107,12 +107,12 @@ Two optimizations got there. ProseMirror `posAtCoords` (O(characters)) was repla
 - **Footnotes & endnotes**: Ctrl+Alt+F / Ctrl+Alt+D; numbered automatically (1,2,3 / i,ii,iii); the layout engine reserves note space on the page of each reference (paragraph splits account for notes on their lines); notes edited in a popover from the reference or the note; endnotes on the last page; DOCX `footnotes.xml`/`endnotes.xml` round trip; Markdown GFM footnotes; TXT notes list.
 - **Comments**: Ctrl+Alt+M on a selection; threaded replies, resolve/reopen, delete, next/previous, right-panel Comments tab; overlapping ranges; DOCX `comments.xml` + `commentsExtended.xml` (threads, resolved state).
 - **Track changes**: Ctrl+Shift+T; insertions/deletions recorded per author (minute-resolution timestamps so typing merges), deleting your own insertion is a real delete, one undo step per edit; accept/reject at cursor or all, next/previous change, Markup/Final view, status-bar indicator; DOCX `w:ins`/`w:del`/`w:trackRevisions` round trip; Markdown/TXT export the final text.
+- **Native ODT reader/writer** (no LibreOffice): styles, formatting, lists, tables with spans, images, links, notes, comments with replies, headers/footers with fields, page layout, TOC, page breaks, metadata; unknown ODF content preserved. Tested against a LibreOffice-authored fixture, by round trip, and by LibreOffice rendering our output.
 - **Spell checking (offline)**: nspell in a Web Worker with bundled English (US/UK) Hunspell dictionaries; other languages use system Hunspell dictionaries on Linux; wavy underlines, right-click suggestions, Add to dictionary (persisted), Ignore all. Chromium's own spellchecker is disabled (it would download dictionaries).
 
 ### Remaining in M2
 7. Grammar checking — harper.js evaluated (Apache-2.0) but its package is ~95 MB unpacked; deferred until a slimmer build is chosen.
 8. Style editor dialog and custom styles; advanced tables (borders, padding, sort, distribute, text↔table, repeated header row on continuation pages, can't-split rows).
-9. Native ODT reader/writer (today ODT works through the LibreOffice bridge).
 10. Section breaks with per-section page setup and columns (currently: last section's setup, warned).
 
 ### Performance note
@@ -142,6 +142,6 @@ See the plan in the README and the original brief.
 
 ## Next recommended tasks
 
-1. Native ODT reader/writer (M2 item 9) to drop the LibreOffice requirement for acceptance items 12–13.
-2. Style editor + table tools (M2 item 8), including repeated header rows in the paginator (the row-spacer widget can carry a cloned header).
+1. Style editor + table tools (M2 item 8), including repeated header rows in the paginator (the row-spacer widget can carry a cloned header).
+2. Section breaks with per-section page setup (M2 item 10).
 4. Then Milestone 3 (PDF workspace on PDFium WASM).

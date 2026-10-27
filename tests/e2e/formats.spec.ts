@@ -7,8 +7,7 @@ import { doc, launch, quit, settle, stubDialogs, tempDir, withEditor } from './h
 const fixtures = path.join(__dirname, '../fixtures')
 const hasLibreOffice = ['/usr/bin/soffice', '/usr/bin/libreoffice'].some(existsSync)
 
-test('acceptance 12–13: open an ODT, edit it and save it back (LibreOffice bridge)', async () => {
-  test.skip(!hasLibreOffice, 'LibreOffice not installed')
+test('acceptance 12–13: open an ODT, edit it and save it back (native ODT engine)', async () => {
   const dir = tempDir()
   const odt = path.join(dir, 'complex.odt')
   copyFileSync(path.join(fixtures, 'complex.odt'), odt)

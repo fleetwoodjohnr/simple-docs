@@ -51,9 +51,29 @@ On open, every adapter produces a warning list (the ⚠ badge in the title bar).
 
 Preserved XML is written back only when everything it references (relationship ids, footnotes or endnotes part) still exists. Otherwise, for example after pasting into another document, it falls back to its text with a warning.
 
-## ODT, RTF, DOC (through LibreOffice, M1)
+## ODT (native engine — no LibreOffice needed)
 
-These are converted to DOCX by a locally installed LibreOffice and then go through the DOCX engine, so the DOCX table applies. Saving goes the other way, through LibreOffice. Legacy `.doc` can be opened but not saved. A native ODT adapter is planned for M2.
+| Element | Status | Notes |
+|---|---|---|
+| Paragraph and text formatting, named styles with inheritance, default style | ✅ | Fonts resolve through font-face declarations |
+| Headings (outline levels), Title, Subtitle, Quotations | ✅ | |
+| Bulleted / numbered / multilevel lists, start values, continued numbering | ✅ | Checklists are written as ☐/☒ prefixed list items (ODF has no checklist) |
+| Tables: column widths, header rows, row/column spans, cell shading, vertical alignment | ✅ | Cell borders written as a single-line grid |
+| Images (inline and wrapped left/right), alt text | ✅ | |
+| Hyperlinks, footnotes, endnotes | ✅ | |
+| Comments (replies and resolved via LibreOffice's `loext` extension) | ✅ | Point comments (no range) are listed but not highlighted |
+| Headers/footers (default, left/even, first page), page number/count/date/title fields | ✅ | |
+| Page size, orientation, margins, page color, page-number format | ✅ | ODF margins exclude the header; converted both ways |
+| Table of contents | ✅ | Entries and page numbers kept; refresh in Simple Docs |
+| Page breaks | ✅ | Written as break-before on the next paragraph |
+| Tracked changes | 🟡 | Imported as accepted; saved as final text (warned) |
+| Text boxes, drawings, other unknown elements | 🔒 | Preserved and written back to ODT; plain text in other formats |
+| Sections / columns | ❌ | Content kept, section formatting dropped (warned) |
+| Custom starting page number | ❌ | Not written (warned) |
+
+## RTF, DOC (through LibreOffice)
+
+These are converted to DOCX by a locally installed LibreOffice and then go through the DOCX engine, so the DOCX table applies. RTF saves go back through LibreOffice. Legacy `.doc` can be opened but not saved.
 
 ## Markdown
 

@@ -23,7 +23,7 @@ npm run build && npm start  # production build
 
 ### Optional: LibreOffice
 
-DOCX, Markdown, HTML, plain text and PDF export need nothing extra. **ODT, RTF and legacy `.doc`** are converted through a locally installed LibreOffice (`soffice`). The app finds LibreOffice on `PATH` and in the standard install locations, and runs it headless with an isolated temporary profile. LibreOffice is not bundled, because it would add more than 300 MB. When it is missing, the app says so plainly when you open one of those formats. A native ODT adapter is planned for Milestone 2.
+DOCX, **ODT**, Markdown, HTML, plain text and PDF export need nothing extra (DOCX and ODT use built-in engines). **RTF and legacy `.doc`** are converted through a locally installed LibreOffice (`soffice`). The app finds LibreOffice on `PATH` and in the standard install locations, and runs it headless with an isolated temporary profile. LibreOffice is not bundled, because it would add more than 300 MB. When it is missing, the app says so plainly when you open one of those formats.
 
 ## Architecture
 
@@ -35,7 +35,7 @@ src/editor/     Tiptap/ProseMirror schema + extensions, document model (page set
                 list numbering, find/replace, templates
 src/layout/     Pagination engine: breaks.ts (pure algorithm) + plugin.ts (DOM measurement → spacer decorations)
 src/formats/    Pure format adapters (bytes ⇄ editor JSON + warnings): docx/ (own OOXML reader/writer),
-                markdown, html, text, registry (incl. LibreOffice bridge)
+                odt/ (own ODF reader/writer), markdown, html, text, registry (incl. LibreOffice bridge)
 src/export/     Print/PDF: slices the paginated DOM into fixed-size pages
 src/renderer/   React UI: title bar, ribbon, panels, dashboard, dialogs, command registry, state
 tests/          unit/ (vitest) · e2e/ (Playwright + Electron) · fixtures/
