@@ -187,3 +187,36 @@ test('comments: add, reply, resolve, survive a DOCX round trip', async () => {
     await quit(app)
   }
 })
+
+test('track changes: record, show, accept', async () => {
+  const { app, page } = await launch({ settings: { authorName: 'Editor One' } })
+  try {
+    await page.keyboard.press('Control+n')
+    await doc(page).click()
+    await page.keyboard.type('Draft sentence here.')
+    await page.keyboard.press('Control+Shift+t')
+    await expect(page.getByTestId('track-indicator')).toContainText('on')
+    await page.keyboard.press('End')
+    await page.keyboard.type(' Added later.')
+    for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowLeft') // before "later."
+    // Backspace over "Added " (inside our own insertion → really deleted? no: that's own insertion)
+    await withEditor(page, `(e) => e.chain().focus().setTextSelection({ from: 7, to: 16 }).deleteSelection().run()`) // "sentence " (original text)
+    const ins = page.locator('[data-doc-scroll]:visible ins.sd-ins')
+    const del = page.locator('[data-doc-scroll]:visible del.sd-del')
+    expect(await ins.allTextContents()).toEqual([' Added later.'])
+    await expect(del).toHaveText('sentence ')
+    await expect(del).toHaveAttribute('data-author', 'Editor One')
+    // Final view hides deletions
+    await page.evaluate(() => (window as never as { __sd: { runCommand(id: string): void } }).__sd.runCommand('review.markup'))
+    await expect(del).toBeHidden()
+    await page.evaluate(() => (window as never as { __sd: { runCommand(id: string): void } }).__sd.runCommand('review.markup'))
+    await page.getByRole('tab', { name: 'Review' }).click()
+    await page.getByRole('button', { name: 'Accept' }).click()
+    await page.getByRole('menuitem', { name: 'Accept all changes' }).click()
+    await settle(page)
+    expect(await withEditor<string>(page, `(e) => e.getText()`)).toBe('Draft here. Added later.')
+    await expect(ins).toHaveCount(0)
+  } finally {
+    await quit(app)
+  }
+})

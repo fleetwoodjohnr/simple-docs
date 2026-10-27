@@ -110,6 +110,8 @@ class Reader {
   commentIds = new Map<string, string>()
   replyIds = new Set<string>()
   activeComments = new Set<string>()
+  /** Inside w:ins / w:del: runs carry this revision mark. */
+  revision: Mark | null = null
   commentParts: string[] = []
 
   commentRange(e: El) {
@@ -680,13 +682,14 @@ class Reader {
           }
           case 'ins':
           case 'moveTo':
-            this.w.add('loss', 'Tracked changes were accepted on import')
-            this.inlines(e, out, linkMark, field)
-            continue
           case 'del':
-          case 'moveFrom':
-            this.w.add('loss', 'Tracked changes were accepted on import')
+          case 'moveFrom': {
+            const saved = this.revision
+            this.revision = { type: e.localName === 'ins' || e.localName === 'moveTo' ? 'insertion' : 'deletion', attrs: { author: attr(e, NS.w, 'author') ?? '', date: attr(e, NS.w, 'date') ?? '' } }
+            this.inlines(e, out, linkMark, field)
+            this.revision = saved
             continue
+          }
           case 'smartTag':
           case 'customXml':
           case 'dir':
@@ -727,6 +730,8 @@ class Reader {
     const marks = this.marksFor(rp)
     if (linkMark) marks.push(linkMark)
     for (const id of this.activeComments) marks.push({ type: 'comment', attrs: { id } })
+    if (this.revision) marks.push(this.revision)
+    if (child(child(r, NS.w, 'rPr'), NS.w, 'rPrChange')) this.w.add('info', 'Tracked formatting changes from Word are shown as accepted')
     const push = (n: JSONContent) => out[out.length - 1].push(n)
     const text = (t: string) => {
       if (!t || field.inInstr || field.skip) return
@@ -744,6 +749,7 @@ class Reader {
             text(textOf(e))
             continue
           case 'delText':
+            if (this.revision?.type === 'deletion') text(textOf(e))
             continue
           case 'instrText':
             if (field.inInstr) field.instr += textOf(e)
@@ -1197,6 +1203,7 @@ export function importDocx(data: Uint8Array): ImportResult {
   const settingsXml = settingsRel && r.text(settingsRel.target)
   const evenAndOdd = !!settingsXml && /<w:evenAndOddHeaders(?![^>]*w:val="(0|false)")/.test(settingsXml)
   const hfResult = r.headersFooters(finalSect, evenAndOdd)
+  const trackChanges = !!settingsXml && /<w:trackRevisions(?![^>]*w:val="(0|false)")/.test(settingsXml)
   // Header/footer references, titlePg and pgNumType are regenerated from the model on save.
   const extra = finalSect
     ? elements(finalSect)
@@ -1213,7 +1220,7 @@ export function importDocx(data: Uint8Array): ImportResult {
 
   const carry: DocxCarry = { parts: files, rels: [...r.rels.values()], sectPrExtra: extra, overrides, converted: [...(hfResult?.parts ?? []), ...r.noteParts, ...r.commentParts] }
   return {
-    doc: { type: 'doc', attrs: { page, styles: r.styles, meta: r.meta(), hf: hfResult?.hf ?? null, comments: Object.keys(r.comments).length ? r.comments : null }, content: content.length ? content : [{ type: 'paragraph' }] },
+    doc: { type: 'doc', attrs: { page, styles: r.styles, meta: r.meta(), hf: hfResult?.hf ?? null, comments: Object.keys(r.comments).length ? r.comments : null, trackChanges }, content: content.length ? content : [{ type: 'paragraph' }] },
     warnings: r.w.list(),
     carry
   }

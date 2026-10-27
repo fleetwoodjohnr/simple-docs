@@ -5,6 +5,7 @@ import * as docs from '../state/documents'
 import { readAsDataUrl } from '@/editor/create'
 import { insertToc, updateTocsSettled } from '@/editor/toc'
 import { addComment, commentUiKey, focusComment, orderedCommentIds } from '@/editor/comments'
+import { changesAtSelection, gotoChange, resolveChanges, setTracking } from '@/editor/track'
 import { emptyHF, resolveStyle, type HeadersFooters, type HFKind, type StyleMap } from '@/editor/model'
 import { bodyEditor } from '../state/store'
 
@@ -422,6 +423,24 @@ function stepComment(dir: 1 | -1) {
   focusComment(body, ids[(i + dir + ids.length) % ids.length])
   set({ rightPanel: 'comments' })
 }
+def({ id: 'review.track', label: 'Track changes', shortcut: 'Mod-Shift-t', run: () => { const b = bodyEditor(); if (b) setTracking(b, !b.state.doc.attrs.trackChanges) }, isActive: () => !!bodyEditor()?.state.doc.attrs.trackChanges })
+def({ id: 'review.accept', label: 'Accept change', run: () => reviewAt(true) })
+def({ id: 'review.reject', label: 'Reject change', run: () => reviewAt(false) })
+def({ id: 'review.acceptAll', label: 'Accept all changes', run: () => { const b = bodyEditor(); if (b && !resolveChanges(b, true)) toast('There are no tracked changes') } })
+def({ id: 'review.rejectAll', label: 'Reject all changes', run: () => { const b = bodyEditor(); if (b && !resolveChanges(b, false)) toast('There are no tracked changes') } })
+def({ id: 'review.nextChange', label: 'Next change', run: () => { const b = bodyEditor(); if (b && !gotoChange(b, 1)) toast('There are no tracked changes') } })
+def({ id: 'review.prevChange', label: 'Previous change', run: () => { const b = bodyEditor(); if (b && !gotoChange(b, -1)) toast('There are no tracked changes') } })
+def({ id: 'review.markup', label: 'Show markup', needsEditor: false, run: () => set((s) => ({ showMarkup: !s.showMarkup })), isActive: () => get().showMarkup })
+
+function reviewAt(accept: boolean) {
+  const b = bodyEditor()
+  if (!b) return
+  const at = changesAtSelection(b)
+  if (!at.length) return void gotoChange(b, 1)
+  resolveChanges(b, accept, at)
+  gotoChange(b, 1)
+}
+
 def({ id: 'review.comment', label: 'New comment', shortcut: 'Mod-Alt-m', run: () => newComment() })
 def({ id: 'review.nextComment', label: 'Next comment', run: () => stepComment(1) })
 def({ id: 'review.prevComment', label: 'Previous comment', run: () => stepComment(-1) })

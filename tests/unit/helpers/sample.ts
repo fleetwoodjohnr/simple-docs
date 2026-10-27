@@ -39,11 +39,13 @@ export function richDoc(): JSONContent {
     p(t('An image: '), { type: 'image', attrs: { src: PNG, alt: 'Red dot', width: 40, height: 40 } }),
     { type: 'pageBreak' },
     { type: 'heading', attrs: { level: 1 }, content: [t('After the break')] },
-    p(t('Tab\there and a'), { type: 'hardBreak' }, t('line break.'))
+    p(t('Tab\there and a'), { type: 'hardBreak' }, t('line break.')),
+    p(t('Tracked: '), t('removed words', [{ type: 'deletion', attrs: { author: 'Editor', date: '2026-02-01T00:00:00.000Z' } }]), t('added words', [{ type: 'insertion', attrs: { author: 'Editor', date: '2026-02-01T00:00:00.000Z' } }]), t('.'))
   ])
   doc.attrs!.page = withOrientation(withSize(makePageSetup('a4'), 'a4'), 'portrait')
   doc.attrs!.page.margins = { ...doc.attrs!.page.margins, top: 54, bottom: 54, left: 63, right: 63 }
   doc.attrs!.meta = { title: 'Quarterly Report', author: 'Test Author' }
+  doc.attrs!.trackChanges = true
   doc.attrs!.comments = { c1: { author: 'Reviewer', date: '2026-01-01T00:00:00.000Z', text: 'Expand this section.', resolved: false, replies: [{ author: 'Writer', date: '2026-01-02T00:00:00.000Z', text: 'Will do.' }] } }
   return doc
 }

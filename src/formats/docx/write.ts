@@ -142,11 +142,21 @@ class Writer {
       case 'text': {
         const rpr = this.rPr(n.marks as Mark[], charStyle)
         const [pre, post] = this.commentMarkers(n)
-        return pre + (n.text ?? '')
+        const del = n.marks?.find((m) => m.type === 'deletion')
+        const ins = n.marks?.find((m) => m.type === 'insertion')
+        const t = del ? 'w:delText' : 'w:t'
+        let runs = (n.text ?? '')
           .split(/(\t)/)
           .filter(Boolean)
-          .map((part) => (part === '\t' ? `<w:r>${rpr}<w:tab/></w:r>` : `<w:r>${rpr}<w:t xml:space="preserve">${x(part)}</w:t></w:r>`))
-          .join('') + post
+          .map((part) => (part === '\t' ? `<w:r>${rpr}<w:tab/></w:r>` : `<w:r>${rpr}<${t} xml:space="preserve">${x(part)}</${t}></w:r>`))
+          .join('')
+        const rev = del ?? ins
+        if (rev) {
+          const date = rev.attrs?.date && !isNaN(Date.parse(String(rev.attrs.date))) ? ` w:date="${new Date(String(rev.attrs.date)).toISOString().replace(/\.\d+Z$/, 'Z')}"` : ''
+          const tag = del ? 'w:del' : 'w:ins'
+          runs = `<${tag} w:id="${++this.revId}" w:author="${x(String(rev.attrs?.author || 'Author'))}"${date}>${runs}</${tag}>`
+        }
+        return pre + runs + post
       }
       case 'hardBreak':
         return '<w:r><w:br/></w:r>'
@@ -290,6 +300,7 @@ class Writer {
     }
   }
   usedCode = false
+  revId = 1000
   tocLevels = new Set<number>()
 
   // ----- comments -----
@@ -655,6 +666,13 @@ class Writer {
   }
 }
 
+/** Insert `el` before the first of `followers` (elements that must come after it), else before </w:settings>. */
+function insertSetting(xml: string, el: string, followers: string[]): string {
+  const m = new RegExp(`<w:(${followers.join('|')})\\b`).exec(xml)
+  if (m) return xml.slice(0, m.index) + el + xml.slice(m.index)
+  return xml.includes('</w:settings>') ? xml.replace('</w:settings>', `${el}</w:settings>`) : xml
+}
+
 function relationshipsXml(rels: { id: string; type: string; target: string; external?: boolean }[]): string {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels
     .map((r) => `<Relationship Id="${r.id}" Type="${r.type}" Target="${x(r.target)}"${r.external ? ' TargetMode="External"' : ''}/>`)
@@ -736,12 +754,13 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
     overridesExtra[`word/${kind}s.xml`] = `application/vnd.openxmlformats-officedocument.wordprocessingml.${kind}s+xml`
   }
   for (const p of Object.keys(wr.hfFiles)) if (!p.endsWith('.rels')) overridesExtra[p] = p.includes('/header') ? CT.header : CT.footer
-  if (hf?.differentOddEven) {
-    const st = files['word/settings.xml'] ? strFromU8(files['word/settings.xml']) : ''
-    const cleaned = st.replace(/<w:evenAndOddHeaders[^>]*\/>/g, '')
-    files['word/settings.xml'] = strToU8(
-      /<w:defaultTabStop[^>]*\/>/.test(cleaned) ? cleaned.replace(/(<w:defaultTabStop[^>]*\/>)/, '$1<w:evenAndOddHeaders/>') : cleaned.replace(/(<w:settings[^>]*>)/, '$1<w:evenAndOddHeaders/>')
-    )
+  // settings.xml flags we own (removed, then re-added where CT_Settings' element order allows).
+  {
+    let st = files['word/settings.xml'] ? strFromU8(files['word/settings.xml']) : ''
+    st = st.replace(/<w:evenAndOddHeaders[^>]*\/>/g, '').replace(/<w:trackRevisions[^>]*\/>/g, '')
+    if (doc.attrs?.trackChanges) st = insertSetting(st, '<w:trackRevisions/>', ['doNotTrackMoves', 'doNotTrackFormatting', 'documentProtection', 'autoFormatOverride', 'styleLockTheme', 'styleLockQFSet', 'defaultTabStop'])
+    if (hf?.differentOddEven) st = insertSetting(st, '<w:evenAndOddHeaders/>', ['bookFoldRevPrinting', 'bookFoldPrinting', 'bookFoldPrintingSheets', 'drawingGridHorizontalSpacing', 'drawingGridVerticalSpacing', 'displayHorizontalDrawingGridEvery', 'displayVerticalDrawingGridEvery', 'doNotUseMarginsForDrawingGridOrigin', 'doNotShadeFormData', 'noPunctuationKerning', 'characterSpacingControl', 'compat', 'rsids'])
+    files['word/settings.xml'] = strToU8(st)
   }
   files['word/styles.xml'] = strToU8(wr.stylesXml())
   if (wr.lists.length) files['word/numbering.xml'] = strToU8(wr.numberingXml())

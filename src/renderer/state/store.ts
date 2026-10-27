@@ -62,6 +62,8 @@ export interface AppState {
   dark: boolean
   /** Header/footer currently being edited in place. */
   hf: { tabId: string; kind: 'header' | 'footer'; page: number } | null
+  /** Show tracked deletions and insertion styling (false = "final" view). */
+  showMarkup: boolean
   /** Footnote/endnote being edited (document position of its reference). */
   note: { tabId: string; pos: number } | null
 }
@@ -90,7 +92,8 @@ export const useApp = create<AppState>(() => ({
   libreOffice: false,
   dark: false,
   hf: null,
-  note: null
+  note: null,
+  showMarkup: true
 }))
 
 export const set = useApp.setState

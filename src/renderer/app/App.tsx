@@ -13,6 +13,9 @@ import { Dialogs } from './Dialogs'
 import { FindBar, FloatingToolbar, EditorContextMenu } from './Overlays'
 import { SourceEditor } from './SourceEditor'
 import { TooltipProvider, Btn, cx } from '../ui'
+import { setTrackAuthor } from '@/editor/track'
+
+setTrackAuthor(() => get().settings.authorName || 'Author')
 
 async function boot() {
   const api = window.simpleDocs
@@ -42,10 +45,10 @@ function useTheme() {
 
 function TabView({ tab, hidden }: { tab: TabMeta; hidden: boolean }) {
   const editor = editors.get(tab.id)
-  const { zoom, showMarks, showBoundaries, showRuler, painter } = useApp(useShallow((s) => ({ zoom: s.zoom, showMarks: s.showMarks, showBoundaries: s.showBoundaries, showRuler: s.settings.showRuler && !s.focusMode, painter: !!s.painter })))
+  const { zoom, showMarks, showBoundaries, showRuler, painter, showMarkup } = useApp(useShallow((s) => ({ zoom: s.zoom, showMarks: s.showMarks, showBoundaries: s.showBoundaries, showRuler: s.settings.showRuler && !s.focusMode, painter: !!s.painter, showMarkup: s.showMarkup })))
   if (!editor) return null
   return (
-    <div hidden={hidden} className={cx('absolute inset-0', painter && '[&_.sd-doc]:cursor-copy')} onMouseUp={() => painter && applyPainter(editor)}>
+    <div hidden={hidden} className={cx('absolute inset-0', painter && '[&_.sd-doc]:cursor-copy', !showMarkup && 'final-view')} onMouseUp={() => painter && applyPainter(editor)}>
       {tab.mode === 'source' ? (
         <SourceEditor editor={editor} />
       ) : (

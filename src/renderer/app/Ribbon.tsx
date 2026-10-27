@@ -4,12 +4,13 @@ import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, CalendarDays, CaseSensitive, ChevronDown, ChevronUp, ClipboardPaste, Code2, Columns3, Copy, Eraser, Eye, FileDown, Focus,
   Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Info, Italic, Keyboard, Link2, List, ListChecks, ListOrdered, Maximize2, Minus, Moon, PaintBucket, Paintbrush, PanelLeft,
   PanelRight, Pilcrow, Plus, Printer, Quote, Redo2, Replace, Ruler, Scissors, Search, Settings, Sigma, SquareDashed, Strikethrough, Subscript, Superscript, Table2, Type, Underline, Undo2,
-  Volume2, WrapText, ZoomIn, ZoomOut, BookOpen, PanelTop, PanelBottom, Hash, ListTree, RefreshCw, MessageSquarePlus, MessagesSquare, FileCode2, ShieldCheck, Merge, Split, Trash2, Rows3, AlignStartVertical, AlignEndVertical, RectangleHorizontal, RectangleVertical
+  Volume2, WrapText, ZoomIn, ZoomOut, BookOpen, PanelTop, PanelBottom, Hash, ListTree, RefreshCw, MessageSquarePlus, MessagesSquare, CheckCheck, XCircle, ArrowUpToLine, ArrowDownToLine, FilePenLine, FileCode2, ShieldCheck, Merge, Split, Trash2, Rows3, AlignStartVertical, AlignEndVertical, RectangleHorizontal, RectangleVertical
 } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { useApp, set, updateSettings, type RibbonTab } from '../state/store'
 import { applyStyle, changeCase, FONT_SIZES, insertPageNumber, runCommand, shortcutFor, SYMBOLS, updateBlocks, zoomTo } from './commands'
-import { useActiveEditor, useSnapshot, type Snapshot } from './hooks'
+import { useActiveEditor, useBodyEditor, useSnapshot, type Snapshot } from './hooks'
+import { useEditorState } from '@tiptap/react'
 import { ColorGrid, IconBtn, Menu, MenuCheck, MenuContent, MenuItem, MenuLabel, MenuSep, MenuTrigger, NumberInput, Pop, PopClose, PopContent, PopTrigger, SubMenu, Tip, cx } from '../ui'
 import { MARGIN_PRESETS, PAGE_SIZES, withOrientation, withSize, type PageSetup, type StyleMap, resolveStyle } from '@/editor/model'
 import { pageOf } from '@/layout/plugin'
@@ -759,6 +760,16 @@ function ReferencesTab() {
   )
 }
 
+function TrackToggle() {
+  const editor = useBodyEditor()
+  const on = useEditorState({ editor, selector: ({ editor: e }) => !!e?.state.doc.attrs.trackChanges }) ?? false
+  return (
+    <TextBtn icon={<FilePenLine />} active={on} onClick={() => runCommand('review.track')} label="Record insertions and deletions" shortcut={shortcutFor('review.track')}>
+      Track changes
+    </TextBtn>
+  )
+}
+
 function Note({ children }: { children: ReactNode }) {
   return (
     <span className="flex items-center gap-1.5 px-2 text-[12px] text-text-3">
@@ -780,6 +791,33 @@ function ReviewTab() {
         </TextBtn>
         <TextBtn icon={<ShieldCheck />} label="What this file format can and cannot keep" onClick={() => runCommand('tools.compat')}>
           Compatibility
+        </TextBtn>
+      </Group>
+      <Sep />
+      <Group label="Tracking">
+        <TrackToggle />
+        <Menu>
+          <DropBtn label="Accept" icon={<CheckCheck />}>
+            Accept
+          </DropBtn>
+          <MenuContent>
+            <MenuItem onSelect={() => runCommand('review.accept')}>Accept and move to next</MenuItem>
+            <MenuItem onSelect={() => runCommand('review.acceptAll')}>Accept all changes</MenuItem>
+          </MenuContent>
+        </Menu>
+        <Menu>
+          <DropBtn label="Reject" icon={<XCircle />}>
+            Reject
+          </DropBtn>
+          <MenuContent>
+            <MenuItem onSelect={() => runCommand('review.reject')}>Reject and move to next</MenuItem>
+            <MenuItem onSelect={() => runCommand('review.rejectAll')}>Reject all changes</MenuItem>
+          </MenuContent>
+        </Menu>
+        <Cmd id="review.prevChange" label="Previous change" icon={<ArrowUpToLine className="size-4" />} />
+        <Cmd id="review.nextChange" label="Next change" icon={<ArrowDownToLine className="size-4" />} />
+        <TextBtn icon={<Eye />} active={useApp((x) => x.showMarkup)} onClick={() => runCommand('review.markup')} label="Show insertions and deletions (off = final text)">
+          Markup
         </TextBtn>
       </Group>
       <Sep />

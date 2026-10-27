@@ -406,6 +406,16 @@ export function RightSidebar() {
 
 // ---------- status bar ----------
 
+function TrackIndicator({ editor }: { editor: Editor }) {
+  const on = useEditorState({ editor, selector: ({ editor: e }) => !!e.state.doc.attrs.trackChanges })
+  return (
+    <button onClick={() => runCommand('review.track')} className={cx('flex h-full items-center gap-1.5 rounded px-2 hover:bg-hover', on && 'font-medium text-accent')} data-testid="track-indicator">
+      <span className={cx('size-1.5 rounded-full', on ? 'bg-accent' : 'bg-text-3/50')} />
+      Track changes: {on ? 'on' : 'off'}
+    </button>
+  )
+}
+
 export function StatusBar() {
   const editor = useBodyEditor()
   const { zoom, settings, active } = useApp(useShallow((s) => ({ zoom: s.zoom, settings: s.settings, active: s.active })))
@@ -428,6 +438,7 @@ export function StatusBar() {
         Spelling: {window.simpleDocs.platform === 'linux' ? 'off' : settings.spellcheck ? 'on' : 'off'}
       </span>
       <div className="flex-1" />
+      <TrackIndicator editor={editor} />
       <span className="px-2">{tab.mode === 'source' ? 'Markdown source' : 'Editing'}</span>
       <span className="px-2">{tab.format ? tab.format.toUpperCase() : 'New document'}</span>
       <div className="mx-1 h-3.5 w-px bg-border" />

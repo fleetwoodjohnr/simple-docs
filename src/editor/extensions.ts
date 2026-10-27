@@ -14,6 +14,7 @@ import { NumberingPlugin } from './numbering'
 import { Toc, TocEntry, TocNavigation } from './toc'
 import { Footnote, NoteClicks } from './notes'
 import { Comment } from './comments'
+import { Deletion, Insertion, TrackChanges } from './track'
 
 // ---------- helpers ----------
 
@@ -58,7 +59,7 @@ export const SdDocument = Node.create({
   topNode: true,
   content: 'block+',
   addAttributes() {
-    return { page: { default: null }, styles: { default: null }, meta: { default: null }, hf: { default: null }, comments: { default: null } }
+    return { page: { default: null }, styles: { default: null }, meta: { default: null }, hf: { default: null }, comments: { default: null }, trackChanges: { default: false } }
   }
 })
 
@@ -436,6 +437,9 @@ export function createExtensions(opts: ExtensionOptions = {}): Extensions {
     Footnote,
     NoteClicks,
     Comment,
+    Insertion,
+    Deletion,
+    TrackChanges,
     TabKey,
     Numbering,
     ...(opts.placeholder ? [Placeholder.configure({ placeholder: opts.placeholder, showOnlyWhenEditable: true })] : [])

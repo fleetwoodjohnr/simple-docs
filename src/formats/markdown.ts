@@ -101,7 +101,10 @@ class Serializer {
     }
     const openMarks = new Map<string, Mk>()
     for (const node of nodes) {
+      if (node.marks?.some((m) => m.type === 'deletion' || m.type === 'insertion')) this.w.add('info', 'Tracked changes are exported as the final text')
+      if (node.marks?.some((m) => m.type === 'deletion')) continue
       const marks = (node.marks ?? []).filter((m) => {
+        if (m.type === 'insertion' || m.type === 'comment') return false
         if (SUPPORTED_MARKS.includes(m.type)) return true
         this.w.add('loss', `${MARK_NAMES[m.type] ?? m.type} cannot be represented in Markdown`)
         return false

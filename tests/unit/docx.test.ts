@@ -100,3 +100,23 @@ describe('DOCX round trip', () => {
     expect(Number(/Pages:\s+(\d+)/.exec(pages)![1])).toBeGreaterThanOrEqual(2)
   }, 150_000)
 })
+
+describe('DOCX tracked changes', () => {
+  const { data } = exportDocx(richDoc())
+  it('writes w:ins / w:del with authors and turns on trackRevisions', async () => {
+    const { unzipSync, strFromU8 } = await import('fflate')
+    const zip = unzipSync(data)
+    const xml = strFromU8(zip['word/document.xml'])
+    expect(xml).toMatch(/<w:del w:id="\d+" w:author="Editor" w:date="2026-02-01T00:00:00Z"><w:r><w:t\b|<w:del w:id="\d+" w:author="Editor"[^>]*><w:r>.*?<w:delText/)
+    expect(xml).toContain('<w:delText xml:space="preserve">removed words</w:delText>')
+    expect(xml).toMatch(/<w:ins w:id="\d+" w:author="Editor"/)
+    expect(strFromU8(zip['word/settings.xml'])).toMatch(/<w:trackRevisions\/>.*<w:defaultTabStop/s)
+  })
+  it('reads them back as revision marks', () => {
+    const back = importDocx(data).doc
+    expect(back.attrs!.trackChanges).toBe(true)
+    const marksOf = (s: string) => find(back, (n) => n.text === s)[0]?.marks?.map((m) => [m.type, m.attrs?.author])
+    expect(marksOf('removed words')).toEqual([['deletion', 'Editor']])
+    expect(marksOf('added words')).toEqual([['insertion', 'Editor']])
+  })
+})

@@ -33,6 +33,7 @@ function inlineText(nodes: JSONContent[] = []): string {
         notes.push((n.attrs?.content as JSONContent[]) ?? [])
         return `[${notes.length}]`
       }
+      if (n.marks?.some((m) => m.type === 'deletion')) return ''
       return n.type === 'text' ? n.text : n.type === 'hardBreak' ? '\n' : n.type === 'preservedInline' ? n.attrs?.text ?? '' : ''
     })
     .join('')

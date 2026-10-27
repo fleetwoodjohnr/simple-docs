@@ -728,3 +728,23 @@ body {
   background: none !important;
   border: 0 !important;
 }
+
+/* ================= track changes ================= */
+.sd-doc ins.sd-ins {
+  text-decoration: underline;
+  text-decoration-color: #1a7f4b;
+  text-decoration-thickness: 1.5px;
+  color: #1a7f4b;
+}
+.sd-doc del.sd-del {
+  text-decoration: line-through;
+  text-decoration-color: #c2322b;
+  color: #c2322b;
+}
+.final-view .sd-doc del.sd-del {
+  display: none;
+}
+.final-view .sd-doc ins.sd-ins {
+  text-decoration: none;
+  color: inherit;
+}
