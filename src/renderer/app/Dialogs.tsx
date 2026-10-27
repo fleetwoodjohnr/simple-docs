@@ -13,6 +13,7 @@ import type { Settings } from '@/shared/ipc-types'
 import { refreshSpelling, resetSpelling } from '../spell/client'
 import { HistoryDialog } from './History'
 import { EquationDialog } from './EquationDialog'
+import { DrawingDialog } from './DrawingDialog'
 import { SourcesDialog } from './Citations'
 
 const close = () => set({ dialog: null })
@@ -45,6 +46,8 @@ export function Dialogs() {
       return <SourcesDialog insert={d.insert} />
     case 'equation':
       return <EquationDialog pos={d.pos} />
+    case 'drawing':
+      return <DrawingDialog mode={d.mode} pos={d.pos} />
     default:
       return null
   }

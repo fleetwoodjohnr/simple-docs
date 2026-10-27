@@ -1,5 +1,5 @@
 import { Extension, Mark, Node, mergeAttributes, type Extensions } from '@tiptap/core'
-import { TextSelection } from '@tiptap/pm/state'
+import { Plugin, TextSelection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import Heading from '@tiptap/extension-heading'
 import { BulletList, OrderedList, ListItem, TaskList, TaskItem } from '@tiptap/extension-list'
@@ -360,8 +360,34 @@ export const SdImage = Image.extend({
           return f === 'left' || f === 'right' ? f : null
         },
         renderHTML: (a) => (a.float ? { 'data-float': a.float } : {})
+      },
+      /** Chart or shape spec when the image was drawn by the app (double-click to edit). */
+      drawing: {
+        default: null,
+        parseHTML: (el) => {
+          try {
+            return JSON.parse(el.getAttribute('data-drawing') ?? 'null')
+          } catch {
+            return null
+          }
+        },
+        renderHTML: (a) => (a.drawing ? { 'data-drawing': JSON.stringify(a.drawing) } : {})
       }
     }
+  },
+  addProseMirrorPlugins() {
+    return [
+      ...(this.parent?.() ?? []),
+      new Plugin({
+        props: {
+          handleDoubleClickOn: (_view, pos, node) => {
+            if (node.type.name !== 'image' || !node.attrs.drawing) return false
+            window.dispatchEvent(new CustomEvent('sd:edit-drawing', { detail: pos }))
+            return true
+          }
+        }
+      })
+    ]
   }
 }).configure({
   inline: true,

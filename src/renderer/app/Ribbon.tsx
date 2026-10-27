@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Editor } from '@tiptap/core'
-import { Users, Braces, ChevronLeft, ChevronRight, BookMarked, Library, BookImage, Lock, GitCompare, Accessibility,
+import { Shapes, BarChart3, Users, Braces, ChevronLeft, ChevronRight, BookMarked, Library, BookImage, Lock, GitCompare, Accessibility,
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, CalendarDays, CaseSensitive, ChevronDown, ChevronUp, ClipboardPaste, Code2, Columns3, Copy, Eraser, Eye, FileDown, Focus,
   Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Info, Italic, Keyboard, Link2, List, ListChecks, ListOrdered, Maximize2, Minus, Moon, PaintBucket, Paintbrush, PanelLeft,
   PanelRight, Pilcrow, Plus, Printer, Quote, Redo2, Replace, Ruler, Scissors, Search, Settings, Sigma, SquareDashed, Strikethrough, Subscript, Superscript, Table2, Type, Underline, Undo2,
@@ -580,6 +580,12 @@ function InsertTab({ editor }: { editor: Editor }) {
       <Group label="Illustrations">
         <TextBtn icon={<ImageIcon />} label="Insert image from file (or paste / drag an image)" onClick={() => runCommand('insert.image')}>
           Image
+        </TextBtn>
+        <TextBtn icon={<Shapes />} label="Insert a shape (double-click it later to edit)" onClick={() => set({ dialog: { kind: 'drawing', mode: 'shape' } })}>
+          Shape
+        </TextBtn>
+        <TextBtn icon={<BarChart3 />} label="Insert a chart from a small table of data (double-click it later to edit)" onClick={() => set({ dialog: { kind: 'drawing', mode: 'chart' } })}>
+          Chart
         </TextBtn>
       </Group>
       <Sep />

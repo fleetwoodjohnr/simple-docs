@@ -232,3 +232,46 @@ test('equations: insert, edit by double-click, survive DOCX and appear in the PD
     await quit(app)
   }
 })
+
+test('charts and shapes: insert from data, edit by double-click, keep as pictures in DOCX', async () => {
+  const { app, page } = await launch()
+  const file = path.join(tempDir(), 'chart.docx')
+  try {
+    await page.keyboard.press('Control+n')
+    await doc(page).click()
+    await page.getByRole('tab', { name: 'Insert', exact: true }).click()
+    await page.getByRole('button', { name: 'Chart', exact: true }).click()
+    await page.getByLabel('Title', { exact: true }).fill('Revenue by quarter')
+    await page.getByLabel('Chart data').fill('Quarter,Revenue\nQ1,120\nQ2,150\nQ3,170')
+    await expect(page.getByTestId('drawing-preview').locator('rect.bar')).toHaveCount(3)
+    await page.getByTestId('drawing-save').click()
+    const img = doc(page).locator('img[data-drawing]')
+    await expect(img).toHaveCount(1)
+    await expect(img).toHaveAttribute('alt', /Column chart “Revenue by quarter”\. Revenue: Q1 120, Q2 150, Q3 170/)
+    expect(await img.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(1800)
+
+    await img.dblclick()
+    await page.getByRole('radio', { name: 'Pie' }).click()
+    await page.getByTestId('drawing-save').click()
+    await expect(img).toHaveAttribute('alt', /^Pie chart/)
+
+    await page.getByRole('tab', { name: 'Insert', exact: true }).click()
+    await page.getByRole('button', { name: 'Shape', exact: true }).click()
+    await page.getByRole('radio', { name: 'Arrow' }).click()
+    await page.getByLabel('Shape text').fill('Next step')
+    await page.getByTestId('drawing-save').click()
+    await expect(doc(page).locator('img[data-drawing]')).toHaveCount(2)
+    await expect(doc(page).locator('img[alt="Arrow: Next step"]')).toHaveCount(1)
+
+    await stubDialogs(app, { save: file })
+    await page.keyboard.press('Control+s')
+    await expect(page.getByTestId('save-status')).toHaveText(/Saved/)
+    await page.keyboard.press('Control+w')
+    await stubDialogs(app, { open: [file] })
+    await page.keyboard.press('Control+o')
+    await expect(doc(page).locator('img:not(.ProseMirror-separator)')).toHaveCount(2)
+    await expect(doc(page).locator('img[alt^="Pie chart"]')).toHaveCount(1)
+  } finally {
+    await quit(app)
+  }
+})
