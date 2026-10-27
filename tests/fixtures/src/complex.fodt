@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" office:version="1.3" office:mimetype="application/vnd.oasis.opendocument.text">
+ <office:meta><dc:title>Fixture Report</dc:title><meta:initial-creator>Fixture Author</meta:initial-creator></office:meta>
+ <office:styles>
+  <style:style style:name="Standard" style:family="paragraph"><style:paragraph-properties fo:margin-bottom="0.1in"/><style:text-properties style:font-name="Liberation Serif" fo:font-family="'Liberation Serif'" fo:font-size="12pt"/></style:style>
+  <style:style style:name="Heading_20_1" style:display-name="Heading 1" style:family="paragraph" style:parent-style-name="Standard" style:default-outline-level="1"><style:paragraph-properties fo:margin-top="0.2in" fo:keep-with-next="always"/><style:text-properties fo:font-size="18pt" fo:font-weight="bold"/></style:style>
+  <style:style style:name="Heading_20_2" style:display-name="Heading 2" style:family="paragraph" style:parent-style-name="Standard" style:default-outline-level="2"><style:text-properties fo:font-size="14pt" fo:font-weight="bold"/></style:style>
+  <style:style style:name="Title" style:family="paragraph" style:parent-style-name="Standard"><style:text-properties fo:font-size="26pt"/></style:style>
+ </office:styles>
+ <office:automatic-styles>
+  <style:style style:name="Tbold" style:family="text"><style:text-properties fo:font-weight="bold"/></style:style>
+  <style:style style:name="Tital" style:family="text"><style:text-properties fo:font-style="italic"/></style:style>
+  <style:style style:name="Tred" style:family="text"><style:text-properties fo:color="#c00000" style:text-underline-style="solid" style:text-underline-width="auto" style:text-underline-color="font-color"/></style:style>
+  <style:style style:name="Pcenter" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:text-align="center"/></style:style>
+  <style:style style:name="Pbreak" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:break-before="page"/></style:style>
+  <style:style style:name="Cshade" style:family="table-cell"><style:table-cell-properties fo:background-color="#dde8ff" fo:border="0.5pt solid #000000"/></style:style>
+  <style:style style:name="Cplain" style:family="table-cell"><style:table-cell-properties fo:border="0.5pt solid #000000"/></style:style>
+  <text:list-style style:name="LBullet"><text:list-level-style-bullet text:level="1" text:bullet-char="•"><style:list-level-properties text:list-level-position-and-space-mode="label-alignment"><style:list-level-label-alignment text:label-followed-by="listtab" fo:text-indent="-0.25in" fo:margin-left="0.5in"/></style:list-level-properties></text:list-level-style-bullet><text:list-level-style-bullet text:level="2" text:bullet-char="◦"><style:list-level-properties text:list-level-position-and-space-mode="label-alignment"><style:list-level-label-alignment text:label-followed-by="listtab" fo:text-indent="-0.25in" fo:margin-left="0.75in"/></style:list-level-properties></text:list-level-style-bullet></text:list-style>
+  <text:list-style style:name="LNum"><text:list-level-style-number text:level="1" style:num-suffix="." style:num-format="1"><style:list-level-properties text:list-level-position-and-space-mode="label-alignment"><style:list-level-label-alignment text:label-followed-by="listtab" fo:text-indent="-0.25in" fo:margin-left="0.5in"/></style:list-level-properties></text:list-level-style-number></text:list-style>
+  <style:page-layout style:name="pm1"><style:page-layout-properties fo:page-width="8.5in" fo:page-height="11in" fo:margin-top="0.75in" fo:margin-bottom="0.75in" fo:margin-left="1in" fo:margin-right="1in"/><style:header-style><style:header-footer-properties fo:min-height="0in" fo:margin-bottom="0.2in"/></style:header-style><style:footer-style><style:header-footer-properties fo:min-height="0in" fo:margin-top="0.2in"/></style:footer-style></style:page-layout>
+ </office:automatic-styles>
+ <office:master-styles>
+  <style:master-page style:name="Standard" style:page-layout-name="pm1"><style:header><text:p text:style-name="Standard">Fixture header text</text:p></style:header><style:footer><text:p text:style-name="Pcenter">Page <text:page-number text:select-page="current">1</text:page-number></text:p></style:footer></style:master-page>
+ </office:master-styles>
+ <office:body><office:text>
+  <text:p text:style-name="Title">Fixture Report</text:p>
+  <text:h text:style-name="Heading_20_1" text:outline-level="1">Introduction</text:h>
+  <text:p text:style-name="Standard">Plain text with <text:span text:style-name="Tbold">bold words</text:span>, <text:span text:style-name="Tital">italic words</text:span> and <text:span text:style-name="Tred">red underlined</text:span>. A <text:a xlink:type="simple" xlink:href="https://example.org/">hyperlink</text:a> follows.<text:note text:id="ftn1" text:note-class="footnote"><text:note-citation>1</text:note-citation><text:note-body><text:p text:style-name="Standard">A footnote body.</text:p></text:note-body></text:note></text:p>
+  <text:p text:style-name="Pcenter">Centered paragraph.</text:p>
+  <text:h text:style-name="Heading_20_2" text:outline-level="2">Lists</text:h>
+  <text:list text:style-name="LBullet"><text:list-item><text:p text:style-name="Standard">Bullet one</text:p><text:list><text:list-item><text:p text:style-name="Standard">Nested bullet</text:p></text:list-item></text:list></text:list-item><text:list-item><text:p text:style-name="Standard">Bullet two</text:p></text:list-item></text:list>
+  <text:list text:style-name="LNum"><text:list-item><text:p text:style-name="Standard">Number one</text:p></text:list-item><text:list-item><text:p text:style-name="Standard">Number two</text:p></text:list-item></text:list>
+  <text:h text:style-name="Heading_20_2" text:outline-level="2">Data</text:h>
+  <table:table table:name="T1"><table:table-column table:number-columns-repeated="3"/>
+   <table:table-header-rows><table:table-row><table:table-cell table:style-name="Cshade"><text:p>Item</text:p></table:table-cell><table:table-cell table:style-name="Cshade"><text:p>Qty</text:p></table:table-cell><table:table-cell table:style-name="Cshade"><text:p>Note</text:p></table:table-cell></table:table-row></table:table-header-rows>
+   <table:table-row><table:table-cell table:style-name="Cplain" table:number-columns-spanned="2"><text:p>Merged across</text:p></table:table-cell><table:covered-table-cell/><table:table-cell table:style-name="Cplain" table:number-rows-spanned="2"><text:p>Tall cell</text:p></table:table-cell></table:table-row>
+   <table:table-row><table:table-cell table:style-name="Cplain"><text:p>Apples</text:p></table:table-cell><table:table-cell table:style-name="Cplain"><text:p>4</text:p></table:table-cell><table:covered-table-cell/></table:table-row>
+  </table:table>
+  <text:p text:style-name="Standard"><draw:frame draw:name="img1" text:anchor-type="as-char" svg:width="0.5in" svg:height="0.375in"><draw:image><office:binary-data>iVBORw0KGgoAAAANSUhEUgAAACAAAAAYCAIAAAAUMWhjAAAAJElEQVR4nGPQiDpBU8QwasGoBaMWjFowasGoBaMWjFowNCwAAJjE3i6+c5hFAAAAAElFTkSuQmCC</office:binary-data></draw:image><svg:desc>Blue box</svg:desc></draw:frame> Image caption text.</text:p>
+  <text:p text:style-name="Pbreak">Second page starts here.</text:p>
+ </office:text></office:body>
+</office:document>

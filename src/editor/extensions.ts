@@ -305,7 +305,7 @@ export const SdImage = Image.extend({
 }).configure({
   inline: true,
   allowBase64: true,
-  resize: { enabled: true, alwaysPreserveAspectRatio: true, minWidth: 16, minHeight: 16, directions: ['bottom-right', 'bottom-left', 'top-right', 'top-left'] as never }
+  resize: { enabled: true, alwaysPreserveAspectRatio: true, minWidth: 16, minHeight: 16, directions: ['bottom-right', 'bottom-left', 'top-right', 'top-left'] }
 })
 
 // ---------- tables ----------

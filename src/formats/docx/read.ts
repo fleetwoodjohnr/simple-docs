@@ -665,7 +665,13 @@ class Reader {
     if (child(pPr, NS.w, 'pBdr')) this.w.add('loss', 'Paragraph borders are not supported yet')
     if (child(pPr, NS.w, 'tabs')) this.w.add('info', 'Custom tab stops use default positions')
 
-    const numPr = pp.numPr === undefined ? (wStyle ? this.paraStyleNum.get(wStyle) ?? null : null) : pp.numPr
+    let numPr = pp.numPr === undefined ? (wStyle ? this.paraStyleNum.get(wStyle) ?? null : null) : pp.numPr
+    const numDef = numPr ? this.numbering.get(numPr.numId, numPr.ilvl) : null
+    // Outline numbering on headings and unnumbered levels (numFmt none) are not lists.
+    if (numPr && (level || !numDef || numDef.fmt === 'none')) {
+      if (level && numDef && numDef.fmt !== 'none' && numDef.text) this.w.add('loss', 'Numbered headings are shown without their numbers')
+      numPr = null
+    }
     const out: JSONContent[] = []
     runs.forEach((content, i) => {
       if (content.length === 1 && content[0].type === 'pageBreak') {

@@ -72,17 +72,6 @@ function buildDecorations(doc: PMNode, breaks: Break[]): DecorationSet {
 
 // ---------- measurement ----------
 
-/** Hoist a break position out of containers when the unit is their first child (so list markers, table wrappers move too). */
-function hoist(doc: PMNode, pos: number): number {
-  const $p = doc.resolve(pos)
-  let d = $p.depth
-  while (d > 0 && $p.index(d) === 0 && $p.node(d).type.name !== 'tableCell' && $p.node(d).type.name !== 'tableHeader') {
-    pos = $p.before(d)
-    d--
-  }
-  return pos
-}
-
 interface Measurer {
   natural(clientY: number): number
   scale: number
@@ -96,22 +85,41 @@ function makeMeasurer(root: HTMLElement): Measurer {
     const r = el.getBoundingClientRect()
     return { top: (r.top - rr.top) / scale, h: r.height / scale }
   })
+  // Prefix sums so natural() is a binary search.
+  const cum: number[] = []
+  spacers.reduce((acc, s, i) => (cum[i] = acc + s.h), 0)
   return {
     scale,
     rootTop: rr.top,
     natural(clientY) {
       const y = (clientY - rr.top) / scale
-      let shift = 0
-      for (const s of spacers) {
-        if (s.top < y - 0.25) shift += s.h
-        else break
+      let lo = 0
+      let hi = spacers.length
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1
+        if (spacers[mid].top < y - 0.25) lo = mid + 1
+        else hi = mid
       }
-      return y - shift
+      return y - (lo ? cum[lo - 1] : 0)
     }
   }
 }
 
-function measureLines(view: EditorView, dom: HTMLElement, nodePos: number, nodeSize: number, m: Measurer, rtl: boolean): Line[] {
+/** Top of a character's box (client coords), or null if it has no box. */
+function charTop(range: Range, node: Text, off: number): number | null {
+  range.setStart(node, off)
+  range.setEnd(node, off + 1)
+  const r = range.getClientRects()
+  return r.length ? r[r.length - 1].top : null
+}
+
+/**
+ * Line boxes of a textblock in natural coordinates. A line's document position is
+ * resolved lazily (binary search over character boxes) because only the line where
+ * a page splits ever needs it.
+ */
+function measureLines(view: EditorView, dom: HTMLElement, m: Measurer): Line[] {
+  const items: (Text | Element)[] = []
   const rects: DOMRect[] = []
   const walker = document.createTreeWalker(dom, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
     acceptNode: (n) => (n.nodeType === 1 && (n as Element).hasAttribute('data-pg-spacer') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT)
@@ -120,37 +128,71 @@ function measureLines(view: EditorView, dom: HTMLElement, nodePos: number, nodeS
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     if (n.nodeType === 3) {
       if (!n.nodeValue) continue
+      items.push(n as Text)
       range.selectNodeContents(n)
       for (const r of Array.from(range.getClientRects())) if (r.height > 0) rects.push(r)
     } else if ((n as Element).tagName === 'IMG' || (n as Element).classList.contains('sd-preserved-inline')) {
+      items.push(n as Element)
       const r = (n as Element).getBoundingClientRect()
       if (r.height > 0) rects.push(r)
     }
   }
   rects.sort((a, b) => a.top - b.top || a.left - b.left)
-  const lines: { top: number; bottom: number; left: number; right: number }[] = []
+  const boxes: { top: number; bottom: number }[] = []
   for (const r of rects) {
-    const cur = lines[lines.length - 1]
+    const cur = boxes[boxes.length - 1]
     if (cur && (r.top + r.bottom) / 2 < cur.bottom) {
       cur.top = Math.min(cur.top, r.top)
       cur.bottom = Math.max(cur.bottom, r.bottom)
-      cur.left = Math.min(cur.left, r.left)
-      cur.right = Math.max(cur.right, r.right)
-    } else lines.push({ top: r.top, bottom: r.bottom, left: r.left, right: r.right })
+    } else boxes.push({ top: r.top, bottom: r.bottom })
   }
-  const out: Line[] = []
-  for (let i = 0; i < lines.length; i++) {
-    const l = lines[i]
-    let pos = nodePos + 1
-    if (i > 0) {
-      const hit = view.posAtCoords({ left: rtl ? l.right - 1 : l.left + 1, top: (l.top + l.bottom) / 2 })
-      if (!hit || hit.pos <= nodePos + 1 || hit.pos >= nodePos + nodeSize - 1) continue
-      pos = hit.pos
+
+  /** First document position whose character box starts on or below `top` (client px). */
+  const posAtLineTop = (top: number): number | null => {
+    for (const item of items) {
+      if (item.nodeType === 1) {
+        if ((item as Element).getBoundingClientRect().top >= top - 1) return view.posAtDOM(item, 0)
+        continue
+      }
+      const t = item as Text
+      const len = t.length
+      const last = charTop(range, t, len - 1)
+      if (last == null || last < top - 1) continue
+      let lo = 0
+      let hi = len - 1
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1
+        const ct = charTop(range, t, mid)
+        if (ct != null && ct >= top - 1) hi = mid
+        else lo = mid + 1
+      }
+      return view.posAtDOM(t, lo)
     }
-    out.push({ top: m.natural(l.top), bottom: m.natural(l.bottom), pos })
+    return null
   }
-  return out
+
+  return boxes.map((b, i) => {
+    let pos: number | undefined
+    return {
+      top: m.natural(b.top),
+      bottom: m.natural(b.bottom),
+      get pos() {
+        if (pos === undefined) pos = (i === 0 ? null : posAtLineTop(b.top)) ?? -1
+        return pos
+      }
+    }
+  })
 }
+
+/** Minimal shape of prosemirror-view's internal ViewDesc tree (stable for years; used for O(n) node→DOM mapping). */
+interface Desc {
+  node?: PMNode
+  dom: Node
+  size: number
+  children: Desc[]
+}
+
+const NO_HOIST = new Set(['doc', 'tableCell', 'tableHeader'])
 
 export function measureUnits(view: EditorView): Unit[] {
   const doc = view.state.doc
@@ -165,52 +207,68 @@ export function measureUnits(view: EditorView): Unit[] {
     return p
   }
   const units: Unit[] = []
-  const box = (el: Element | null) => {
+  const box = (el: Node | null) => {
     if (!el || !(el instanceof HTMLElement)) return null
     const r = el.getBoundingClientRect()
     return { top: m.natural(r.top), bottom: m.natural(r.bottom) }
   }
 
-  doc.descendants((node, pos) => {
-    const name = node.type.name
-    if (name === 'table') {
-      let rowPos = pos + 1
-      node.forEach((row, _o, i) => {
-        const b = box(view.nodeDOM(rowPos) as Element)
-        if (b) units.push({ pos: i === 0 ? hoist(doc, pos) : rowPos, ...b, kind: 'row', keepNext: false, keepLines: true, breakBefore: false })
-        rowPos += row.nodeSize
-      })
-      return false
+  /**
+   * Walk the view's desc tree once. `pos` is the position at the start of `parent`'s
+   * content; `hoist` is where a break should go if the first child moves to a new page.
+   */
+  const walk = (parent: Desc, parentNode: PMNode, pos: number, hoist: number) => {
+    let p = pos
+    let first = true
+    for (const d of parent.children) {
+      const node = d.node
+      if (!node) {
+        p += d.size
+        continue
+      }
+      const at = first && !NO_HOIST.has(parentNode.type.name) ? hoist : p
+      first = false
+      const name = node.type.name
+      if (name === 'table') {
+        let rp = p + 1
+        let i = 0
+        const rows = (d.children ?? []).filter((c) => c.node)
+        for (const row of rows) {
+          const b = box(row.dom)
+          if (b) units.push({ pos: i === 0 ? at : rp, ...b, kind: 'row', keepNext: false, keepLines: true, breakBefore: false })
+          rp += row.node!.nodeSize
+          i++
+        }
+      } else if (node.isTextblock) {
+        const b = box(d.dom)
+        const dom = d.dom as HTMLElement
+        if (b) {
+          const st = name === 'paragraph' || name === 'heading' ? styleFor(node) : {}
+          let lines: Line[] | undefined
+          units.push({
+            pos: at,
+            ...b,
+            kind: 'text',
+            keepNext: Boolean(node.attrs.keepNext || st.keepNext),
+            keepLines: Boolean(node.attrs.keepLines || st.keepLines),
+            breakBefore: Boolean(node.attrs.pageBreakBefore || st.pageBreakBefore),
+            lines: () => (lines ??= measureLines(view, dom, m))
+          })
+        }
+      } else if (name === 'pageBreak') {
+        const b = box(d.dom)
+        if (b) units.push({ pos: p, ...b, kind: 'pagebreak', keepNext: false, keepLines: true, breakBefore: false })
+      } else if (node.isBlock && node.isAtom) {
+        const b = box(d.dom)
+        if (b) units.push({ pos: at, ...b, kind: 'atom', keepNext: false, keepLines: true, breakBefore: false })
+      } else if (!node.isInline && d.children?.length) {
+        walk(d, node, p + 1, at)
+      }
+      p += d.size
     }
-    if (node.isTextblock) {
-      const dom = view.nodeDOM(pos) as HTMLElement | null
-      const b = box(dom)
-      if (!b || !dom) return false
-      const st = node.type.name === 'paragraph' || node.type.name === 'heading' ? styleFor(node) : {}
-      const size = node.nodeSize
-      units.push({
-        pos: hoist(doc, pos),
-        ...b,
-        kind: 'text',
-        keepNext: Boolean(node.attrs.keepNext || st.keepNext),
-        keepLines: Boolean(node.attrs.keepLines || st.keepLines),
-        breakBefore: Boolean(node.attrs.pageBreakBefore || st.pageBreakBefore),
-        lines: () => measureLines(view, dom, pos, size, m, node.attrs.dir === 'rtl')
-      })
-      return false
-    }
-    if (name === 'pageBreak') {
-      const b = box(view.nodeDOM(pos) as Element)
-      if (b) units.push({ pos, ...b, kind: 'pagebreak', keepNext: false, keepLines: true, breakBefore: false })
-      return false
-    }
-    if (node.isBlock && node.isAtom) {
-      const b = box(view.nodeDOM(pos) as Element)
-      if (b) units.push({ pos: hoist(doc, pos), ...b, kind: 'atom', keepNext: false, keepLines: true, breakBefore: false })
-      return false
-    }
-    return true
-  })
+  }
+  const docView = (view as unknown as { docView?: Desc }).docView
+  if (docView?.children) walk(docView, doc, 0, 0)
   return units
 }
 

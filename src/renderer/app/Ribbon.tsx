@@ -628,17 +628,17 @@ function LayoutTab({ editor, s }: { editor: Editor; s: Snapshot }) {
         <span className="ml-1 text-[11.5px] text-text-3">Indent</span>
         <Tip label="Left indent">
           <div>
-            <NumberInput label="Left indent" unit="pt" step={6} min={0} value={s.indentLeft} onChange={(v) => updateBlocks(editor, { indentLeft: v })} width={64} />
+            <NumberInput label="Left indent" placeholder="L" unit="pt" step={6} min={0} value={s.indentLeft} onChange={(v) => updateBlocks(editor, { indentLeft: v })} width={64} />
           </div>
         </Tip>
         <Tip label="Right indent">
           <div>
-            <NumberInput label="Right indent" unit="pt" step={6} min={0} value={s.indentRight} onChange={(v) => updateBlocks(editor, { indentRight: v })} width={64} />
+            <NumberInput label="Right indent" placeholder="R" unit="pt" step={6} min={0} value={s.indentRight} onChange={(v) => updateBlocks(editor, { indentRight: v })} width={64} />
           </div>
         </Tip>
         <Tip label="First line (negative = hanging)">
           <div>
-            <NumberInput label="First line indent" unit="pt" step={6} value={s.indentFirst} onChange={(v) => updateBlocks(editor, { indentFirst: v })} width={64} />
+            <NumberInput label="First line indent" placeholder="1st" unit="pt" step={6} value={s.indentFirst} onChange={(v) => updateBlocks(editor, { indentFirst: v })} width={64} />
           </div>
         </Tip>
       </Group>
@@ -647,12 +647,12 @@ function LayoutTab({ editor, s }: { editor: Editor; s: Snapshot }) {
         <span className="ml-1 text-[11.5px] text-text-3">Spacing</span>
         <Tip label="Space before">
           <div>
-            <NumberInput label="Space before" unit="pt" step={6} min={0} value={s.spaceBefore} onChange={(v) => updateBlocks(editor, { spaceBefore: v })} width={64} />
+            <NumberInput label="Space before" placeholder="Before" unit="pt" step={6} min={0} value={s.spaceBefore} onChange={(v) => updateBlocks(editor, { spaceBefore: v })} width={64} />
           </div>
         </Tip>
         <Tip label="Space after">
           <div>
-            <NumberInput label="Space after" unit="pt" step={6} min={0} value={s.spaceAfter} onChange={(v) => updateBlocks(editor, { spaceAfter: v })} width={64} />
+            <NumberInput label="Space after" placeholder="After" unit="pt" step={6} min={0} value={s.spaceAfter} onChange={(v) => updateBlocks(editor, { spaceAfter: v })} width={64} />
           </div>
         </Tip>
       </Group>

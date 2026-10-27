@@ -149,7 +149,7 @@ class Writer {
       case 'image':
         return this.image(n)
       case 'preservedInline':
-        return String(n.attrs?.format) === 'docx' ? String(n.attrs?.raw ?? '') : `<w:r><w:t xml:space="preserve">${x(String(n.attrs?.text ?? ''))}</w:t></w:r>`
+        return this.preserved(n, false)
       default:
         return ''
     }
@@ -256,12 +256,29 @@ class Writer {
       case 'table':
         return this.table(n)
       case 'preservedBlock':
-        return String(n.attrs?.format) === 'docx' ? String(n.attrs?.raw ?? '') : `<w:p><w:r><w:t xml:space="preserve">${x(String(n.attrs?.text ?? ''))}</w:t></w:r></w:p>`
+        return this.preserved(n, true)
       default:
         return n.content ? this.blocks(n.content, ctx) : ''
     }
   }
   usedCode = false
+
+  /** Raw XML is written back only when every part it references travels with the document. */
+  preserved(n: JSONContent, block: boolean): string {
+    const raw = String(n.attrs?.raw ?? '')
+    const rels = new Set(this.carry?.rels.map((r) => r.id) ?? [])
+    const ok =
+      n.attrs?.format === 'docx' &&
+      raw &&
+      this.carry &&
+      [...raw.matchAll(/\br:(?:id|embed|link|dm|lo|qs|cs)="([^"]+)"/g)].every((m) => rels.has(m[1])) &&
+      (!raw.includes('footnoteReference') || !!this.carry.parts['word/footnotes.xml']) &&
+      (!raw.includes('endnoteReference') || !!this.carry.parts['word/endnotes.xml'])
+    if (ok) return raw
+    this.w.add('loss', `${n.attrs?.label ?? 'Preserved content'} could not be written back and was saved as plain text`)
+    const run = `<w:r><w:t xml:space="preserve">${x(String(n.attrs?.text ?? ''))}</w:t></w:r>`
+    return block ? `<w:p>${run}</w:p>` : run
+  }
 
   /** Flatten a nested list into numbered paragraphs sharing one w:num. */
   list(n: JSONContent): string {

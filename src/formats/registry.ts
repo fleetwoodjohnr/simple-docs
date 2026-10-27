@@ -34,7 +34,7 @@ export async function importBytes(format: FormatId, data: Uint8Array, lo: LibreO
       await needLibreOffice(lo, format)
       const docx = await lo.convert(data, format, 'docx')
       const r = importDocx(docx)
-      return { ...r, carry: undefined, warnings: [{ level: 'info', message: `Converted from ${format.toUpperCase()} with LibreOffice; some formatting may differ` }, ...r.warnings] }
+      return { ...r, warnings: [{ level: 'info', message: `Converted from ${format.toUpperCase()} with LibreOffice; some formatting may differ` }, ...r.warnings] }
     }
   }
 }

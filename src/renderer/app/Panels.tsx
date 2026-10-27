@@ -6,7 +6,7 @@ import { FileText, Hash, Minus, Plus, X, Clock, BookOpenText } from 'lucide-reac
 import { useShallow } from 'zustand/react/shallow'
 import { useApp, set, type LeftPanel, type RightPanel } from '../state/store'
 import * as docs from '../state/documents'
-import { useActiveEditor, usePageInfo, useSnapshot, useStats } from './hooks'
+import { useActiveEditor, usePageInfo, useSnapshot, useStats, useThrottled } from './hooks'
 import { applyStyle, runCommand, updateBlocks, zoomTo } from './commands'
 import { IconBtn, NumberInput, Segmented, cx, inputCls } from '../ui'
 import { pageOf, paginationKey, PAGE_GAP } from '@/layout/plugin'
@@ -83,7 +83,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 // ---------- left ----------
 
 function Outline({ editor }: { editor: Editor }) {
-  const list = useEditorState({ editor, selector: ({ editor: e }) => headings(e) }) ?? []
+  const list = useThrottled(editor, headings, [] as HeadingEntry[], 250)
   const head = useEditorState({ editor, selector: ({ editor: e }) => e.state.selection.head }) ?? 0
   const current = [...list].reverse().find((h) => h.pos <= head)
   if (!list.length)
@@ -114,17 +114,19 @@ function Outline({ editor }: { editor: Editor }) {
 
 function Pages({ editor, tabId }: { editor: Editor; tabId: string }) {
   const info = usePageInfo(editor)
-  const snippets = useEditorState({
+  const snippets = useThrottled(
     editor,
-    selector: ({ editor: e }) => {
+    (e) => {
       const st = paginationKey.getState(e.state)
       const starts = [0, ...(st?.breaks.map((b) => b.pos) ?? [])]
       return starts.map((from, i) => {
         const to = starts[i + 1] ?? e.state.doc.content.size
         return e.state.doc.textBetween(from, Math.min(to, from + 400), ' ', ' ').trim().slice(0, 90)
       })
-    }
-  })
+    },
+    [] as string[],
+    500
+  )
   return (
     <div className="grid grid-cols-2 gap-3 p-3">
       {(snippets ?? []).map((s, i) => (

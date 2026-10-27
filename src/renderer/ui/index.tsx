@@ -276,7 +276,7 @@ export function Field({ label, children, hint }: { label: ReactNode; children: R
   )
 }
 
-export function NumberInput({ value, onChange, step = 1, min, max, unit, label, width = 76 }: { value: number | null; onChange: (v: number | null) => void; step?: number; min?: number; max?: number; unit?: string; label: string; width?: number }) {
+export function NumberInput({ value, onChange, step = 1, min, max, unit, label, width = 76, placeholder = 'Auto' }: { value: number | null; onChange: (v: number | null) => void; step?: number; min?: number; max?: number; unit?: string; label: string; width?: number; placeholder?: string }) {
   return (
     <div className="relative" style={{ width }}>
       <input
@@ -286,6 +286,7 @@ export function NumberInput({ value, onChange, step = 1, min, max, unit, label, 
         min={min}
         max={max}
         value={value ?? ''}
+        placeholder={placeholder}
         onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
         className={cx(inputCls, 'h-7 pr-6 text-[12px] tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none')}
       />

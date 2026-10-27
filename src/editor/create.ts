@@ -63,13 +63,15 @@ export interface CreateEditorOptions extends PaginationOptions {
   content: JSONContent
   placeholder?: string
   onDocFiles?: (files: File[]) => void
+  /** Validate content against the schema (throws on invalid structure). */
+  strict?: boolean
 }
 
 export function createDocEditor(opts: CreateEditorOptions): Editor {
   return new Editor({
     extensions: [...createExtensions({ placeholder: opts.placeholder }), Pagination.configure({ onLayout: opts.onLayout }), Search],
     content: opts.content,
-    enableContentCheck: true,
+    enableContentCheck: opts.strict ?? true,
     editorProps: {
       attributes: { class: 'sd-doc', spellcheck: 'true', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Document body' },
       handlePaste(view, event) {

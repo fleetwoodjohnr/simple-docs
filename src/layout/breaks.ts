@@ -87,7 +87,7 @@ export function computeBreaks(units: Unit[], m: PageMetrics): Layout {
           const widows = u.widowControl === false ? 1 : 2
           const orphans = f === 0 && u.widowControl !== false ? 2 : 1
           if (lines.length - s < widows) s = lines.length - widows
-          if (s - f >= orphans && lines[s].top > start + EPS) {
+          if (s - f >= orphans && lines[s].top > start + EPS && lines[s].pos > 0) {
             newPage(lines[s].pos, 'inline', lines[s].top)
             continue
           }
@@ -104,7 +104,7 @@ export function computeBreaks(units: Unit[], m: PageMetrics): Layout {
       if (u.kind === 'text' && u.lines) {
         const lines = u.lines()
         const s = lines.findIndex((l) => l.top > start + EPS && l.bottom > limit + EPS)
-        if (s > 0) {
+        if (s > 0 && lines[s].pos > 0) {
           newPage(lines[s].pos, 'inline', lines[s].top)
           continue
         }

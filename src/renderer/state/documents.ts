@@ -76,9 +76,19 @@ function markDirty(id: string) {
 
 // ---------- tabs ----------
 
-function makeEditor(id: string, content: JSONContent): Editor {
-  const editor = createDocEditor({ content, placeholder: 'Start writing, or type / to insert…', onDocFiles: (files) => void openDroppedFiles(files) })
-  // Pagination transactions (and fix-ups appended to them, like the trailing paragraph) are not user edits.
+function makeEditor(id: string, content: JSONContent, onRepair?: () => void): Editor {
+  const opts = { content, placeholder: 'Start writing…', onDocFiles: (files: File[]) => void openDroppedFiles(files) }
+  let editor: Editor
+  try {
+    editor = createDocEditor(opts)
+  } catch {
+    // Keep everything rather than refuse the file; ProseMirror tolerates the odd structure.
+    editor = createDocEditor({ ...opts, strict: false })
+    onRepair?.()
+  }
+  // Run schema fix-ups (trailing paragraph, table normalization) now, flagged so they don't count as edits.
+  editor.view.dispatch(editor.state.tr.setMeta('pagination', true))
+  // Pagination transactions (and fix-ups appended to them) are not user edits.
   editor.on('update', ({ transaction }) => {
     if (!transaction.getMeta('pagination')) markDirty(id)
   })
@@ -128,7 +138,7 @@ export async function openFiles(files: OpenedFile[]) {
     try {
       const r = await importBytes(format, f.data, lo)
       const id = newId()
-      makeEditor(id, normalizeDoc(r.doc, docOptions()))
+      makeEditor(id, normalizeDoc(r.doc, docOptions()), () => r.warnings.push({ level: 'info', message: 'Some document structure did not match the editor’s rules and was kept as-is' }))
       if (r.carry) carries.set(id, r.carry)
       const loss = r.warnings.some((w) => w.level === 'loss')
       addTab({ id, title: baseName(f.name), path: f.path || null, format, warnings: r.warnings, autosaveBlocked: loss, savedAt: f.mtime })

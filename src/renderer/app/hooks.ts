@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/core'
 import { useApp, editors } from '../state/store'
@@ -166,6 +167,33 @@ export function computeStats(e: Editor): Stats {
   return stats
 }
 
+/** Like useEditorState, but recomputes at most every `ms` while the document changes (for O(n) derived data). */
+export function useThrottled<T>(editor: Editor | null, compute: (e: Editor) => T, fallback: T, ms = 400): T {
+  const [value, setValue] = useState<T>(() => (editor ? compute(editor) : fallback))
+  const fn = useRef(compute)
+  fn.current = compute
+  useEffect(() => {
+    if (!editor) return setValue(fallback)
+    setValue(fn.current(editor))
+    let timer = 0
+    const onUpdate = () => {
+      if (timer) return
+      timer = window.setTimeout(() => {
+        timer = 0
+        if (!editor.isDestroyed) setValue(fn.current(editor))
+      }, ms)
+    }
+    editor.on('update', onUpdate)
+    return () => {
+      window.clearTimeout(timer)
+      editor.off('update', onUpdate)
+    }
+  }, [editor, ms])
+  return value
+}
+
+const NO_STATS: Stats = { words: 0, chars: 0, charsNoSpaces: 0, paragraphs: 0 }
+
 export function useStats(editor: Editor | null): Stats {
-  return useEditorState({ editor, selector: ({ editor: e }) => (e ? computeStats(e) : { words: 0, chars: 0, charsNoSpaces: 0, paragraphs: 0 }) }) ?? { words: 0, chars: 0, charsNoSpaces: 0, paragraphs: 0 }
+  return useThrottled(editor, computeStats, NO_STATS)
 }
