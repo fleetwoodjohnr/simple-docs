@@ -372,7 +372,9 @@ export const SdImage = Image.extend({
           }
         },
         renderHTML: (a) => (a.drawing ? { 'data-drawing': JSON.stringify(a.drawing) } : {})
-      }
+      },
+      /** The drawing's XML as read from a DOCX file, written back as-is while the drawing is unchanged. */
+      origin: { default: null, rendered: false }
     }
   },
   addProseMirrorPlugins() {

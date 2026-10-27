@@ -22,6 +22,7 @@ paragraph: Apples	4
 paragraph: Footnote here[1].
 paragraph: Energy E=mc^2 and a citation (Lovelace, 1843, p. 12).
 paragraph: Dear «Name»,
+paragraph:  and 
 pageBreak
 paragraph: Second page.
 paragraph

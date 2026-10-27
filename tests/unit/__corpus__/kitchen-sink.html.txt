@@ -42,5 +42,6 @@ table
 paragraph: Footnote here⟨note The note.⟩.
 paragraph: Energy ⟨math E=mc^2⟩ and a citation ⟨cite Lov43 (Lovelace, 1843, p. 12)⟩.
 paragraph: Dear ⟨field Name⟩,
+paragraph: ⟨chart column "Sales" 3/5 4/6⟩ and ⟨shape rounded⟩
 pageBreak
 paragraph: Second page.

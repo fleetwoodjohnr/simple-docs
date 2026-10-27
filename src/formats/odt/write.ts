@@ -243,6 +243,7 @@ class OdtWriter {
 
   image(n: JSONContent): string {
     const a = n.attrs ?? {}
+    if (a.drawing) this.w.add('loss', 'Charts and shapes are saved as pictures in ODT (DOCX keeps them editable)')
     const parsed = parseDataUrl(String(a.src ?? ''))
     if (!parsed) {
       this.w.add('loss', 'Linked (non-embedded) images were left out')

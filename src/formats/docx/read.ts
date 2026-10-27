@@ -6,6 +6,8 @@ import type { CommentMap } from '@/editor/comments'
 import { parseSources } from './sources'
 import { ommlToLatex } from '@/editor/math/omml'
 import { MERGE_NS, parseCsv, type MergeData } from '@/editor/mailmerge'
+import type { DrawingSpec } from '@/editor/drawing'
+import { CHART_URI, C_NS, WPS_URI, chartFromPart, drawingKey, drawingPicture, shapeFromWsp } from './drawing'
 import { NS, attr, child, children, elements, find, findAll, is, mimeFromExt, num, onOff, parseXml, serialize, textOf, toBase64, wval, type El } from './xml'
 
 // DOCX (WordprocessingML) → editor JSON. Unsupported elements are kept verbatim as
@@ -597,14 +599,9 @@ class Reader {
     return `data:${mime};base64,${toBase64(bytes)}`
   }
 
-  drawing(dr: El): JSONContent | null {
+  drawing(dr: El, run: El): JSONContent | null {
     const holder = child(dr, NS.wp, 'inline') ?? child(dr, NS.wp, 'anchor')
     if (!holder) return null
-    const blip = find(holder, NS.a, 'blip')
-    const isPicture = !!find(holder, NS.pic, 'pic')
-    if (!isPicture || !blip) return null
-    const src = this.dataUrlForRel(attr(blip, NS.r, 'embed'))
-    if (!src) return null
     const extent = child(holder, NS.wp, 'extent')
     const docPr = child(holder, NS.wp, 'docPr')
     let float: string | null = null
@@ -615,18 +612,36 @@ class Reader {
       if (square) float = align === 'right' ? 'right' : 'left'
       else if (child(holder, NS.wp, 'wrapNone')) this.w.add('loss', behind ? 'Images behind text are shown inline' : 'Images in front of text are shown inline')
     }
-    this.imageCount++
-    return {
-      type: 'image',
-      attrs: {
-        src,
-        alt: attr(docPr, null, 'descr') || null,
-        title: attr(docPr, null, 'title') || null,
-        width: emuToPx(num(attr(extent, null, 'cx'))),
-        height: emuToPx(num(attr(extent, null, 'cy'))),
-        float
+    const width = emuToPx(num(attr(extent, null, 'cx')))
+    const height = emuToPx(num(attr(extent, null, 'cy')))
+    const base = { alt: attr(docPr, null, 'descr') || null, title: attr(docPr, null, 'title') || null, width, height, float }
+    const data = find(holder, NS.a, 'graphicData')
+    const uri = attr(data, null, 'uri')
+    // Charts and shapes the editor can represent become editable drawings; the original XML goes
+    // back unchanged on save unless the drawing is edited.
+    if (uri === CHART_URI || uri === WPS_URI) {
+      let spec: DrawingSpec | null = null
+      if (uri === CHART_URI) {
+        const rel = this.rels.get(attr(find(data, C_NS, 'chart'), NS.r, 'id') ?? '')
+        const xml = rel && !rel.external ? this.text(rel.target) : null
+        spec = xml ? chartFromPart(parseXml(xml)) : null
+      } else {
+        const wsp = child(data, NS.wps, 'wsp')
+        spec = wsp && width && height ? shapeFromWsp(wsp, width, height) : null
       }
+      if (!spec) return null
+      const attrs: Record<string, unknown> = { ...base, src: drawingPicture(spec, width ?? 600, height ?? 360), drawing: spec }
+      // Only a run holding nothing but this drawing can be written back as it was.
+      if (elements(run).every((e) => e.localName === 'rPr' || e === dr || findAll(e, NS.w, 'drawing').includes(dr))) attrs.origin = { xml: serialize(run), key: drawingKey(attrs) }
+      return { type: 'image', attrs }
     }
+    const blip = find(holder, NS.a, 'blip')
+    const isPicture = !!find(holder, NS.pic, 'pic')
+    if (!isPicture || !blip) return null
+    const src = this.dataUrlForRel(attr(blip, NS.r, 'embed'))
+    if (!src) return null
+    this.imageCount++
+    return { type: 'image', attrs: { src, ...base } }
   }
 
   vmlImage(pict: El): JSONContent | null {
@@ -825,7 +840,7 @@ class Reader {
             continue
           }
           case 'drawing': {
-            const img = this.drawing(e)
+            const img = this.drawing(e, r)
             if (img) push(img)
             else {
               push(this.preservedInline(r, find(e, NS.wps, 'wsp') ? 'Shape' : find(e, NS.a, 'graphicData') ? 'Chart or diagram' : 'Drawing'))
@@ -862,6 +877,12 @@ class Reader {
         }
       }
       if (is(e, NS.mc, 'AlternateContent')) {
+        const dr = find(child(e, NS.mc, 'Choice'), NS.w, 'drawing')
+        const shape = dr && find(dr, NS.wps, 'wsp') ? this.drawing(dr, r) : null
+        if (shape) {
+          push(shape)
+          continue
+        }
         push(this.preservedInline(r, 'Embedded object'))
         this.w.add('loss', 'Shapes, text boxes and embedded objects are preserved but not editable yet')
         return

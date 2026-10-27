@@ -6,6 +6,9 @@ import { Warnings, type ExportResult, type ImportResult } from './types'
 // ---------- import: CommonMark + GFM (tables, strikethrough, task lists) ----------
 
 const md = new MarkdownIt({ html: false, linkify: true, typographer: false })
+// markdown-it refuses SVG data URLs; as <img> sources they can't run script, and the HTML is sanitized after.
+const validateLink = md.validateLink.bind(md)
+md.validateLink = (url) => /^data:image\/svg\+xml;/i.test(url.trim()) || validateLink(url)
 
 // Math: $…$ inline and $$…$$ display (Pandoc rules: no space just inside the dollars, no digit right after
 // the closing one, so "$5 and $10" stays text).
@@ -205,6 +208,7 @@ class Serializer {
         else if (node.type === 'image') {
           const a = node.attrs ?? {}
           if (a.width || a.float) this.w.add('loss', 'Image sizes and text wrapping are not kept in Markdown')
+          if (a.drawing) this.w.add('loss', 'Charts and shapes are saved as pictures in Markdown')
           out += `![${escapeText(String(a.alt ?? ''))}](${String(a.src ?? '').replace(/[()\s]/g, encodeURIComponent)}${a.title ? ` "${String(a.title).replace(/"/g, '\\"')}"` : ''})`
         } else if (node.type === 'footnote') {
           const n = this.notes.length + 1

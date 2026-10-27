@@ -9,6 +9,8 @@ import { itemPropsXml, sourcesXml } from './sources'
 import type { CitationStyle, SourceMap } from '@/editor/citations'
 import { latexToOmml } from '@/editor/math/omml'
 import { MERGE_NS, toCsv, type MergeData } from '@/editor/mailmerge'
+import { drawingSize, type DrawingSpec } from '@/editor/drawing'
+import { CHART_CT, CHART_URI, C_NS, REL_CHART, REL_PACKAGE, chartPartXml, chartWorkbook, drawingKey, shapeGraphic } from './drawing'
 import { escXml as x, extFromMime, imageSize, parseDataUrl } from './xml'
 
 // Editor JSON → DOCX. Element order inside pPr/rPr follows the OOXML schema
@@ -56,9 +58,14 @@ interface ListLevel {
 class Writer {
   w = new Warnings()
   rels: { id: string; type: string; target: string; external?: boolean }[] = []
+  /** Generated parts besides the main ones: images, charts and their workbooks. */
   media: Record<string, Uint8Array> = {}
   relSeq = 0
   drawingId = 1
+  /** Relationship ids and part names of the original package (carried parts keep theirs). */
+  taken: Set<string>
+  /** Content types of generated parts that need an override. */
+  partTypes: Record<string, string> = {}
   /** numId → levels (one abstractNum per list instance). */
   lists: { levels: ListLevel[]; start: number }[] = []
   contentWidthPx: number
@@ -71,10 +78,13 @@ class Writer {
   ) {
     this.contentWidthPx = ((page.width - page.margins.left - page.margins.right) * 96) / 72
     this.styles = styles
+    this.taken = new Set([...(carry?.rels.map((r) => r.id) ?? []), ...Object.keys(carry?.parts ?? {})])
   }
 
   rel(type: string, target: string, external = false): string {
-    const id = `sdR${++this.relSeq}`
+    let id: string
+    do id = `sdR${++this.relSeq}`
+    while (this.taken.has(id))
     this.rels.push({ id, type, target, external })
     return id
   }
@@ -216,6 +226,36 @@ class Writer {
 
   image(n: JSONContent): string {
     const a = n.attrs ?? {}
+    if (a.drawing) return this.drawing(a, a.drawing as DrawingSpec)
+    const pic = this.picture(a)
+    return pic && `<w:r>${pic}</w:r>`
+  }
+
+  /** Size in EMU: the given size (or natural size), scaled down to the text width. */
+  extent(a: Record<string, unknown>, natural: { width: number; height: number }): [number, number] {
+    let w = Number(a.width) || natural.width
+    let h = Number(a.height) || (natural.height * w) / natural.width
+    if (w > this.contentWidthPx) {
+      h = (h * this.contentWidthPx) / w
+      w = this.contentWidthPx
+    }
+    return [Math.round(w * PX_TO_EMU), Math.round(h * PX_TO_EMU)]
+  }
+
+  /** A w:drawing holding a graphic, inline or floating (square wrap) as the node says. */
+  frame(a: Record<string, unknown>, [cx, cy]: [number, number], name: string, graphic: (id: number) => string, lockAspect = false): string {
+    const id = this.drawingId++
+    const descr = a.alt ? ` descr="${x(String(a.alt))}"` : ''
+    const title = a.title ? ` title="${x(String(a.title))}"` : ''
+    const docPr = `<wp:docPr id="${id}" name="${name} ${id}"${descr}${title}/><wp:cNvGraphicFramePr>${lockAspect ? '<a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/>' : ''}</wp:cNvGraphicFramePr>`
+    if (a.float === 'left' || a.float === 'right') {
+      return `<w:drawing><wp:anchor distT="0" distB="0" distL="114300" distR="114300" simplePos="0" relativeHeight="${id}" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="column"><wp:align>${a.float}</wp:align></wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapSquare wrapText="bothSides"/>${docPr}${graphic(id)}</wp:anchor></w:drawing>`
+    }
+    return `<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>${docPr}${graphic(id)}</wp:inline></w:drawing>`
+  }
+
+  /** A picture's w:drawing ('' when the image can't be embedded). */
+  picture(a: Record<string, unknown>): string {
     const parsed = parseDataUrl(String(a.src ?? ''))
     if (!parsed) {
       this.w.add('loss', 'Linked (non-embedded) images were left out')
@@ -226,27 +266,43 @@ class Writer {
       this.w.add('loss', 'An image in an unsupported format was left out')
       return ''
     }
-    const name = `word/media/sd-image${Object.keys(this.media).length + 1}.${ext === 'jpeg' ? 'jpg' : ext}`
+    const name = this.partName('word/media/sd-image', ext === 'jpeg' ? 'jpg' : ext)
     this.media[name] = parsed.bytes
     const rid = this.rel(REL.image, name.replace('word/', ''))
-    const natural = imageSize(parsed.bytes) ?? { width: 300, height: 200 }
-    let w = Number(a.width) || natural.width
-    let h = Number(a.height) || (natural.height * w) / natural.width
-    if (w > this.contentWidthPx) {
-      h = (h * this.contentWidthPx) / w
-      w = this.contentWidthPx
-    }
-    const cx = Math.round(w * PX_TO_EMU)
-    const cy = Math.round(h * PX_TO_EMU)
-    const id = this.drawingId++
+    const ext2 = this.extent(a, imageSize(parsed.bytes) ?? { width: 300, height: 200 })
     const descr = a.alt ? ` descr="${x(String(a.alt))}"` : ''
-    const title = a.title ? ` title="${x(String(a.title))}"` : ''
-    const graphic = `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${id}" name="Picture ${id}"${descr}/><pic:cNvPicPr><a:picLocks noChangeAspect="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic>`
-    const docPr = `<wp:docPr id="${id}" name="Picture ${id}"${descr}${title}/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>`
-    if (a.float === 'left' || a.float === 'right') {
-      return `<w:r><w:drawing><wp:anchor distT="0" distB="0" distL="114300" distR="114300" simplePos="0" relativeHeight="${id}" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="column"><wp:align>${a.float}</wp:align></wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapSquare wrapText="bothSides"/>${docPr}${graphic}</wp:anchor></w:drawing></w:r>`
+    return this.frame(a, ext2, 'Picture', (id) => `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${id}" name="Picture ${id}"${descr}/><pic:cNvPicPr><a:picLocks noChangeAspect="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${ext2[0]}" cy="${ext2[1]}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic>`, true)
+  }
+
+  /** Charts and shapes as native Word objects; unchanged ones read from a file go back as they were. */
+  drawing(a: Record<string, unknown>, d: DrawingSpec): string {
+    const origin = a.origin as { xml: string; key: string } | null
+    if (origin?.key === drawingKey(a) && this.rawOk(origin.xml)) return origin.xml
+    if (origin) this.w.add('info', 'Charts and shapes you changed are saved with Simple Docs’ styling')
+    const size = this.extent(a, drawingSize(d))
+    if (d.kind === 'chart') {
+      const part = this.partName('word/charts/sd-chart', 'xml')
+      const book = this.partName('word/embeddings/sd-chart', 'xlsx')
+      this.media[part] = strToU8(chartPartXml(d))
+      this.media[book] = chartWorkbook(d)
+      this.media[part.replace(/([^/]+)$/, '_rels/$1.rels')] = strToU8(relationshipsXml([{ id: 'rId1', type: REL_PACKAGE, target: `../embeddings/${book.split('/').pop()}` }]))
+      this.partTypes[part] = CHART_CT
+      const rid = this.rel(REL_CHART, part.replace('word/', ''))
+      return `<w:r>${this.frame(a, size, 'Chart', () => `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="${CHART_URI}"><c:chart xmlns:c="${C_NS}" r:id="${rid}"/></a:graphicData></a:graphic>`)}</w:r>`
     }
-    return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>${docPr}${graphic}</wp:inline></w:drawing></w:r>`
+    // Word 2010+, LibreOffice and Google Docs read the shape; older readers get the picture.
+    const choice = this.frame(a, size, 'Shape', () => shapeGraphic(d, size[0], size[1]))
+    const raster = /^data:image\/(png|jpe?g)/.test(String(a.src ?? '')) ? this.picture(a) : ''
+    return `<w:r><mc:AlternateContent><mc:Choice Requires="wps">${choice}</mc:Choice>${raster ? `<mc:Fallback>${raster}</mc:Fallback>` : ''}</mc:AlternateContent></w:r>`
+  }
+
+  /** A part name that neither the original package nor this writer uses yet. */
+  partName(prefix: string, ext: string): string {
+    let k = 0
+    let name: string
+    do name = `${prefix}${++k}.${ext}`
+    while (this.taken.has(name) || this.media[name])
+    return name
   }
 
   // ---------- paragraphs ----------
@@ -419,17 +475,20 @@ class Writer {
   }
 
   /** Raw XML is written back only when every part it references travels with the document. */
-  preserved(n: JSONContent, block: boolean): string {
-    const raw = String(n.attrs?.raw ?? '')
+  rawOk(raw: string): boolean {
     const rels = new Set(this.carry?.rels.map((r) => r.id) ?? [])
-    const ok =
-      n.attrs?.format === 'docx' &&
-      raw &&
-      this.carry &&
+    return (
+      !!raw &&
+      !!this.carry &&
       [...raw.matchAll(/\br:(?:id|embed|link|dm|lo|qs|cs)="([^"]+)"/g)].every((m) => rels.has(m[1])) &&
       (!raw.includes('footnoteReference') || !!this.carry.parts['word/footnotes.xml']) &&
       (!raw.includes('endnoteReference') || !!this.carry.parts['word/endnotes.xml'])
-    if (ok) return raw
+    )
+  }
+
+  preserved(n: JSONContent, block: boolean): string {
+    const raw = String(n.attrs?.raw ?? '')
+    if (n.attrs?.format === 'docx' && this.rawOk(raw)) return raw
     this.w.add('loss', `${n.attrs?.label ?? 'Preserved content'} could not be written back and was saved as plain text`)
     const run = `<w:r><w:t xml:space="preserve">${x(String(n.attrs?.text ?? ''))}</w:t></w:r>`
     return block ? `<w:p>${run}</w:p>` : run
@@ -707,6 +766,31 @@ function insertSetting(xml: string, el: string, followers: string[]): string {
   return xml.includes('</w:settings>') ? xml.replace('</w:settings>', `${el}</w:settings>`) : xml
 }
 
+/** Parts no relationship leads to any more (OPC: every part is reached from the package rels). */
+function unreachable(files: Record<string, Uint8Array>): string[] {
+  const seen = new Set(['[Content_Types].xml'])
+  const visit = (part: string) => {
+    if (seen.has(part) || !files[part]) return
+    seen.add(part)
+    const rels = part === '' ? '_rels/.rels' : part.replace(/([^/]+)$/, '_rels/$1.rels')
+    if (!files[rels]) return
+    seen.add(rels)
+    const dir = part.includes('/') ? part.slice(0, part.lastIndexOf('/') + 1) : ''
+    for (const [tag] of strFromU8(files[rels]).matchAll(/<Relationship\b[^>]*>/g)) {
+      const target = /Target="([^"]*)"/.exec(tag)?.[1]
+      if (!target || /TargetMode="External"/.test(tag)) continue
+      const parts = (target.startsWith('/') ? target.slice(1) : dir + target).split('/')
+      const out: string[] = []
+      for (const seg of parts) seg === '..' ? out.pop() : seg !== '.' && out.push(seg)
+      visit(decodeURIComponent(out.join('/')))
+    }
+  }
+  files[''] = new Uint8Array()
+  visit('')
+  delete files['']
+  return Object.keys(files).filter((p) => !seen.has(p))
+}
+
 function relationshipsXml(rels: { id: string; type: string; target: string; external?: boolean }[]): string {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels
     .map((r) => `<Relationship Id="${r.id}" Type="${r.type}" Target="${x(r.target)}"${r.external ? ' TargetMode="External"' : ''}/>`)
@@ -757,6 +841,8 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
       if (r.type.endsWith('/hyperlink') || r.type.endsWith('/image') || !r.external) {
         const target = r.external ? r.target : r.target.startsWith('word/') ? r.target.slice(5) : `../${r.target}`
         if (!r.external && !files[r.target]) continue
+        // Content the document no longer refers to (a replaced image or chart) is not carried.
+        if (/\/(image|hyperlink|chart|package|oleObject)$/.test(r.type) && !documentXml.includes(`="${r.id}"`)) continue
         carriedRels.push(`<Relationship Id="${x(r.id)}" Type="${x(r.type)}" Target="${x(target)}"${r.external ? ' TargetMode="External"' : ''}/>`)
       }
     }
@@ -834,11 +920,13 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL.office}" Target="word/document.xml"/><Relationship Id="rId2" Type="${REL.core}" Target="docProps/core.xml"/><Relationship Id="rId3" Type="${REL.app}" Target="docProps/app.xml"/></Relationships>`
   )
 
+  for (const p of unreachable(files)) delete files[p]
+
   const overrides: Record<string, string> = { 'word/document.xml': CT.document, 'word/styles.xml': CT.styles, 'word/settings.xml': CT.settings, 'docProps/core.xml': CT.core, 'docProps/app.xml': CT.app }
   if (wr.lists.length) overrides['word/numbering.xml'] = CT.numbering
-  Object.assign(overrides, overridesExtra)
+  Object.assign(overrides, overridesExtra, wr.partTypes)
   if (carry) for (const [p, t] of Object.entries(carry.overrides)) if (files[p] && !overrides[p] && t) overrides[p] = t
-  const defaults: Record<string, string> = { rels: 'application/vnd.openxmlformats-package.relationships+xml', xml: 'application/xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', tif: 'image/tiff', tiff: 'image/tiff', emf: 'image/x-emf', wmf: 'image/x-wmf', svg: 'image/svg+xml', bin: 'application/vnd.openxmlformats-officedocument.oleObject' }
+  const defaults: Record<string, string> = { rels: 'application/vnd.openxmlformats-package.relationships+xml', xml: 'application/xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', tif: 'image/tiff', tiff: 'image/tiff', emf: 'image/x-emf', wmf: 'image/x-wmf', svg: 'image/svg+xml', bin: 'application/vnd.openxmlformats-officedocument.oleObject', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
   files['[Content_Types].xml'] = strToU8(
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">${Object.entries(defaults)
       .map(([e, t]) => `<Default Extension="${e}" ContentType="${t}"/>`)

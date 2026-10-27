@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { strFromU8, unzipSync } from 'fflate'
 import { doc, launch, quit, settle, stubDialogs, tempDir, withEditor } from './helpers'
 
 test('accessibility checker finds issues and fixes them in place', async () => {
@@ -248,7 +249,7 @@ test('equations: insert, edit by double-click, survive DOCX and appear in the PD
   }
 })
 
-test('charts and shapes: insert from data, edit by double-click, keep as pictures in DOCX', async () => {
+test('charts and shapes: insert from data, edit by double-click, saved as native Word charts and shapes', async () => {
   const { app, page } = await launch()
   const file = path.join(tempDir(), 'chart.docx')
   try {
@@ -284,8 +285,20 @@ test('charts and shapes: insert from data, edit by double-click, keep as picture
     await page.keyboard.press('Control+w')
     await stubDialogs(app, { open: [file] })
     await page.keyboard.press('Control+o')
+    // In the file: a real chart part (with its data workbook) and a Word shape, not pictures.
+    const files = unzipSync(readFileSync(file))
+    expect(Object.keys(files).filter((p) => /^word\/charts\/[^/]+\.xml$/.test(p))).toHaveLength(1)
+    expect(Object.keys(files).filter((p) => p.startsWith('word/embeddings/'))).toHaveLength(1)
+    expect(strFromU8(files['word/document.xml'])).toContain('<a:prstGeom prst="rightArrow">')
+
+    await stubDialogs(app, { open: [file] })
+    await page.keyboard.press('Control+o')
     await expect(doc(page).locator('img:not(.ProseMirror-separator)')).toHaveCount(2)
     await expect(doc(page).locator('img[alt^="Pie chart"]')).toHaveCount(1)
+    // Still editable charts after the round trip: the editor opens with the data.
+    await doc(page).locator('img[alt^="Pie chart"]').dblclick()
+    await expect(page.getByLabel('Chart data')).toHaveValue(/Q2,150/)
+    await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Revenue by quarter')
   } finally {
     await quit(app)
   }

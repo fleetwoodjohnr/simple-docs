@@ -1,8 +1,10 @@
 # export warnings
 info: Tracked changes are exported as the final text
+loss: Charts and shapes are saved as pictures in Markdown
 loss: Citations are saved as plain text in Markdown
 loss: Comments cannot be represented in Markdown
 loss: Fonts, sizes and colors cannot be represented in Markdown
+loss: Image sizes and text wrapping are not kept in Markdown
 loss: Mail-merge fields are saved as «name» text in Markdown
 loss: Merged table cells are split in Markdown
 loss: Page and section breaks cannot be represented in Markdown
@@ -50,4 +52,5 @@ table
 paragraph: Footnote here⟨note The note.⟩.
 paragraph: Energy ⟨math E=mc^2⟩ and a citation (Lovelace, 1843, p. 12).
 paragraph: Dear «Name»,
+paragraph: ⟨picture⟩ and ⟨picture⟩
 paragraph: Second page.

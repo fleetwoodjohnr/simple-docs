@@ -13,6 +13,8 @@ import { normalizeDoc } from '@/editor/create'
 import { TEMPLATES } from '@/editor/templates'
 import { exportBytes, importBytes, type LibreOfficeBridge } from '@/formats/registry'
 import type { FormatId } from '@/formats/types'
+import type { DrawingSpec } from '@/editor/drawing'
+import { drawingPicture } from '@/formats/docx/drawing'
 
 const noLo: LibreOfficeBridge = { available: async () => false, convert: async () => new Uint8Array() }
 const hasSoffice = (() => {
@@ -27,6 +29,10 @@ const hasSoffice = (() => {
 const t = (text: string, marks?: JSONContent['marks']): JSONContent => ({ type: 'text', text, ...(marks ? { marks } : {}) })
 const p = (...c: JSONContent[]): JSONContent => ({ type: 'paragraph', content: c })
 const cell = (text: string, header = false, attrs: Record<string, unknown> = {}): JSONContent => ({ type: header ? 'tableHeader' : 'tableCell', attrs, content: [p(t(text))] })
+
+const CHART: DrawingSpec = { kind: 'chart', type: 'column', title: 'Sales', categories: ['North', 'South'], series: [{ name: '2025', values: [3, 5] }, { name: '2026', values: [4, 6] }] }
+const SHAPE: DrawingSpec = { kind: 'shape', shape: 'rounded', fill: '#2a9d74', stroke: 'none', text: 'Start', textColor: '#ffffff', width: 160, height: 80 }
+const drawing = (d: DrawingSpec, width: number, height: number): JSONContent => ({ type: 'image', attrs: { src: drawingPicture(d, width, height), drawing: d, width, height, alt: d.kind } })
 
 const KITCHEN_SINK: JSONContent = {
   type: 'doc',
@@ -49,6 +55,7 @@ const KITCHEN_SINK: JSONContent = {
     p(t('Footnote here'), { type: 'footnote', attrs: { kind: 'footnote', content: [p(t('The note.'))] } }, t('.')),
     p(t('Energy '), { type: 'equation', attrs: { latex: 'E=mc^2' } }, t(' and a citation '), { type: 'citation', attrs: { source: 'Lov43', pages: '12', text: '(Lovelace, 1843, p. 12)' } }, t('.')),
     p(t('Dear '), { type: 'mergeField', attrs: { name: 'Name' } }, t(',')),
+    p(drawing(CHART, 480, 288), t(' and '), drawing(SHAPE, 160, 80)),
     { type: 'pageBreak' },
     p(t('Second page.'))
   ]
@@ -72,6 +79,10 @@ function outline(doc: JSONContent): string {
     if (n.type === 'mergeField') return `⟨field ${n.attrs?.name}⟩`
     if (n.type === 'footnote') return `⟨note ${((n.attrs?.content as JSONContent[]) ?? []).map((b) => (b.content ?? []).map(inline).join('')).join(' ')}⟩`
     if (n.type === 'hardBreak') return '⏎'
+    if (n.type === 'image') {
+      const d = n.attrs?.drawing as DrawingSpec | null
+      return d ? `⟨${d.kind} ${d.kind === 'chart' ? `${d.type} "${d.title}" ${d.series.map((s) => s.values.join('/')).join(' ')}` : d.shape}⟩` : '⟨picture⟩'
+    }
     return `⟨${n.type}⟩`
   }
   const walk = (n: JSONContent, depth: number) => {
@@ -128,5 +139,8 @@ describe.skipIf(!hasSoffice)('LibreOffice re-save (independent writer)', () => {
         expect(words(text(back))).toContain(piece)
       // LibreOffice carries custom XML parts through a DOCX re-save (ODT never had them).
       if (fmt === 'docx') expect(back.attrs?.mergeData?.rows).toHaveLength(2)
+      // Our native chart and shape survive LibreOffice writing its own chart and shape XML (ODT has pictures).
+      const kinds = (JSON.stringify(back).match(/"drawing":\{"kind":"\w+"/g) ?? []).map((m) => m.slice(19, -1))
+      expect(kinds).toEqual(fmt === 'docx' ? ['chart', 'shape'] : [])
     }, 180_000)
 })

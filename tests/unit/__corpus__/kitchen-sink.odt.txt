@@ -1,4 +1,5 @@
 # export warnings
+loss: Charts and shapes are saved as pictures in ODT (DOCX keeps them editable)
 loss: Citations are saved as plain text (their link to the sources list is not kept)
 loss: Equations are saved as LaTeX text in ODT
 loss: Mail-merge fields are saved as «name» text in ODT
@@ -44,5 +45,6 @@ table
 paragraph: Footnote here⟨note The note.⟩.
 paragraph: Energy E=mc^2 and a citation (Lovelace, 1843, p. 12).
 paragraph: Dear «Name»,
+paragraph: ⟨picture⟩ and ⟨picture⟩
 pageBreak
 paragraph: Second page.
