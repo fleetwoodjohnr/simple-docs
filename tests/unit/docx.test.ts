@@ -9,6 +9,7 @@ import { exportDocx } from '@/formats/docx/write'
 import { importDocx } from '@/formats/docx/read'
 import { createExtensions } from '@/editor/extensions'
 import { richDoc } from './helpers/sample'
+import { hasPoppler, soffice } from '../tools'
 
 const schema = getSchema(createExtensions())
 const find = (doc: JSONContent, pred: (n: JSONContent) => boolean): JSONContent[] => {
@@ -88,8 +89,7 @@ describe('DOCX round trip', () => {
     expect(again.content).toEqual(doc.content)
   })
 
-  const soffice = ['/usr/bin/soffice', '/usr/bin/libreoffice'].find(existsSync)
-  it.skipIf(!soffice || !existsSync('/usr/bin/pdftotext'))('opens in LibreOffice (independent consumer)', () => {
+  it.skipIf(!soffice || !hasPoppler)('opens in LibreOffice (independent consumer)', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'sd-docx-'))
     const file = path.join(dir, 'report.docx')
     writeFileSync(file, data)

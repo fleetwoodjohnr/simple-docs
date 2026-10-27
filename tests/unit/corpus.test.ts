@@ -15,16 +15,10 @@ import { exportBytes, importBytes, type LibreOfficeBridge } from '@/formats/regi
 import type { FormatId } from '@/formats/types'
 import type { DrawingSpec } from '@/editor/drawing'
 import { drawingPicture } from '@/formats/docx/drawing'
+import { soffice } from '../tools'
 
 const noLo: LibreOfficeBridge = { available: async () => false, convert: async () => new Uint8Array() }
-const hasSoffice = (() => {
-  try {
-    execFileSync('soffice', ['--version'], { stdio: 'ignore' })
-    return true
-  } catch {
-    return false
-  }
-})()
+const hasSoffice = !!soffice
 
 const t = (text: string, marks?: JSONContent['marks']): JSONContent => ({ type: 'text', text, ...(marks ? { marks } : {}) })
 const p = (...c: JSONContent[]): JSONContent => ({ type: 'paragraph', content: c })
@@ -129,7 +123,7 @@ describe.skipIf(!hasSoffice)('LibreOffice re-save (independent writer)', () => {
       const src = path.join(dir, `ours.${fmt}`)
       writeFileSync(src, ours.data)
       const outDir = path.join(dir, `lo-${fmt}`)
-      execFileSync('soffice', ['--headless', `-env:UserInstallation=file://${profile}`, '--convert-to', fmt === 'docx' ? 'docx:MS Word 2007 XML' : 'odt', '--outdir', outDir, src], { stdio: 'ignore', timeout: 120_000 })
+      execFileSync(soffice!, ['--headless', `-env:UserInstallation=file://${profile}`, '--convert-to', fmt === 'docx' ? 'docx:MS Word 2007 XML' : 'odt', '--outdir', outDir, src], { stdio: 'ignore', timeout: 120_000 })
       const resaved = path.join(outDir, `ours.${fmt}`)
       expect(existsSync(resaved)).toBe(true)
       const back = (await importBytes(fmt, readFileSync(resaved), noLo)).doc

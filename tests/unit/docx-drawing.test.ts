@@ -10,6 +10,7 @@ import { exportDocx } from '@/formats/docx/write'
 import { importDocx, type DocxCarry } from '@/formats/docx/read'
 import { drawingPicture, shapeFromWsp } from '@/formats/docx/drawing'
 import { parseXml } from '@/formats/docx/xml'
+import { hasPoppler, soffice } from '../tools'
 
 const chart = (type: ChartSpec['type'], title = 'Quarterly sales'): ChartSpec => ({
   kind: 'chart',
@@ -68,8 +69,7 @@ describe('native Word charts', () => {
     expect(back).toEqual(['Revised', 'Share'])
   })
 
-  const soffice = ['/usr/bin/soffice', '/usr/bin/libreoffice'].find(existsSync)
-  it.skipIf(!soffice || !existsSync('/usr/bin/pdftotext'))('LibreOffice draws it as a chart (its labels are text in the PDF) and reads the workbook', () => {
+  it.skipIf(!soffice || !hasPoppler)('LibreOffice draws it as a chart (its labels are text in the PDF) and reads the workbook', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'sd-chart-'))
     const file = path.join(dir, 'chart.docx')
     const out = exportDocx(docWith(chart('column')))

@@ -3,12 +3,12 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { strFromU8, unzipSync } from 'fflate'
-import { doc, launch, quit, settle, stubDialogs, tempDir, withEditor } from './helpers'
+import { LINE_END, doc, launch, quit, settle, stubDialogs, tempDir, withEditor } from './helpers'
 
 test('accessibility checker finds issues and fixes them in place', async () => {
   const { app, page } = await launch()
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await withEditor(
       page,
       `(e) => e.commands.setContent([
@@ -38,15 +38,15 @@ test('version history keeps each save and restores an older one (undoable)', asy
   const { app, page } = await launch()
   const file = path.join(tempDir(), 'history.docx')
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.keyboard.type('First draft.')
     await stubDialogs(app, { save: file })
-    await page.keyboard.press('Control+s')
+    await page.keyboard.press('ControlOrMeta+s')
     await expect(page.getByTestId('save-status')).toHaveText(/Saved/)
-    await page.keyboard.press('End')
+    await page.keyboard.press(LINE_END)
     await page.keyboard.type(' Second draft adds this.')
-    await page.keyboard.press('Control+s')
+    await page.keyboard.press('ControlOrMeta+s')
     await expect(page.getByTestId('save-status')).toHaveText(/Saved/)
     await settle(page, 300)
 
@@ -59,7 +59,7 @@ test('version history keeps each save and restores an older one (undoable)', asy
     await page.getByTestId('restore-version').click()
     await expect(doc(page)).toHaveText('First draft.')
     await doc(page).click()
-    await page.keyboard.press('Control+z')
+    await page.keyboard.press('ControlOrMeta+z')
     await expect(doc(page)).toContainText('Second draft adds this.')
   } finally {
     await quit(app)
@@ -71,7 +71,7 @@ test('compare: an edited DOCX against the original file opens a comparison with 
   const fixture = path.join(__dirname, '../fixtures/complex.docx')
   try {
     await stubDialogs(app, { open: [fixture] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await expect(doc(page)).toContainText('Fixture Report')
     await withEditor(page, `(e) => { let pos = 0; e.state.doc.descendants((n, p) => { if (!pos && n.isText && n.text.includes('Centered paragraph')) pos = p }); e.chain().insertContentAt({ from: pos, to: pos + 8 }, 'Middle').run() }`)
     await stubDialogs(app, { open: [fixture] })
@@ -89,7 +89,7 @@ test('protect: read only blocks typing, survives a DOCX round trip, and can be s
   const { app, page } = await launch()
   const file = path.join(tempDir(), 'locked.docx')
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.keyboard.type('Final wording.')
     await page.getByRole('tab', { name: 'Review', exact: true }).click()
@@ -98,15 +98,15 @@ test('protect: read only blocks typing, survives a DOCX round trip, and can be s
     await expect(page.getByTestId('protection-bar')).toContainText('Read only')
     await expect(doc(page)).toHaveAttribute('contenteditable', 'false')
     await stubDialogs(app, { save: file })
-    await page.keyboard.press('Control+s')
+    await page.keyboard.press('ControlOrMeta+s')
     await expect(page.getByTestId('save-status')).toHaveText(/Saved/)
-    await page.keyboard.press('Control+w')
+    await page.keyboard.press('ControlOrMeta+w')
     await stubDialogs(app, { open: [file] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await expect(page.getByTestId('protection-bar')).toContainText('Read only')
     await page.getByTestId('protection-bar').getByRole('button', { name: 'Stop protection' }).click()
     await doc(page).click()
-    await page.keyboard.press('End')
+    await page.keyboard.press(LINE_END)
     await page.keyboard.type(' Edited.')
     await expect(doc(page)).toHaveText('Final wording. Edited.')
   } finally {
@@ -117,7 +117,7 @@ test('protect: read only blocks typing, survives a DOCX round trip, and can be s
 test('cover page: inserted from document properties onto its own page', async () => {
   const { app, page } = await launch({ settings: { authorName: 'Ada Lovelace' } })
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.keyboard.type('Body text.')
     await withEditor(page, `(e) => e.chain().command(({ tr }) => (tr.setDocAttribute('meta', { title: 'Annual Review' }), true)).run()`)
@@ -137,7 +137,7 @@ test('cover page: inserted from document properties onto its own page', async ()
 test('citations: add a source, cite it, switch style, insert a bibliography', async () => {
   const { app, page } = await launch()
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.keyboard.type('Programs can weave patterns ')
     await page.getByRole('tab', { name: 'References', exact: true }).click()
@@ -165,7 +165,7 @@ test('mail merge: CSV recipients, insert fields, preview, merge into a new docum
   const { app, page } = await launch()
   const file = path.join(tempDir(), 'letter.docx')
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.keyboard.type('Dear ')
     await page.getByRole('tab', { name: 'Tools', exact: true }).click()
@@ -185,11 +185,11 @@ test('mail merge: CSV recipients, insert fields, preview, merge into a new docum
 
     // Save, close and reopen: the recipients come back with the document, no CSV needed.
     await stubDialogs(app, { save: file, open: [] })
-    await page.keyboard.press('Control+s')
+    await page.keyboard.press('ControlOrMeta+s')
     await expect(page.getByTestId('save-status')).toHaveText(/Saved/)
-    await page.keyboard.press('Control+w')
+    await page.keyboard.press('ControlOrMeta+w')
     await stubDialogs(app, { open: [file] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await page.getByRole('tab', { name: 'Tools', exact: true }).click()
     await expect(page.getByRole('button', { name: /3 recipients/ })).toBeVisible()
     await expect(doc(page)).toHaveText('Dear «Name» of «City»')
@@ -211,7 +211,7 @@ test('equations: insert, edit by double-click, survive DOCX and appear in the PD
   const file = path.join(dir, 'math.docx')
   const pdfFile = path.join(dir, 'math.pdf')
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.keyboard.type('Pythagoras:')
     await page.keyboard.press('Enter')
@@ -229,16 +229,16 @@ test('equations: insert, edit by double-click, survive DOCX and appear in the PD
     await expect(eq).toHaveAttribute('data-latex', 'a^2 + b^2 = c^2 + \\frac{1}{2}')
 
     await stubDialogs(app, { save: file })
-    await page.keyboard.press('Control+s')
+    await page.keyboard.press('ControlOrMeta+s')
     await expect(page.getByTestId('save-status')).toHaveText(/Saved/)
-    await page.keyboard.press('Control+w')
+    await page.keyboard.press('ControlOrMeta+w')
     await stubDialogs(app, { open: [file] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await expect(doc(page).locator('.sd-equation .katex')).toBeVisible()
     expect(await doc(page).locator('.sd-equation').getAttribute('data-latex')).toBe('a^2+b^2=c^2+\\frac{1}{2}')
 
     await stubDialogs(app, { save: pdfFile })
-    await page.keyboard.press('Control+Shift+e')
+    await page.keyboard.press('ControlOrMeta+Shift+e')
     await expect.poll(() => existsSync(pdfFile), { timeout: 15_000 }).toBe(true)
     await settle(page, 500)
     const txt = execFileSync('pdftotext', [pdfFile, '-']).toString()
@@ -253,7 +253,7 @@ test('charts and shapes: insert from data, edit by double-click, saved as native
   const { app, page } = await launch()
   const file = path.join(tempDir(), 'chart.docx')
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.getByRole('tab', { name: 'Insert', exact: true }).click()
     await page.getByRole('button', { name: 'Chart', exact: true }).click()
@@ -280,11 +280,11 @@ test('charts and shapes: insert from data, edit by double-click, saved as native
     await expect(doc(page).locator('img[alt="Arrow: Next step"]')).toHaveCount(1)
 
     await stubDialogs(app, { save: file })
-    await page.keyboard.press('Control+s')
+    await page.keyboard.press('ControlOrMeta+s')
     await expect(page.getByTestId('save-status')).toHaveText(/Saved/)
-    await page.keyboard.press('Control+w')
+    await page.keyboard.press('ControlOrMeta+w')
     await stubDialogs(app, { open: [file] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     // In the file: a real chart part (with its data workbook) and a Word shape, not pictures.
     const files = unzipSync(readFileSync(file))
     expect(Object.keys(files).filter((p) => /^word\/charts\/[^/]+\.xml$/.test(p))).toHaveLength(1)
@@ -292,7 +292,7 @@ test('charts and shapes: insert from data, edit by double-click, saved as native
     expect(strFromU8(files['word/document.xml'])).toContain('<a:prstGeom prst="rightArrow">')
 
     await stubDialogs(app, { open: [file] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await expect(doc(page).locator('img:not(.ProseMirror-separator)')).toHaveCount(2)
     await expect(doc(page).locator('img[alt^="Pie chart"]')).toHaveCount(1)
     // Still editable charts after the round trip: the editor opens with the data.

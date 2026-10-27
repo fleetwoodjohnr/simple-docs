@@ -1,0 +1,105 @@
+# Build and test on Linux, Windows and macOS; tags (v*) also draft a GitHub release with the installers.
+# Builds are unsigned (see RELEASE.md): macOS gets an ad-hoc signature so Apple Silicon will run it.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # poppler (pdftotext, pdftoppm) lets the tests check exported PDFs; LibreOffice is the independent DOCX/ODT reader.
+      - name: Test tools (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb poppler-utils libreoffice-writer rpm
+      - name: Test tools (macOS)
+        if: runner.os == 'macOS'
+        run: brew install poppler
+      - name: Test tools (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          C:\msys64\usr\bin\pacman.exe -S --noconfirm --needed mingw-w64-x86_64-poppler
+          "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: End-to-end tests
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a npx playwright test; else npx playwright test; fi
+
+      - name: Installers
+        run: npx electron-builder --publish never
+
+      - name: End-to-end tests against the packaged app
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Linux) SD_PACKAGED="$PWD/release/linux-unpacked/simple-docs" xvfb-run -a npx playwright test ;;
+            Windows) SD_PACKAGED="$PWD/release/win-unpacked/Simple Docs.exe" npx playwright test ;;
+            macOS) SD_PACKAGED="$PWD/release/mac-arm64/Simple Docs.app/Contents/MacOS/Simple Docs" npx playwright test ;;
+          esac
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ runner.os }}
+          if-no-files-found: error
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+            release/*.exe
+            release/*.dmg
+            release/*.zip
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results-${{ runner.os }}
+          path: test-results/
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: installers-*
+          merge-multiple: true
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Notes: the newest CHANGELOG section
+          awk '/^## /{n++} n==1' CHANGELOG.md > notes.md
+          gh release create "$GITHUB_REF_NAME" dist/* --draft --title "Simple Docs ${GITHUB_REF_NAME#v}" --notes-file notes.md

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { init } from '@embedpdf/pdfium'
 import { PdfEngine } from '@/pdf/engine'
+import { hasPoppler } from '../tools'
 
 const fixture = readFileSync(path.join(import.meta.dirname, '../fixtures/complex.pdf'))
 let engine: PdfEngine
@@ -14,7 +15,6 @@ const pdftotext = (bytes: Uint8Array, raw = false) => {
   writeFileSync(f, bytes)
   return execFileSync('pdftotext', [...(raw ? ['-raw'] : []), f, '-']).toString()
 }
-const hasPoppler = existsSync('/usr/bin/pdftotext')
 
 beforeAll(async () => {
   const wasm = readFileSync(path.join(import.meta.dirname, '../../node_modules/@embedpdf/pdfium/dist/pdfium.wasm'))

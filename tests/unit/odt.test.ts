@@ -10,6 +10,7 @@ import { importOdt } from '@/formats/odt/read'
 import { exportOdt } from '@/formats/odt/write'
 import { createExtensions } from '@/editor/extensions'
 import { richDoc } from './helpers/sample'
+import { hasPoppler, soffice } from '../tools'
 
 const schema = getSchema(createExtensions())
 const all = (n: JSONContent, pred: (x: JSONContent) => boolean, out: JSONContent[] = []): JSONContent[] => {
@@ -107,8 +108,7 @@ describe('ODT export', () => {
     expect(out.warnings.map((w) => w.message).join()).toMatch(/Tracked changes are saved as accepted/)
   })
 
-  const soffice = ['/usr/bin/soffice', '/usr/bin/libreoffice'].find(existsSync)
-  it.skipIf(!soffice || !existsSync('/usr/bin/pdftotext'))('opens in LibreOffice (independent consumer)', () => {
+  it.skipIf(!soffice || !hasPoppler)('opens in LibreOffice (independent consumer)', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'sd-odt-'))
     const file = path.join(dir, 'report.odt')
     writeFileSync(file, out.data)

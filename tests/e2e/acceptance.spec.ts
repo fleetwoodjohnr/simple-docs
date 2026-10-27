@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { unzipSync, strFromU8 } from 'fflate'
-import { doc, launch, quit, settle, stubDialogs, tempDir, withEditor } from './helpers'
+import { LINE_END, doc, launch, quit, settle, stubDialogs, tempDir, withEditor } from './helpers'
 
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEklEQVR4nGP4z8CAFTEMNQkAJ/sA4ZbqDsgAAAAASUVORK5CYII='
 
@@ -28,22 +28,22 @@ test('acceptance 1–11: build a document, save DOCX, reopen, export PDF', async
 
     // 1–2. formatted paragraphs, headings, nested bullet list
     await page.keyboard.type('Annual Review')
-    await page.keyboard.press('Control+Alt+1')
-    await page.keyboard.press('End')
+    await page.keyboard.press('ControlOrMeta+Alt+1')
+    await page.keyboard.press(LINE_END)
     await page.keyboard.press('Enter')
     await page.keyboard.type('This paragraph has ')
-    await page.keyboard.press('Control+b')
+    await page.keyboard.press('ControlOrMeta+b')
     await page.keyboard.type('bold')
-    await page.keyboard.press('Control+b')
+    await page.keyboard.press('ControlOrMeta+b')
     await page.keyboard.type(' and ')
-    await page.keyboard.press('Control+i')
+    await page.keyboard.press('ControlOrMeta+i')
     await page.keyboard.type('italic')
-    await page.keyboard.press('Control+i')
+    await page.keyboard.press('ControlOrMeta+i')
     await page.keyboard.type(' text.')
     await page.keyboard.press('Enter')
     await page.keyboard.type('Highlights')
-    await page.keyboard.press('Control+Alt+2')
-    await page.keyboard.press('End')
+    await page.keyboard.press('ControlOrMeta+Alt+2')
+    await page.keyboard.press(LINE_END)
     await page.keyboard.press('Enter')
     await page.keyboard.type('- First item')
     await page.keyboard.press('Enter')
@@ -73,7 +73,7 @@ test('acceptance 1–11: build a document, save DOCX, reopen, export PDF', async
     await withEditor(page, `(e) => e.commands.focus('end')`)
 
     // 5. page break + second page content
-    await page.keyboard.press('Control+Enter')
+    await page.keyboard.press('ControlOrMeta+Enter')
     await page.keyboard.type('Second page content')
 
     // 6. margins → Narrow via the ribbon
@@ -86,13 +86,13 @@ test('acceptance 1–11: build a document, save DOCX, reopen, export PDF', async
 
     // 7. save as DOCX
     await stubDialogs(app, { save: docxPath })
-    await page.keyboard.press('Control+s')
+    await page.keyboard.press('ControlOrMeta+s')
     await expect(page.getByTestId('save-status')).toHaveText(/Saved/, { timeout: 10_000 })
     expect(existsSync(docxPath)).toBe(true)
 
     // 10–11. export PDF and check pagination parity
     await stubDialogs(app, { save: pdfPath })
-    await page.keyboard.press('Control+Shift+e')
+    await page.keyboard.press('ControlOrMeta+Shift+e')
     await expect.poll(() => existsSync(pdfPath) && statSync(pdfPath).size > 1000, { timeout: 15_000 }).toBe(true)
     expect(pdfPages(pdfPath)).toBe(layoutPages)
     expect(pdfText(pdfPath, 1)).toContain('Annual Review')
@@ -101,10 +101,10 @@ test('acceptance 1–11: build a document, save DOCX, reopen, export PDF', async
     expect(pdfText(pdfPath, 1)).not.toContain('Second page content')
 
     // 8. close and reopen
-    await page.keyboard.press('Control+w')
+    await page.keyboard.press('ControlOrMeta+w')
     await expect(page.getByTestId('dashboard')).toBeVisible()
     await stubDialogs(app, { open: [docxPath] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await expect(page.getByTestId('ribbon')).toBeVisible()
     await settle(page)
 
@@ -137,7 +137,7 @@ test('acceptance 14: Markdown import and export', async () => {
   const { app, page } = await launch()
   try {
     await stubDialogs(app, { open: [mdIn] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await expect(page.getByTestId('ribbon')).toBeVisible()
     const json = await withEditor<J>(page, `(e) => e.getJSON()`)
     expect(all(json, (n) => n.type === 'heading')[0].content![0].text).toBe('Project Notes')
@@ -145,7 +145,7 @@ test('acceptance 14: Markdown import and export', async () => {
     expect(all(json, (n) => n.type === 'table')).toHaveLength(1)
     expect(all(json, (n) => n.type === 'codeBlock')).toHaveLength(1)
     await stubDialogs(app, { save: mdOut })
-    await page.keyboard.press('Control+Shift+s')
+    await page.keyboard.press('ControlOrMeta+Shift+s')
     await expect.poll(() => existsSync(mdOut)).toBe(true)
     const out = readFileSync(mdOut, 'utf8')
     for (const s of ['# Project Notes', '**bold**', '*italic*', '`code`', '- one', '  - nested', '1. first', '- [x] done', '- [ ] todo', '| A | B |', '> quoted', '```js']) expect(out).toContain(s)
@@ -157,31 +157,31 @@ test('acceptance 14: Markdown import and export', async () => {
 test('acceptance 17 & 19: undo/redo and keyboard shortcuts', async () => {
   const { app, page } = await launch()
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await expect(page.getByTestId('ribbon')).toBeVisible()
     await doc(page).click()
     await page.keyboard.type('alpha beta gamma')
     await settle(page, 700)
-    await page.keyboard.press('Control+z')
+    await page.keyboard.press('ControlOrMeta+z')
     expect(await withEditor<string>(page, `(e) => e.getText()`)).toBe('')
-    await page.keyboard.press('Control+y')
+    await page.keyboard.press('ControlOrMeta+y')
     expect(await withEditor<string>(page, `(e) => e.getText()`)).toBe('alpha beta gamma')
 
     // shortcuts
-    await page.keyboard.press('Control+a')
-    await page.keyboard.press('Control+u')
+    await page.keyboard.press('ControlOrMeta+a')
+    await page.keyboard.press('ControlOrMeta+u')
     expect(await withEditor<boolean>(page, `(e) => e.isActive('underline')`)).toBe(true)
-    await page.keyboard.press('Control+e')
+    await page.keyboard.press('ControlOrMeta+e')
     expect(await withEditor<string>(page, `(e) => e.state.doc.firstChild.attrs.align`)).toBe('center')
-    await page.keyboard.press('End')
-    await page.keyboard.press('Control+Enter')
+    await page.keyboard.press(LINE_END)
+    await page.keyboard.press('ControlOrMeta+Enter')
     expect(await withEditor<number>(page, `(e) => { let n = 0; e.state.doc.descendants(x => { if (x.type.name === 'pageBreak') n++ }); return n }`)).toBe(1)
-    await page.keyboard.press('Control+f')
+    await page.keyboard.press('ControlOrMeta+f')
     await expect(page.getByTestId('find-bar')).toBeVisible()
     await page.getByTestId('find-bar').getByLabel('Find', { exact: true }).fill('beta')
     await expect(page.getByTestId('find-bar')).toContainText('1/1')
     await page.keyboard.press('Escape')
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     expect(await page.evaluate(() => (window as never as { __sd: { get(): { tabs: unknown[] } } }).__sd.get().tabs.length)).toBe(2)
   } finally {
     await quit(app)
@@ -195,17 +195,17 @@ test('acceptance 18: autosave and crash recovery', async () => {
   let { app, page } = await launch({ userData, settings: { autosave: true, autosaveIntervalSec: 1, recoveryIntervalSec: 1 } })
   try {
     // AutoSave writes the file after an edit
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.keyboard.type('First version')
     await stubDialogs(app, { save: file })
-    await page.keyboard.press('Control+s')
+    await page.keyboard.press('ControlOrMeta+s')
     await expect(page.getByTestId('save-status')).toHaveText(/Saved/)
     await page.keyboard.type(' with autosaved words')
     await expect.poll(() => strFromU8(unzipSync(readFileSync(file))['word/document.xml']).includes('autosaved words'), { timeout: 10_000 }).toBe(true)
 
     // Crash recovery: unsaved edits survive a hard kill
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.keyboard.type('Unsaved recovery text')
     await expect.poll(() => (existsSync(path.join(userData, 'recovery')) ? readdirSync(path.join(userData, 'recovery')).length : 0), { timeout: 10_000 }).toBeGreaterThan(0)

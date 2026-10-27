@@ -31,10 +31,10 @@ test('AI assistant: off by default (nothing sent), then consent-based rewrite st
   const mock = await mockClaude(['Their ', 'results ', 'are ', 'accurate.'])
   const { app, page } = await launch({ env: { ANTHROPIC_BASE_URL: mock.url, ANTHROPIC_API_KEY: 'sk-ant-test' } })
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.keyboard.type('There results is acurate.')
-    await page.keyboard.press('Control+a')
+    await page.keyboard.press('ControlOrMeta+a')
 
     // Off by default: the UI says so, and the main process refuses even a direct request.
     await page.getByRole('tab', { name: 'Tools', exact: true }).click()
@@ -54,7 +54,7 @@ test('AI assistant: off by default (nothing sent), then consent-based rewrite st
     // (closing Settings restores focus asynchronously; select once the editor really has it)
     await expect(async () => {
       await doc(page).click()
-      await page.keyboard.press('Control+a')
+      await page.keyboard.press('ControlOrMeta+a')
       expect(await page.evaluate(() => document.getSelection()?.toString())).toContain('acurate')
     }).toPass()
     await page.getByRole('button', { name: 'AI assistant' }).click()

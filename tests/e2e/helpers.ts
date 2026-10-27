@@ -45,6 +45,11 @@ export async function quit(app: ElectronApplication) {
   if (v?.length) throw new Error(`CSP violations:\n${v.join('\n')}`)
 }
 
+const mac = process.platform === 'darwin'
+/** Caret to the end of the line / of the document (on macOS, End scrolls instead). */
+export const LINE_END = mac ? 'Meta+ArrowRight' : 'End'
+export const DOC_END = mac ? 'Meta+ArrowDown' : 'Control+End'
+
 export const doc = (page: Page) => page.locator('[data-doc-scroll]:visible .doc-host .ProseMirror')
 
 /** Run a function against the active Tiptap editor inside the renderer. */

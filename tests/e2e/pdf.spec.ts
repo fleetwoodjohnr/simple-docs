@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process'
 import { copyFileSync, existsSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { launch, quit, settle, stubDialogs, tempDir } from './helpers'
+import { hasPoppler } from '../tools'
 
 const fixture = path.join(__dirname, '../fixtures/complex.pdf')
 const pdftotext = (f: string, pageNo?: number) => execFileSync('pdftotext', [...(pageNo ? ['-f', String(pageNo), '-l', String(pageNo)] : []), f, '-']).toString()
@@ -15,7 +16,7 @@ test('acceptance 15–16: open a PDF, annotate, edit text, redact, save and reop
   const { app, page } = await launch({ settings: { authorName: 'PDF Reviewer' } })
   try {
     await stubDialogs(app, { open: [file] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await expect(page.getByTestId('pdf-workspace')).toBeVisible()
     const page1 = page.locator('[data-pdf-page="0"]')
     await expect(page1).toBeVisible()
@@ -79,8 +80,8 @@ test('acceptance 15–16: open a PDF, annotate, edit text, redact, save and reop
     await page2.getByTestId('pdf-field').blur()
     await settle(page, 600)
     // Ctrl+Z undoes the fill, Ctrl+Z again removes the field; then redo the work for the save check
-    await page.keyboard.press('Control+z')
-    await page.keyboard.press('Control+z')
+    await page.keyboard.press('ControlOrMeta+z')
+    await page.keyboard.press('ControlOrMeta+z')
     await expect(page2.getByTestId('pdf-field')).toHaveCount(0)
     await page.mouse.move(b2.x + 100, b2.y + 300)
     await page.mouse.down()
@@ -97,7 +98,7 @@ test('acceptance 15–16: open a PDF, annotate, edit text, redact, save and reop
     await page.getByTestId('pdf-save').click()
     await expect(page.getByTestId('save-status')).toHaveText(/Saved/, { timeout: 15_000 })
 
-    if (existsSync('/usr/bin/pdftotext')) {
+    if (hasPoppler) {
       const txt = pdftotext(file, 1)
       expect(txt).toContain('Overview')
       expect(txt).not.toContain('Introduction')
@@ -105,9 +106,9 @@ test('acceptance 15–16: open a PDF, annotate, edit text, redact, save and reop
       expect(pdftotext(file, 2)).toContain('Fixture header text') // untouched on page 2
       expect(txt).toContain('Centered paragraph.')
     }
-    await page.keyboard.press('Control+w')
+    await page.keyboard.press('ControlOrMeta+w')
     await stubDialogs(app, { open: [file] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await expect(page.getByTestId('pdf-workspace')).toBeVisible()
     await expect(page.getByTestId('pdf-comments')).toContainText('highlight', { timeout: 10_000 })
     await expect(page.getByTestId('pdf-comments')).toContainText('Please verify this page')
@@ -128,7 +129,7 @@ test('rotated page: select, highlight, edit and add text, upright on screen', as
   const { app, page } = await launch()
   try {
     await stubDialogs(app, { open: [file] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     const page1 = page.locator('[data-pdf-page="0"]')
     await expect(page1).toBeVisible()
     await page.getByTestId('rotate-0').click({ force: true })
@@ -179,7 +180,7 @@ test('rotated page: select, highlight, edit and add text, upright on screen', as
 
     await page.getByTestId('pdf-save').click()
     await expect(page.getByTestId('save-status')).toHaveText(/Saved/, { timeout: 15_000 })
-    if (existsSync('/usr/bin/pdftotext')) {
+    if (hasPoppler) {
       const txt = pdftotext(file, 1)
       expect(txt).toContain('Overview')
       expect(txt).not.toContain('Introduction')
@@ -197,7 +198,7 @@ test('OCR: a scanned PDF becomes searchable and keeps its text after save', asyn
   const { app, page } = await launch()
   try {
     await stubDialogs(app, { open: [file] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await expect(page.getByTestId('pdf-workspace')).toBeVisible()
     await expect(page.getByText(/looks scanned/)).toBeVisible()
     await page.getByTestId('pdf-ocr').click()
@@ -205,9 +206,9 @@ test('OCR: a scanned PDF becomes searchable and keeps its text after save', asyn
     await page.getByLabel('Search PDF').fill('Fixture Report')
     await expect(page.getByLabel('Search PDF').locator('..')).toContainText('1/1')
     await page.getByLabel('Search PDF').blur()
-    await page.keyboard.press('Control+s')
+    await page.keyboard.press('ControlOrMeta+s')
     await expect(page.getByTestId('save-status')).toHaveText(/Saved/, { timeout: 15_000 })
-    if (existsSync('/usr/bin/pdftotext')) expect(pdftotext(file)).toContain('Centered paragraph')
+    if (hasPoppler) expect(pdftotext(file)).toContain('Centered paragraph')
   } finally {
     await quit(app)
   }
@@ -217,7 +218,7 @@ test('password-protected PDF: prompts, rejects a wrong password, opens with the 
   const { app, page } = await launch()
   try {
     await stubDialogs(app, { open: [path.join(__dirname, '../fixtures/protected.pdf')] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await page.getByLabel('PDF password').fill('wrong')
     await page.keyboard.press('Enter')
     await expect(page.getByText('That password is not correct.')).toBeVisible()
@@ -245,9 +246,9 @@ test('print a PDF tab: every page goes to the printer at its own size', async ()
       }) as never
     })
     await stubDialogs(app, { open: [fixture] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await expect(page.getByTestId('pdf-workspace')).toBeVisible()
-    await page.keyboard.press('Control+p')
+    await page.keyboard.press('ControlOrMeta+p')
     await expect.poll(() => app.evaluate(() => (globalThis as Record<string, unknown>).__printed !== null), { timeout: 15_000 }).toBe(true)
     const out = path.join(tempDir(), 'printed.pdf')
     const b64 = await app.evaluate(() => (globalThis as Record<string, unknown>).__printed as string)

@@ -6,8 +6,8 @@ import path from 'node:path'
 import { init } from '@embedpdf/pdfium'
 import { PdfEngine } from '@/pdf/engine'
 import { recognize, stopOcr } from '@/main/ocr'
+import { hasPoppler } from '../tools'
 
-const hasPoppler = existsSync('/usr/bin/pdftoppm')
 afterAll(() => stopOcr())
 
 it.skipIf(!hasPoppler)('OCR makes a scanned (image-only) page searchable without changing how it looks', async () => {

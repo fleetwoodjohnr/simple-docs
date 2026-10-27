@@ -3,9 +3,10 @@ import { existsSync, readFileSync, copyFileSync } from 'node:fs'
 import path from 'node:path'
 import { unzipSync, strFromU8 } from 'fflate'
 import { doc, launch, quit, settle, stubDialogs, tempDir, withEditor } from './helpers'
+import { soffice } from '../tools'
 
 const fixtures = path.join(__dirname, '../fixtures')
-const hasLibreOffice = ['/usr/bin/soffice', '/usr/bin/libreoffice'].some(existsSync)
+const hasLibreOffice = !!soffice
 
 test('acceptance 12–13: open an ODT, edit it and save it back (native ODT engine)', async () => {
   const dir = tempDir()
@@ -14,12 +15,12 @@ test('acceptance 12–13: open an ODT, edit it and save it back (native ODT engi
   const { app, page } = await launch()
   try {
     await stubDialogs(app, { open: [odt] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await expect(page.getByTestId('ribbon')).toBeVisible({ timeout: 30_000 })
     await expect(doc(page)).toContainText('Fixture Report')
     await expect(doc(page)).toContainText('Merged across')
     await withEditor(page, `(e) => e.chain().focus('end').insertContent(' Edited in Simple Docs.').run()`)
-    await page.keyboard.press('Control+s')
+    await page.keyboard.press('ControlOrMeta+s')
     await expect(page.getByTestId('save-status')).toHaveText(/Saved/, { timeout: 30_000 })
     const content = strFromU8(unzipSync(readFileSync(odt))['content.xml'])
     expect(content).toContain('Edited in Simple Docs.')
@@ -34,7 +35,7 @@ test('RTF import through LibreOffice', async () => {
   const { app, page } = await launch()
   try {
     await stubDialogs(app, { open: [path.join(fixtures, 'complex.rtf')] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await expect(doc(page)).toContainText('Nested bullet', { timeout: 30_000 })
   } finally {
     await quit(app)
@@ -44,7 +45,7 @@ test('RTF import through LibreOffice', async () => {
 test('performance: 300-page document', async () => {
   const { app, page } = await launch()
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     const para = 'Performance paragraph with enough words to wrap across a couple of lines on a standard Letter page so the paginator has real line boxes to measure. '
     await withEditor(page, `(e) => {

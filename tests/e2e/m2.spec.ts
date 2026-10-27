@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
 import { existsSync, statSync } from 'node:fs'
 import path from 'node:path'
-import { doc, launch, quit, settle, stubDialogs, tempDir, withEditor } from './helpers'
+import { LINE_END, doc, launch, quit, settle, stubDialogs, tempDir, withEditor } from './helpers'
 
 const pdfText = (file: string, page: number) => execFileSync('pdftotext', ['-f', String(page), '-l', String(page), '-layout', file, '-']).toString()
 
@@ -10,12 +10,12 @@ test('headers, footers and page numbers appear on every page and in the PDF', as
   const { app, page } = await launch()
   const pdf = path.join(tempDir(), 'hf.pdf')
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.keyboard.type('First page body')
-    await page.keyboard.press('Control+Enter')
+    await page.keyboard.press('ControlOrMeta+Enter')
     await page.keyboard.type('Second page body')
-    await page.keyboard.press('Control+Enter')
+    await page.keyboard.press('ControlOrMeta+Enter')
     await page.keyboard.type('Third page body')
 
     // Footer: Insert → Page number → "Page X of Y"
@@ -48,7 +48,7 @@ test('headers, footers and page numbers appear on every page and in the PDF', as
     expect(headerPos).toBeLessThan(0.1)
 
     await stubDialogs(app, { save: pdf })
-    await page.keyboard.press('Control+Shift+e')
+    await page.keyboard.press('ControlOrMeta+Shift+e')
     await expect.poll(() => existsSync(pdf) && statSync(pdf).size > 1000, { timeout: 15_000 }).toBe(true)
     for (const n of [1, 2, 3]) {
       const txt = pdfText(pdf, n)
@@ -65,7 +65,7 @@ test('headers, footers and page numbers appear on every page and in the PDF', as
 test('table of contents uses live page numbers', async () => {
   const { app, page } = await launch()
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await withEditor(page, `(e) => {
       const lorem = { type: 'paragraph', content: [{ type: 'text', text: 'Body text for the chapter. '.repeat(40) }] }
@@ -105,7 +105,7 @@ test('footnotes: insert, edit, reserve space on the reference page, export', asy
   const { app, page } = await launch()
   const pdf = path.join(tempDir(), 'notes.pdf')
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     // Fill most of page 1, then reference a note near the bottom.
     await withEditor(page, `(e) => {
@@ -114,7 +114,7 @@ test('footnotes: insert, edit, reserve space on the reference page, export', asy
       e.commands.focus('end')
     }`)
     await settle(page, 500)
-    await page.keyboard.press('Control+Alt+f')
+    await page.keyboard.press('ControlOrMeta+Alt+f')
     await expect(page.getByTestId('note-editor')).toBeVisible()
     await page.keyboard.type('Primary source, 2024.')
     await page.keyboard.press('Escape')
@@ -141,7 +141,7 @@ test('footnotes: insert, edit, reserve space on the reference page, export', asy
     expect(overlap).toBe(false)
 
     await stubDialogs(app, { save: pdf })
-    await page.keyboard.press('Control+Shift+e')
+    await page.keyboard.press('ControlOrMeta+Shift+e')
     await expect.poll(() => existsSync(pdf) && statSync(pdf).size > 1000, { timeout: 15_000 }).toBe(true)
     expect(pdfText(pdf, refPage + 1)).toContain('Primary source, 2024.')
   } finally {
@@ -153,11 +153,11 @@ test('comments: add, reply, resolve, survive a DOCX round trip', async () => {
   const { app, page } = await launch({ settings: { authorName: 'Test Reviewer' } })
   const file = path.join(tempDir(), 'comments.docx')
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.keyboard.type('The budget increased by forty percent.')
     await withEditor(page, `(e) => e.commands.setTextSelection({ from: 25, to: 38 })`)
-    await page.keyboard.press('Control+Alt+m')
+    await page.keyboard.press('ControlOrMeta+Alt+m')
     const thread = page.getByTestId('comment-thread')
     await expect(thread).toHaveCount(1)
     await page.getByLabel('Comment text').fill('Source for this figure?')
@@ -170,11 +170,11 @@ test('comments: add, reply, resolve, survive a DOCX round trip', async () => {
     await expect(page.locator('[data-doc-scroll]:visible .sd-comment')).toHaveText('forty percent')
 
     await stubDialogs(app, { save: file })
-    await page.keyboard.press('Control+s')
+    await page.keyboard.press('ControlOrMeta+s')
     await expect(page.getByTestId('save-status')).toHaveText(/Saved/)
-    await page.keyboard.press('Control+w')
+    await page.keyboard.press('ControlOrMeta+w')
     await stubDialogs(app, { open: [file] })
-    await page.keyboard.press('Control+o')
+    await page.keyboard.press('ControlOrMeta+o')
     await expect(page.getByTestId('ribbon')).toBeVisible()
     await page.evaluate(() => (window as never as { __sd: { set(s: object): void } }).__sd.set({ rightPanel: 'comments' }))
     await expect(thread).toContainText('Source for this figure?')
@@ -191,12 +191,12 @@ test('comments: add, reply, resolve, survive a DOCX round trip', async () => {
 test('track changes: record, show, accept', async () => {
   const { app, page } = await launch({ settings: { authorName: 'Editor One' } })
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.keyboard.type('Draft sentence here.')
-    await page.keyboard.press('Control+Shift+t')
+    await page.keyboard.press('ControlOrMeta+Shift+t')
     await expect(page.getByTestId('track-indicator')).toContainText('on')
-    await page.keyboard.press('End')
+    await page.keyboard.press(LINE_END)
     await page.keyboard.type(' Added later.')
     for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowLeft') // before "later."
     // Backspace over "Added " (inside our own insertion → really deleted? no: that's own insertion)
@@ -224,7 +224,7 @@ test('track changes: record, show, accept', async () => {
 test('spell checking: offline underline, suggestions, add to dictionary', async () => {
   const { app, page } = await launch()
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.keyboard.type('This sentense has a mispelled word and Zorblax.')
     const bad = page.locator('[data-doc-scroll]:visible .sd-misspelled')
@@ -245,7 +245,7 @@ test('table header row repeats on continuation pages (screen and PDF)', async ()
   const { app, page } = await launch()
   const pdf = path.join(tempDir(), 'table.pdf')
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await withEditor(page, `(e) => {
       const cell = (t, h) => ({ type: h ? 'tableHeader' : 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: t }] }] })
@@ -258,7 +258,7 @@ test('table header row repeats on continuation pages (screen and PDF)', async ()
     expect(await repeats.count()).toBeGreaterThanOrEqual(1)
     await expect(repeats.first()).toContainText('Account')
     await stubDialogs(app, { save: pdf })
-    await page.keyboard.press('Control+Shift+e')
+    await page.keyboard.press('ControlOrMeta+Shift+e')
     await expect.poll(() => existsSync(pdf) && statSync(pdf).size > 1000, { timeout: 15_000 }).toBe(true)
     expect(pdfText(pdf, 2)).toContain('Account')
     expect(pdfText(pdf, 2)).toContain('Balance')
@@ -273,7 +273,7 @@ test('table header row repeats on continuation pages (screen and PDF)', async ()
 test('modifying a style restyles every paragraph that uses it', async () => {
   const { app, page } = await launch()
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await withEditor(page, `(e) => e.commands.setContent({ type: 'doc', attrs: e.state.doc.attrs, content: [
       { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'First heading' }] },
@@ -287,7 +287,7 @@ test('modifying a style restyles every paragraph that uses it', async () => {
     const sizes = await page.locator('[data-doc-scroll]:visible .doc-host h1').evaluateAll((els) => els.map((el) => getComputedStyle(el).fontSize))
     expect(sizes).toEqual(['40px', '40px'])
     // undo reverts the style change
-    await page.keyboard.press('Control+z')
+    await page.keyboard.press('ControlOrMeta+z')
     const after = await page.locator('[data-doc-scroll]:visible .doc-host h1').first().evaluate((el) => getComputedStyle(el).fontSize)
     expect(after).not.toBe('40px')
   } finally {

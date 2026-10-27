@@ -58,10 +58,19 @@ rpm:
   # electron-builder's default list plus ALSA, GBM and libsecret (keyring for the AI key), absent on minimal installs
   depends: [gtk3, libnotify, nss, libXScrnSaver, "(libXtst or libXtst6)", xdg-utils, at-spi2-core, "(libuuid or libuuid1)", alsa-lib, mesa-libgbm, libsecret]
 win:
-  target: [nsis]
+  target:
+    - target: nsis
+      arch: [x64]
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
 mac:
-  target: [dmg]
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
   category: public.app-category.productivity
+  # Unsigned: Apple Silicon only runs signed code, so sign ad hoc. With a Developer ID certificate, remove both lines.
+  identity: "-"
+  hardenedRuntime: false

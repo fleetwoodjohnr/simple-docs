@@ -10,7 +10,7 @@ test('a crashed renderer reloads and offers the unsaved work back; corrupt snaps
   writeFileSync(path.join(userData, 'recovery', 'broken.json'), '{"id":"broken","savedAt":17')
   const { app, page } = await launch({ userData, settings: { recoveryIntervalSec: 1 } })
   try {
-    await page.keyboard.press('Control+n')
+    await page.keyboard.press('ControlOrMeta+n')
     await doc(page).click()
     await page.keyboard.type('Work that must survive a renderer crash')
     await expect.poll(() => (existsSync(path.join(userData, 'recovery')) ? readdirSync(path.join(userData, 'recovery')).length : 0), { timeout: 10_000 }).toBeGreaterThan(1)
