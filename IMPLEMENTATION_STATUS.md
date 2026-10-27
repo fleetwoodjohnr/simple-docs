@@ -1,6 +1,6 @@
 # Implementation status
 
-_Last updated: 2026-10-27 · Milestones 1–4 complete (each with documented partial items) · Milestone 5 next._
+_Last updated: 2026-10-27 · Milestones 1–5 complete (each with documented partial items; Windows/macOS installers not yet built or tested) · version 0.1.0._
 
 "Done" means implemented **and** covered by a passing automated test or a manual check recorded below. A button existing in the UI does not count.
 
@@ -9,8 +9,11 @@ _Last updated: 2026-10-27 · Milestones 1–4 complete (each with documented par
 | Suite | Result |
 |---|---|
 | `npm run typecheck` (strict, main + renderer) | ✅ clean |
-| `npm test` (vitest) | ✅ 129 / 129 |
-| `npm run e2e:headless` (Playwright + Electron) | ✅ 29 / 29 (every test also fails on any Content-Security-Policy violation) |
+| `npm test` (vitest) | ✅ 170 / 170 (incl. 35 golden round trips in the compatibility corpus + 2 LibreOffice re-save checks) |
+| `npm run e2e:headless` (Playwright + Electron) | ✅ 32 / 32 + 1 packaged-only (every test also fails on any Content-Security-Policy violation) |
+| Same E2E suite against the **packaged** app (`SD_PACKAGED=release/linux-unpacked/simple-docs`) | ✅ 33 / 33 |
+| AppImage smoke test (DOCX, spelling, equations, PDF export, PDFium, OCR) | ✅ |
+| axe-core WCAG 2.2 AA (dashboard, editor + all ribbon tabs, settings, PDF workspace; light and dark) | ✅ 0 violations |
 | Independent consumer: our DOCX → LibreOffice → PDF | ✅ (in `docx.test.ts`) |
 | Independent consumer: our edited PDFs → poppler (`pdftotext`, `pdfinfo`) | ✅ (in `pdf.test.ts`, `ocr.test.ts`, e2e `pdf.spec.ts`) |
 
@@ -216,13 +219,40 @@ Every E2E test fails if Chromium reports a CSP violation. A test also confirms t
 - **Restrict editing has no password** (like Word's protection, it is not a security feature). Word password hashes on opened files are ignored, and ODT protection is not read or written.
 - **AI assistant.** It supports Claude only, with no local-model provider. It works on the selection as plain text: the replacement keeps paragraphs but not inline formatting, and a tracked-changes document records the replacement as a change.
 
-## Milestone 5 ⏳
+## Milestone 5 — Release readiness ✅ (limits listed below)
 
-- **M5:** Packaging and signing, accessibility audit (axe), compatibility regression corpus, crash-recovery tests, release docs.
+### Done
+- **Packaging (Linux, verified).**
+  - A 149 MB AppImage with app icon and desktop entry. The whole E2E suite passes against the packaged app.
+  - The packaged smoke test found that OCR hung in installed builds. The worker thread starts from `app.asar.unpacked` and couldn't resolve its dependencies. The full dependency closure is now unpacked, and OCR start-up fails with a message after 30 seconds instead of hanging.
+  - Unused OCR browser builds are excluded (−20 MB).
+- **Accessibility audit.** axe-core WCAG 2.2 AA checks run in E2E on every main screen, in both themes. Fixes:
+  - The tab strips now follow the tablist pattern; the document tabs no longer contain a nested close button. Close a tab with Delete or Ctrl+W.
+  - The Home tab has a name.
+  - Secondary text and accent text now reach at least 4.5:1, via a new `--accent-ink` token derived from the user's accent colour.
+  - Ribbon controls' accessible names include their visible text.
+  - Targets are at least 24 px, and the PDF page area is keyboard-focusable.
+- **Compatibility regression corpus.** Every template plus a "kitchen sink" document (formatting, comments, tracked changes, nested and numbered lists, merged cells, footnotes, equations, citations, merge fields, page breaks) is round-tripped through DOCX, ODT, Markdown, HTML and text. The results are compared with reviewed golden files in `tests/unit/__corpus__/`, and our DOCX and ODT are also re-saved by LibreOffice and read back. Bugs the corpus found:
+  - Markdown footnotes were exported but not imported.
+  - Pasted or imported footnotes and tracked deletions were parsed as superscript and strikethrough (parse-rule priority).
+  - Markdown export dropped comments without a warning.
+  - HTML export reported no warnings while dropping comment threads, headers and footers, and the sources list.
+- **Crash recovery.**
+  - A crashed renderer now reloads and offers its recovery snapshot. This was previously a blank window; it's tested with a forced renderer crash.
+  - Corrupt snapshots are skipped.
+  - A failed save leaves the original file intact and no temp file behind; the directory is fsynced after the rename. Unit-tested, including concurrent saves.
+  - Hard-kill recovery is covered by acceptance test 18.
+- **Release documentation.** [RELEASE.md](RELEASE.md) is the build, test, smoke-test and publish checklist, and [CHANGELOG.md](CHANGELOG.md) records the changes.
+
+### Not done / partial (M5)
+- **Windows (NSIS) and macOS (dmg) installers** are configured but have not been built or tested; no host for either was available. Code signing and notarization are documented in RELEASE.md but not set up.
+- **deb and rpm** need real package metadata (homepage, maintainer e-mail) and `rpmbuild`. They are not built, so no placeholder metadata is published.
+- **Accessibility.** axe covers automated WCAG checks only. Screen-reader passes (NVDA, VoiceOver, Orca) and a keyboard-only walkthrough of every dialog are still to do.
 
 ## Next recommended tasks
 
-1. Milestone 5: build and smoke-test the installers (AppImage/deb/rpm here; NSIS/dmg need their platforms), including OCR from inside the packaged asar. Add axe-core checks to E2E, a corpus-based compatibility regression suite and release docs.
-2. Per-section page setup in the layout engine (displayed landscape sections).
-3. PDF: text layer on rotated pages, moving and resizing annotations, a warning before editing digitally signed files.
-4. Native DOCX charts (`c:chartSpace`) so charts stay editable in Word.
+1. Build and smoke-test the Windows and macOS installers on those platforms, and set up signing.
+2. Do screen-reader and keyboard-only passes.
+3. Per-section page setup in the layout engine (displayed landscape sections).
+4. PDF: text layer on rotated pages, moving and resizing annotations, a warning before editing digitally signed files.
+5. Native DOCX charts (`c:chartSpace`) so charts stay editable in Word.

@@ -2,7 +2,7 @@
 
 A fast, modern, offline word processor for Windows, macOS and Linux. It lays text out on real pages, round-trips DOCX with its own OOXML engine, exports PDF from the same layout you see, and edits Markdown both visually and as source.
 
-> Status: Milestones 1–4 are complete. M3 added the PDF workspace; M4 added compare, version history, citations, mail merge, equations, charts, protection, an accessibility checker and the optional AI assistant. For what works today, what is partial, and what is next, see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). [COMPATIBILITY.md](COMPATIBILITY.md) shows, per file format, which elements are kept.
+> Status: version 0.1.0. Milestones 1–5 are complete, and the Linux AppImage is built and tested. Windows and macOS installers are configured but not yet verified; see [RELEASE.md](RELEASE.md). M3 added the PDF workspace; M4 added compare, version history, citations, mail merge, equations, charts, protection, an accessibility checker and the optional AI assistant. For what works today, what is partial, and what is next, see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). [COMPATIBILITY.md](COMPATIBILITY.md) shows, per file format, which elements are kept.
 
 ## Quick start
 
@@ -15,11 +15,12 @@ npm run build && npm start  # production build
 | Script | What it does |
 |---|---|
 | `npm run typecheck` | Strict TypeScript for main, preload and renderer |
-| `npm test` | Unit tests (vitest): pagination algorithm, DOCX round trip, third-party DOCX fixture, Markdown/HTML/TXT |
+| `npm test` | Unit tests (vitest), including the compatibility corpus (golden round trips in `tests/unit/__corpus__/`) |
 | `npm run e2e` | Build, then Playwright drives the real Electron app (acceptance tests, ODT/RTF bridge, 240-page performance) |
 | `npm run e2e:headless` | Same, under `xvfb-run` (Linux CI / no display) |
 | `npm run fixtures` | Regenerate `tests/fixtures/complex.{docx,odt,rtf,pdf}`, `protected.pdf` and `scanned.pdf` from `tests/fixtures/src/*.fodt` (LibreOffice, poppler, ImageMagick) |
-| `npm run dist` | Build installers with electron-builder (AppImage/deb/rpm, NSIS, dmg) |
+| `npm run dist` | Build installers with electron-builder (AppImage on Linux; NSIS and dmg on their platforms). See [RELEASE.md](RELEASE.md) |
+| `SD_PACKAGED=release/linux-unpacked/simple-docs npx playwright test` | Run the E2E suite against a packaged build |
 
 ### Optional: LibreOffice
 
