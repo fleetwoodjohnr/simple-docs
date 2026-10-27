@@ -94,7 +94,7 @@ export function HistoryDialog() {
                   role="option"
                   aria-selected={selected === v.id}
                   onClick={() => setSelected(v.id)}
-                  className={cx('w-full rounded-lg px-3 py-2 text-left text-[12.5px] hover:bg-hover', selected === v.id && 'bg-accent-soft text-accent hover:bg-accent-soft')}
+                  className={cx('w-full rounded-lg px-3 py-2 text-left text-[12.5px] hover:bg-hover', selected === v.id && 'bg-accent-soft text-accent-ink hover:bg-accent-soft')}
                 >
                   <div className="font-medium">{stamp(v.savedAt)}</div>
                   <div className="text-[11px] text-text-3">{i === 0 ? 'Latest save' : `${Math.max(1, Math.round(v.bytes / 1024))} KB`}</div>

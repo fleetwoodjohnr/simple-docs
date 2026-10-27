@@ -352,7 +352,7 @@ function StyleDialog({ styleId }: { styleId: string | null }) {
         </datalist>
         <input className={cx(field, 'w-20')} type="number" step={0.5} min={4} value={eff.run.fontSize ?? ''} onChange={(e) => setRun({ ...run, fontSize: num(e.target.value) })} aria-label="Font size" />
         {(['bold', 'italic', 'underline'] as const).map((k) => (
-          <button key={k} onClick={() => setRun({ ...run, [k]: !eff.run[k] })} aria-pressed={!!eff.run[k]} className={cx(field, 'w-9 font-serif', eff.run[k] && 'border-accent bg-accent-soft text-accent', k === 'bold' && 'font-bold', k === 'italic' && 'italic', k === 'underline' && 'underline')}>
+          <button key={k} onClick={() => setRun({ ...run, [k]: !eff.run[k] })} aria-pressed={!!eff.run[k]} className={cx(field, 'w-9 font-serif', eff.run[k] && 'border-accent bg-accent-soft text-accent-ink', k === 'bold' && 'font-bold', k === 'italic' && 'italic', k === 'underline' && 'underline')}>
             {k[0].toUpperCase()}
           </button>
         ))}
@@ -482,9 +482,9 @@ function ShortcutsDialog() {
           return (
             <div key={c.id} className="flex h-9 items-center justify-between text-[13px]">
               <span>{c.label}</span>
-              <button onClick={() => setRecording(c.id)} className={cx('min-w-24 rounded-md px-2 py-1 text-right hover:bg-hover', recording === c.id && 'bg-accent-soft text-accent')}>
+              <button onClick={() => setRecording(c.id)} className={cx('min-w-24 rounded-md px-2 py-1 text-right hover:bg-hover', recording === c.id && 'bg-accent-soft text-accent-ink')}>
                 {recording === c.id ? 'Press keys…' : sc ? <Kbd>{formatShortcut(sc)}</Kbd> : <span className="text-[12px] text-text-3">Add</span>}
-                {shortcuts[c.id] && recording !== c.id && <span className="ml-1 text-[10px] text-accent">●</span>}
+                {shortcuts[c.id] && recording !== c.id && <span className="ml-1 text-[10px] text-accent-ink">●</span>}
               </button>
             </div>
           )
@@ -527,7 +527,7 @@ function SettingsDialog({ initial }: { initial?: string }) {
       <div className="-mx-6 -my-3 flex min-h-[420px]">
         <nav className="w-[180px] shrink-0 border-r border-border p-2">
           {sections.map(([id, label]) => (
-            <button key={id} onClick={() => setSection(id)} className={cx('block h-8 w-full rounded-md px-3 text-left text-[13px]', section === id ? 'bg-accent-soft font-medium text-accent' : 'text-text-2 hover:bg-hover')}>
+            <button key={id} onClick={() => setSection(id)} className={cx('block h-8 w-full rounded-md px-3 text-left text-[13px]', section === id ? 'bg-accent-soft font-medium text-accent-ink' : 'text-text-2 hover:bg-hover')}>
               {label}
             </button>
           ))}

@@ -28,7 +28,7 @@ function TemplateCard({ t }: { t: (typeof TEMPLATES)[number] }) {
       <div className="relative aspect-[1/1.294] w-full overflow-hidden rounded-xl border border-border bg-white shadow-[0_1px_2px_rgb(0_0_0/0.04)] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-accent group-hover:shadow-[0_10px_24px_-10px_rgb(40_40_90/0.35)]">
         {t.id === 'blank' ? (
           <div className="flex h-full items-center justify-center">
-            <FilePlus2 className="size-7 text-zinc-300 transition-colors group-hover:text-accent" />
+            <FilePlus2 className="size-7 text-zinc-300 transition-colors group-hover:text-accent-ink" />
           </div>
         ) : (
           <div className="space-y-[5px] p-4">
@@ -60,7 +60,7 @@ function RecentCard({ r }: { r: RecentFile }) {
           )}
         </div>
         <div className="mt-2 flex items-center gap-1.5 px-0.5">
-          {r.pinned && <Pin className="size-3 shrink-0 text-accent" />}
+          {r.pinned && <Pin className="size-3 shrink-0 text-accent-ink" />}
           <span className="truncate text-[12.5px] font-medium text-text">{r.name.replace(/\.[^.]+$/, '')}</span>
         </div>
         <div className="px-0.5 text-[11.5px] text-text-3">

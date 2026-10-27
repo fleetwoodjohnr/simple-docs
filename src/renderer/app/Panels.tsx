@@ -103,7 +103,7 @@ function Outline({ editor }: { editor: Editor }) {
           onClick={() => goTo(editor, h.pos)}
           className={cx(
             'block w-full truncate rounded-md py-1.5 pr-2 text-left text-[12.5px] transition-colors hover:bg-hover',
-            current === h ? 'bg-accent-soft font-medium text-accent' : h.level <= 1 ? 'font-medium text-text' : 'text-text-2'
+            current === h ? 'bg-accent-soft font-medium text-accent-ink' : h.level <= 1 ? 'font-medium text-text' : 'text-text-2'
           )}
           style={{ paddingLeft: 8 + Math.max(0, (h.level || 1) - minLevel) * 14 }}
         >
@@ -412,7 +412,7 @@ export function RightSidebar() {
 function TrackIndicator({ editor }: { editor: Editor }) {
   const on = useEditorState({ editor, selector: ({ editor: e }) => !!e.state.doc.attrs.trackChanges })
   return (
-    <button onClick={() => runCommand('review.track')} className={cx('flex h-full items-center gap-1.5 rounded px-2 hover:bg-hover', on && 'font-medium text-accent')} data-testid="track-indicator">
+    <button onClick={() => runCommand('review.track')} className={cx('flex h-full items-center gap-1.5 rounded px-2 hover:bg-hover', on && 'font-medium text-accent-ink')} data-testid="track-indicator">
       <span className={cx('size-1.5 rounded-full', on ? 'bg-accent' : 'bg-text-3/50')} />
       Track changes: {on ? 'on' : 'off'}
     </button>

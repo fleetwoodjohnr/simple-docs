@@ -45,7 +45,7 @@ export const Btn = forwardRef<HTMLButtonElement, BtnProps>(function Btn({ varian
         variant === 'primary' && 'bg-accent text-accent-fg shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_1px_2px_rgb(0_0_0/0.15)] hover:brightness-110',
         variant === 'secondary' && 'border border-border bg-panel text-text shadow-[0_1px_1px_rgb(0_0_0/0.04)] hover:bg-hover',
         variant === 'ghost' && 'text-text-2 hover:bg-hover hover:text-text',
-        variant === 'soft' && 'bg-accent-soft text-accent hover:brightness-105',
+        variant === 'soft' && 'bg-accent-soft text-accent-ink hover:brightness-105',
         variant === 'danger' && 'bg-danger text-white hover:brightness-110',
         className
       )}
@@ -66,7 +66,7 @@ export const IconBtn = forwardRef<HTMLButtonElement, IconBtnProps>(function Icon
       className={cx(
         'inline-flex shrink-0 select-none items-center justify-center rounded-md text-text-2 transition-colors duration-100 hover:bg-hover hover:text-text disabled:pointer-events-none disabled:opacity-40',
         size === 'md' ? 'h-7 min-w-7 px-1' : 'h-6 min-w-6 px-0.5',
-        active && 'bg-accent-soft text-accent hover:bg-accent-soft hover:text-accent',
+        active && 'bg-accent-soft text-accent-ink hover:bg-accent-soft hover:text-accent-ink',
         className
       )}
     >
@@ -146,7 +146,7 @@ export function MenuCheck({ children, checked, ...p }: ComponentProps<typeof Dro
   return (
     <DropdownMenu.CheckboxItem checked={checked} {...p} className={cx(itemCls, 'pl-8')}>
       <DropdownMenu.ItemIndicator className="absolute left-2.5 inline-flex">
-        <Check className="size-4 text-accent" />
+        <Check className="size-4 text-accent-ink" />
       </DropdownMenu.ItemIndicator>
       {children}
     </DropdownMenu.CheckboxItem>

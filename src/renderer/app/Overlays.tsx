@@ -100,7 +100,7 @@ export function FindBar({ editor }: { editor: Editor }) {
         </IconBtn>
       </div>
       {!replace ? (
-        <button onClick={() => set({ find: { open: true, replace: true } })} className="mt-1 px-1 text-[11.5px] text-text-3 hover:text-accent">
+        <button onClick={() => set({ find: { open: true, replace: true } })} className="mt-1 px-1 text-[11.5px] text-text-3 hover:text-accent-ink">
           Replace…
         </button>
       ) : (
@@ -131,7 +131,7 @@ export function FindBar({ editor }: { editor: Editor }) {
             Replace
           </button>
           <button
-            className="h-7 rounded-md px-2 text-[12px] font-medium text-accent hover:bg-accent-soft"
+            className="h-7 rounded-md px-2 text-[12px] font-medium text-accent-ink hover:bg-accent-soft"
             onClick={() => {
               const r = replaceAll(editor.state, rep)
               if (r) {

@@ -34,7 +34,7 @@ function ProtectionBar({ editor }: { editor: Editor }) {
     <div className="absolute inset-x-0 top-0 z-20 flex h-8 items-center justify-center gap-2 border-b border-border bg-panel/95 text-[12px] text-text-2 backdrop-blur" data-testid="protection-bar">
       <Lock className="size-3.5" />
       Protected: {PROTECTION_LABELS[mode]}
-      <button className="ml-1 rounded px-1.5 font-medium text-accent hover:bg-accent-soft" onClick={() => setProtection(editor, null)}>
+      <button className="ml-1 rounded px-1.5 font-medium text-accent-ink hover:bg-accent-soft" onClick={() => setProtection(editor, null)}>
         Stop protection
       </button>
     </div>
@@ -154,7 +154,7 @@ function DropOverlay() {
   if (!over) return null
   return (
     <div className="fade-in pointer-events-none fixed inset-3 z-[110] flex items-center justify-center rounded-2xl border-2 border-dashed border-accent bg-accent-soft backdrop-blur-sm">
-      <div className="flex flex-col items-center gap-2 text-accent">
+      <div className="flex flex-col items-center gap-2 text-accent-ink">
         <FileUp className="size-8" />
         <div className="text-[15px] font-semibold">Drop to open</div>
       </div>

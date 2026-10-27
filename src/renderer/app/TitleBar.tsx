@@ -63,20 +63,28 @@ function DocTab({ tab, active }: { tab: TabMeta; active: boolean }) {
           docs.closeTab(tab.id)
         } else docs.activate(tab.id)
       }}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && docs.activate(tab.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') docs.activate(tab.id)
+        if (e.key === 'Delete') docs.closeTab(tab.id)
+      }}
+      aria-label={`${tab.title}${tab.dirty ? ' (unsaved changes)' : ''}`}
+      aria-keyshortcuts="Delete"
       title={tab.path ?? tab.title}
       className={cx(
         'no-drag group relative flex h-[30px] min-w-0 max-w-[200px] shrink cursor-default items-center gap-2 rounded-lg pl-2.5 pr-1 text-[12.5px] transition-colors',
         active ? 'bg-panel font-medium text-text shadow-[0_0_0_1px_var(--border),0_1px_2px_rgb(0_0_0/0.05)]' : 'text-text-2 hover:bg-hover'
       )}
     >
-      <FileText className={cx('size-3.5 shrink-0', active ? 'text-accent' : 'text-text-3')} />
+      <FileText className={cx('size-3.5 shrink-0', active ? 'text-accent-ink' : 'text-text-3')} />
       <span className="truncate">{tab.title}</span>
-      <button
-        aria-label={`Close ${tab.title}`}
+      {/* Mouse affordance only (a button inside a tab would be nested interactive content); keyboard: Delete or Ctrl+W. */}
+      <span
+        aria-hidden="true"
+        title={`Close ${tab.title}`}
+        data-testid="tab-close"
         onMouseDown={(e) => e.stopPropagation()}
         onClick={() => docs.closeTab(tab.id)}
-        className="relative ml-auto flex size-5 shrink-0 items-center justify-center rounded text-text-3 hover:bg-active hover:text-text"
+        className="relative ml-auto flex size-6 shrink-0 items-center justify-center rounded text-text-3 hover:bg-active hover:text-text"
       >
         {tab.dirty ? (
           <>
@@ -86,7 +94,7 @@ function DocTab({ tab, active }: { tab: TabMeta; active: boolean }) {
         ) : (
           <X className={cx('size-3.5', !active && 'opacity-0 group-hover:opacity-100')} />
         )}
-      </button>
+      </span>
     </div>
   )
 }
@@ -108,9 +116,11 @@ export function TitleBar() {
           <Logo />
         </button>
       </Tip>
-      <nav role="tablist" aria-label="Open documents" className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+      <nav aria-label="Open documents" className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+        <div role="tablist" aria-label="Open documents" className="flex min-w-0 items-center gap-1 overflow-hidden">
         <button
           role="tab"
+          aria-label="Home"
           aria-selected={active === HOME}
           onClick={() => set({ active: HOME, backstage: false })}
           className={cx('no-drag flex h-[30px] shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] transition-colors', active === HOME ? 'bg-panel font-medium text-text shadow-[0_0_0_1px_var(--border)]' : 'text-text-2 hover:bg-hover')}
@@ -121,6 +131,7 @@ export function TitleBar() {
         {tabs.map((t) => (
           <DocTab key={t.id} tab={t} active={t.id === active} />
         ))}
+        </div>
         <IconBtn label="New document" shortcut={shortcutFor('file.new')} className="no-drag" onClick={() => runCommand('file.new')}>
           <Plus className="size-4" />
         </IconBtn>

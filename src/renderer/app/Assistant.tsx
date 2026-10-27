@@ -147,7 +147,7 @@ export function AssistantDialog() {
       onOpenChange={(o) => !o && close()}
       title={
         <span className="flex items-center gap-2">
-          <Sparkles className="size-4 text-accent" /> AI assistant
+          <Sparkles className="size-4 text-accent-ink" /> AI assistant
         </span>
       }
       width={640}
@@ -181,7 +181,7 @@ export function AssistantDialog() {
         <div className="space-y-3">
           <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="What should Claude do?">
             {ACTIONS.map(([id, label]) => (
-              <button key={id} role="radio" aria-checked={action === id} onClick={() => setAction(id)} className={cx('h-7 rounded-full border px-3 text-[12.5px]', action === id ? 'border-accent bg-accent-soft text-accent' : 'border-border text-text-2 hover:border-border-strong')}>
+              <button key={id} role="radio" aria-checked={action === id} onClick={() => setAction(id)} className={cx('h-7 rounded-full border px-3 text-[12.5px]', action === id ? 'border-accent bg-accent-soft text-accent-ink' : 'border-border text-text-2 hover:border-border-strong')}>
                 {label}
               </button>
             ))}

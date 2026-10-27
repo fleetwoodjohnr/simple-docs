@@ -96,7 +96,7 @@ export function HFEditor({ body, page, kind, index }: { body: Editor; page: Page
         style={{ left: ptToPx(m.left) }}
         data-testid="hf-toolbar"
       >
-        <span className="px-1.5 text-[11px] font-semibold text-accent">{label}</span>
+        <span className="px-1.5 text-[11px] font-semibold text-accent-ink">{label}</span>
         <button className={chip} onClick={() => insertField('page')}>
           <Hash className="size-3" /> Page
         </button>

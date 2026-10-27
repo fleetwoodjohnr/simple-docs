@@ -88,7 +88,7 @@ export function Ruler({ editor, zoom }: { editor: Editor; zoom: number }) {
       aria-valuenow={Math.round(val(h))}
       title={title}
       onPointerDown={start(h)}
-      className="absolute z-10 -translate-x-1/2 cursor-ew-resize touch-none text-accent"
+      className="absolute z-10 -translate-x-1/2 cursor-ew-resize touch-none text-accent-ink"
       style={{ left: x, top: shape === 'down' ? 0 : shape === 'box' ? 15 : 9 }}
     >
       {shape === 'box' ? <span className="block h-[5px] w-[9px] rounded-[1px] bg-current" /> : <svg width="10" height="7" viewBox="0 0 10 7">{shape === 'down' ? <path d="M0 0h10L5 7z" fill="currentColor" /> : <path d="M0 7h10L5 0z" fill="currentColor" />}</svg>}

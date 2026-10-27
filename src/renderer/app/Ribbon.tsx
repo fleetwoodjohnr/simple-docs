@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Editor } from '@tiptap/core'
-import { Sparkles, Shapes, BarChart3, Users, Braces, ChevronLeft, ChevronRight, BookMarked, Library, BookImage, Lock, GitCompare, Accessibility,
+import { AArrowDown, AArrowUp, Sparkles, Shapes, BarChart3, Users, Braces, ChevronLeft, ChevronRight, BookMarked, Library, BookImage, Lock, GitCompare, Accessibility,
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, CalendarDays, CaseSensitive, ChevronDown, ChevronUp, ClipboardPaste, Code2, Columns3, Copy, Eraser, Eye, FileDown, Focus,
   Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Info, Italic, Keyboard, Link2, List, ListChecks, ListOrdered, Maximize2, Minus, Moon, PaintBucket, Paintbrush, PanelLeft,
   PanelRight, Pilcrow, Plus, Printer, Quote, Redo2, Replace, Ruler, Scissors, Search, Settings, Sigma, SquareDashed, Strikethrough, Subscript, Superscript, Table2, Type, Underline, Undo2,
@@ -59,7 +59,7 @@ function TextBtn({ icon, children, onClick, active, label, shortcut }: { icon?: 
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       aria-pressed={active}
-      className={cx('flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-[12.5px] text-text-2 transition-colors hover:bg-hover hover:text-text [&>svg]:size-4', active && 'bg-accent-soft text-accent')}
+      className={cx('flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-[12.5px] text-text-2 transition-colors hover:bg-hover hover:text-text [&>svg]:size-4', active && 'bg-accent-soft text-accent-ink')}
     >
       {icon}
       {children}
@@ -75,13 +75,15 @@ function TextBtn({ icon, children, onClick, active, label, shortcut }: { icon?: 
 }
 
 function DropBtn({ icon, children, label, active }: { icon?: ReactNode; children?: ReactNode; label: string; active?: boolean }) {
+  // The accessible name must contain the visible text (WCAG 2.5.3 label in name).
+  const name = typeof children === 'string' && !label.toLowerCase().includes(children.toLowerCase()) ? `${label}: ${children}` : label
   return (
     <MenuTrigger asChild>
       <button
         type="button"
-        aria-label={label}
+        aria-label={name}
         onMouseDown={(e) => e.preventDefault()}
-        className={cx('flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-[12.5px] text-text-2 transition-colors hover:bg-hover hover:text-text data-[state=open]:bg-hover [&>svg:first-child]:size-4', active && 'bg-accent-soft text-accent')}
+        className={cx('flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-[12.5px] text-text-2 transition-colors hover:bg-hover hover:text-text data-[state=open]:bg-hover [&>svg:first-child]:size-4', active && 'bg-accent-soft text-accent-ink')}
       >
         {icon}
         {children}
@@ -120,7 +122,7 @@ function FontPicker({ editor, value }: { editor: Editor; value: string }) {
     <Pop>
       <Tip label="Font">
         <PopTrigger asChild>
-          <button onMouseDown={(e) => e.preventDefault()} aria-label="Font" data-testid="font-picker" className="flex h-7 w-[150px] shrink-0 items-center justify-between rounded-md border border-border bg-panel px-2 text-left text-[12.5px] hover:border-border-strong">
+          <button onMouseDown={(e) => e.preventDefault()} aria-label={`Font: ${value}`} data-testid="font-picker" className="flex h-7 w-[150px] shrink-0 items-center justify-between rounded-md border border-border bg-panel px-2 text-left text-[12.5px] hover:border-border-strong">
             <span className="truncate" style={{ fontFamily: fontStack(value) }}>
               {value}
             </span>
@@ -135,7 +137,7 @@ function FontPicker({ editor, value }: { editor: Editor; value: string }) {
             <button
               key={f}
               onClick={() => editor.chain().focus().setFontFamily(f).run()}
-              className={cx('flex h-8 w-full items-center rounded-md px-2 text-left text-[14px] hover:bg-hover', f === value && 'bg-accent-soft text-accent')}
+              className={cx('flex h-8 w-full items-center rounded-md px-2 text-left text-[14px] hover:bg-hover', f === value && 'bg-accent-soft text-accent-ink')}
               style={{ fontFamily: fontStack(f) }}
             >
               {f}
@@ -170,14 +172,14 @@ function SizePicker({ editor, value }: { editor: Editor; value: number }) {
           className="w-full min-w-0 bg-transparent pl-2 text-[12.5px] tabular-nums outline-none"
         />
         <MenuTrigger asChild>
-          <button aria-label="Font sizes" onMouseDown={(e) => e.preventDefault()} className="flex h-full items-center px-1 text-text-3 hover:text-text">
+          <button aria-label="Font sizes" onMouseDown={(e) => e.preventDefault()} className="flex h-full min-w-6 items-center justify-center text-text-3 hover:text-text">
             <ChevronDown className="size-3" />
           </button>
         </MenuTrigger>
       </div>
       <MenuContent className="max-h-[320px] min-w-[80px] overflow-y-auto">
         {FONT_SIZES.map((s) => (
-          <MenuItem key={s} onSelect={() => editor.chain().focus().setFontSize(`${s}pt`).run()} className={s === value ? 'text-accent' : ''}>
+          <MenuItem key={s} onSelect={() => editor.chain().focus().setFontSize(`${s}pt`).run()} className={s === value ? 'text-accent-ink' : ''}>
             {s}
           </MenuItem>
         ))}
@@ -257,7 +259,7 @@ function StyleGallery({ editor, current }: { editor: Editor; current: string }) 
           <MenuSep />
           <MenuLabel>Paragraph styles</MenuLabel>
           {all.map((s) => (
-            <MenuItem key={s.id} onSelect={() => applyStyle(editor, s.id)} className={current === s.id ? 'text-accent' : ''}>
+            <MenuItem key={s.id} onSelect={() => applyStyle(editor, s.id)} className={current === s.id ? 'text-accent-ink' : ''}>
               <span style={{ ...preview(s.id), fontSize: 13 }}>{s.name}</span>
             </MenuItem>
           ))}
@@ -285,8 +287,8 @@ function HomeTab({ editor, s }: { editor: Editor; s: Snapshot }) {
       <Group label="Font">
         <FontPicker editor={editor} value={s.font} />
         <SizePicker editor={editor} value={s.size} />
-        <Cmd id="fmt.grow" label="Increase font size" icon={<span className="text-[13px] font-semibold">A<sup className="text-[8px]">+</sup></span>} />
-        <Cmd id="fmt.shrink" label="Decrease font size" icon={<span className="text-[11px] font-semibold">A<sup className="text-[8px]">−</sup></span>} />
+        <Cmd id="fmt.grow" label="Increase font size" icon={<AArrowUp className="size-4" />} />
+        <Cmd id="fmt.shrink" label="Decrease font size" icon={<AArrowDown className="size-4" />} />
       </Group>
       <Sep />
       <Group label="Character">
@@ -756,7 +758,7 @@ function LayoutTab({ editor, s }: { editor: Editor; s: Snapshot }) {
         <TextBtn active={s.pageBreakBefore} onClick={() => runCommand('para.pageBreakBefore')} label="Always start this paragraph on a new page">
           Break before
         </TextBtn>
-        <Cmd id="para.rtl" label="Right-to-left text" active={editor.state.selection.$from.parent.attrs.dir === 'rtl'} icon={<span className="text-[11px] font-semibold">RTL</span>} />
+        <Cmd id="para.rtl" label="RTL: right-to-left text" active={editor.state.selection.$from.parent.attrs.dir === 'rtl'} icon={<span aria-hidden="true" className="text-[11px] font-semibold">RTL</span>} />
       </Group>
     </>
   )
@@ -768,10 +770,10 @@ function CitationStyleMenu() {
   if (!editor) return null
   return (
     <Menu>
-      <DropBtn label="Citation style">{CITATION_STYLES.find((c) => c.id === style)!.label}</DropBtn>
+      <DropBtn label={`Citation style: ${CITATION_STYLES.find((c) => c.id === style)!.label}`}>{CITATION_STYLES.find((c) => c.id === style)!.label}</DropBtn>
       <MenuContent>
         {CITATION_STYLES.map((c) => (
-          <MenuItem key={c.id} onSelect={() => setCitationStyle(editor, c.id)} className={c.id === style ? 'text-accent' : ''}>
+          <MenuItem key={c.id} onSelect={() => setCitationStyle(editor, c.id)} className={c.id === style ? 'text-accent-ink' : ''}>
             {c.label}
           </MenuItem>
         ))}
@@ -858,7 +860,7 @@ function ProtectMenu() {
       <MenuContent>
         <MenuLabel>Allow only</MenuLabel>
         {(Object.keys(PROTECTION_LABELS) as ProtectionMode[]).map((m) => (
-          <MenuItem key={m} onSelect={() => setProtection(editor, m)} className={mode === m ? 'text-accent' : ''}>
+          <MenuItem key={m} onSelect={() => setProtection(editor, m)} className={mode === m ? 'text-accent-ink' : ''}>
             {PROTECTION_LABELS[m]}
           </MenuItem>
         ))}
@@ -954,7 +956,7 @@ function ViewTab() {
     <>
       <Group label="Zoom">
         <Cmd id="view.zoomOut" label="Zoom out" icon={<ZoomOut className="size-4" />} />
-        <button onClick={() => zoomTo(1)} className="h-7 w-12 rounded-md text-[12.5px] tabular-nums text-text-2 hover:bg-hover" aria-label="Reset zoom">
+        <button onClick={() => zoomTo(1)} className="h-7 w-12 rounded-md text-[12.5px] tabular-nums text-text-2 hover:bg-hover" aria-label={`${Math.round(st.zoom * 100)}% (reset zoom)`}>
           {Math.round(st.zoom * 100)}%
         </button>
         <Cmd id="view.zoomIn" label="Zoom in" icon={<ZoomIn className="size-4" />} />
@@ -1228,13 +1230,14 @@ export function Ribbon() {
 
   return (
     <div className="shrink-0 border-b border-border bg-panel" data-testid="ribbon">
-      <div className="flex h-9 items-center gap-0.5 px-2" role="tablist" aria-label="Ribbon">
+      <div className="flex h-9 items-center gap-0.5 px-2">
         <button
           onClick={() => set((x) => ({ backstage: !x.backstage }))}
           className="mr-1 h-[26px] rounded-md bg-accent px-3 text-[12.5px] font-semibold text-accent-fg shadow-[inset_0_1px_0_rgb(255_255_255/0.2)] hover:brightness-110"
         >
           File
         </button>
+        <div role="tablist" aria-label="Ribbon" className="flex items-center gap-0.5">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -1256,11 +1259,12 @@ export function Ribbon() {
             role="tab"
             aria-selected={shown === contextual}
             onClick={() => setCtx(contextual)}
-            className={cx('relative ml-1 h-[26px] rounded-md px-2.5 text-[12.5px] font-semibold text-accent transition-colors hover:bg-accent-soft', shown === contextual && 'bg-accent-soft')}
+            className={cx('relative ml-1 h-[26px] rounded-md px-2.5 text-[12.5px] font-semibold text-accent-ink transition-colors hover:bg-accent-soft', shown === contextual && 'bg-accent-soft')}
           >
             {contextual === 'table' ? 'Table' : 'Picture'}
           </button>
         )}
+        </div>
         <div className="flex-1" />
         <IconBtn label="Undo" size="sm" shortcut={shortcutFor('edit.undo')} disabled={!s.canUndo} onClick={() => runCommand('edit.undo')}>
           <Undo2 className="size-3.5" />

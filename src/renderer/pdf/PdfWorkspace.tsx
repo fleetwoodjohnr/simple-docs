@@ -264,7 +264,7 @@ export function PdfWorkspace({ tabId }: { tabId: string }) {
               aria-pressed={tool === t.id}
               aria-label={t.label}
               data-testid={`pdf-tool-${t.id}`}
-              className={cx('flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[12.5px] text-text-2 hover:bg-hover hover:text-text [&>svg]:size-4', tool === t.id && 'bg-accent-soft text-accent hover:bg-accent-soft hover:text-accent')}
+              className={cx('flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[12.5px] text-text-2 hover:bg-hover hover:text-text [&>svg]:size-4', tool === t.id && 'bg-accent-soft text-accent-ink hover:bg-accent-soft hover:text-accent-ink')}
             >
               {t.icon}
               <span className="hidden min-[1640px]:inline">{t.label}</span>
@@ -334,7 +334,7 @@ export function PdfWorkspace({ tabId }: { tabId: string }) {
 
       <div className="flex min-h-0 flex-1">
         <Thumbnails doc={doc} pages={pages} versions={versions} current={current} onSelect={scrollToPage} ops={pageOps} />
-        <div ref={scrollRef} className="min-w-0 flex-1 overflow-auto" data-pdf-scroll>
+        <div ref={scrollRef} className="min-w-0 flex-1 overflow-auto outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent" data-pdf-scroll tabIndex={0} aria-label="PDF pages">
           <div className="flex w-max min-w-full flex-col items-center gap-6 px-6 py-8">
             {pages.map((info, i) => (
               <PdfPage key={i} index={i} info={info} ctx={ctx} />
@@ -752,7 +752,7 @@ function CommentsList({ annots, onGo, onDelete }: { annots: Record<number, Annot
       {list.map((a) => (
         <li key={`${a.page}-${a.index}`} className="group rounded-lg border border-border bg-panel-2 p-2.5">
           <div className="flex items-center gap-2 text-[12px]">
-            <span className="text-accent">{icon(a.kind)}</span>
+            <span className="text-accent-ink">{icon(a.kind)}</span>
             <button className="font-medium capitalize hover:underline" onClick={() => onGo(a.page)}>
               {a.kind} · page {a.page + 1}
             </button>

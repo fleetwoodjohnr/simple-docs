@@ -9,7 +9,7 @@ import { Btn, cx, inputCls } from '../ui'
 const ICON = {
   error: <AlertCircle className="size-3.5 text-danger" />,
   warning: <AlertTriangle className="size-3.5 text-warn" />,
-  tip: <Lightbulb className="size-3.5 text-accent" />
+  tip: <Lightbulb className="size-3.5 text-accent-ink" />
 }
 
 function go(editor: Editor, pos: number) {
