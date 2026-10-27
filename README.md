@@ -2,7 +2,7 @@
 
 A fast, modern, offline word processor for Windows, macOS and Linux. It lays text out on real pages, round-trips DOCX with its own OOXML engine, exports PDF from the same layout you see, and edits Markdown both visually and as source.
 
-> Status: Milestones 1–3 are complete, which includes the PDF workspace. For what works today, what is partial, and what is next, see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). [COMPATIBILITY.md](COMPATIBILITY.md) shows, per file format, which elements are kept.
+> Status: Milestones 1–4 are complete. M3 added the PDF workspace; M4 added compare, version history, citations, mail merge, equations, charts, protection, an accessibility checker and the optional AI assistant. For what works today, what is partial, and what is next, see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). [COMPATIBILITY.md](COMPATIBILITY.md) shows, per file format, which elements are kept.
 
 ## Quick start
 
@@ -39,6 +39,7 @@ src/formats/    Pure format adapters (bytes ⇄ editor JSON + warnings): docx/ (
 src/export/     Print/PDF: slices the paginated DOM into fixed-size pages
 src/pdf/        PDF engine on PDFium WASM: render, text runs, text editing, redaction, annotations, forms, pages
 src/main/ocr.ts Offline OCR (tesseract.js, bundled English model) on a worker thread
+src/main/ai.ts  Optional AI assistant (Claude API via @anthropic-ai/sdk); off by default, consent per request
 src/renderer/   React UI: title bar, ribbon, panels, dashboard, dialogs, command registry, state;
                 pdf/ = PDF workspace (PDFium runs in a Web Worker)
 tests/          unit/ (vitest) · e2e/ (Playwright + Electron) · fixtures/
@@ -48,7 +49,7 @@ tests/          unit/ (vitest) · e2e/ (Playwright + Electron) · fixtures/
 
 - **Real pagination, with a clean document model.** Pages are a layout result and never appear as nodes in the document. The layout engine measures every line box, chooses page breaks with widow/orphan control, keep-with-next, keep-lines-together and page-break-before, and splits paragraphs between lines and tables between rows. It then inserts spacer decorations so the content physically flows onto the next sheet. PDF export and printing slice that same layout, so the PDF has the same pages as the editor, and the tests assert it.
 - **Own DOCX engine.** DOCX-to-HTML converters intentionally discard formatting. Ours maps styles (including their basedOn chains), numbering, tables (merges, shading, widths), images, links, page setup and metadata into the editor. Anything it can't edit yet — headers/footers, footnotes, charts, shapes, equations, OLE objects — it keeps as raw XML plus the package parts that XML references, and writes it all back on save. It is never discarded silently.
-- **Offline and private.** No network access, no account, no telemetry. The only exception is that links you open are handed to your browser.
+- **Offline and private.** No network access, no account, no telemetry. Links you open are handed to your browser. The optional AI assistant is the only feature that uses the network. It is off by default, and the main process refuses requests while it is off. When it is on, each request shows exactly what will be sent to Anthropic and goes out only when you click Send.
 - **Real PDF editing.** PDFs are edited through PDFium. Existing text is changed in the page's content stream, not covered with an overlay. Redaction removes the content, and OCR adds a real invisible text layer. The limits, such as no reflow and font substitution, are listed in the docs.
 - **Security.** `contextIsolation` and `sandbox` are on and `nodeIntegration` is off. The packaged renderer runs under a strict Content-Security-Policy: no inline scripts and no `eval`. Navigation and new windows are blocked. The main process reads or writes only files you granted through a dialog, recents, drag-and-drop or the command line. Pasted and imported HTML is sanitized and parsed through the schema.
 
@@ -66,6 +67,8 @@ All runtime dependencies are permissively licensed.
 | Caladea (bundled) | Apache-2.0 |
 | PDFium via `@embedpdf/pdfium` (WASM build) | BSD-3-Clause (PDFium), MIT (package) |
 | tesseract.js, tesseract.js-core | Apache-2.0 |
+| KaTeX (equation rendering, bundled fonts) | MIT |
+| @anthropic-ai/sdk (optional AI assistant) | Apache-2.0 |
 | English OCR model (`@tesseract.js-data/eng`, from tessdata) | Apache-2.0 (model), MIT (package) |
 | nspell | MIT |
 | dictionary-en, dictionary-en-gb (Hunspell dictionaries) | MIT AND BSD |

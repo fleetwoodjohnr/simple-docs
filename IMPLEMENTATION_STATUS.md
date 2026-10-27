@@ -1,6 +1,6 @@
 # Implementation status
 
-_Last updated: 2026-10-27 · Milestones 1–3 complete (M2 and M3 each with documented partial items) · Milestone 4 next._
+_Last updated: 2026-10-27 · Milestones 1–4 complete (each with documented partial items) · Milestone 5 next._
 
 "Done" means implemented **and** covered by a passing automated test or a manual check recorded below. A button existing in the UI does not count.
 
@@ -9,8 +9,8 @@ _Last updated: 2026-10-27 · Milestones 1–3 complete (M2 and M3 each with docu
 | Suite | Result |
 |---|---|
 | `npm run typecheck` (strict, main + renderer) | ✅ clean |
-| `npm test` (vitest) | ✅ 84 / 84 |
-| `npm run e2e:headless` (Playwright + Electron) | ✅ 19 / 19 (every test also fails on any Content-Security-Policy violation) |
+| `npm test` (vitest) | ✅ 129 / 129 |
+| `npm run e2e:headless` (Playwright + Electron) | ✅ 29 / 29 (every test also fails on any Content-Security-Policy violation) |
 | Independent consumer: our DOCX → LibreOffice → PDF | ✅ (in `docx.test.ts`) |
 | Independent consumer: our edited PDFs → poppler (`pdftotext`, `pdfinfo`) | ✅ (in `pdf.test.ts`, `ocr.test.ts`, e2e `pdf.spec.ts`) |
 
@@ -175,15 +175,54 @@ The packaged renderer now has a strict Content-Security-Policy:
 
 Every E2E test fails if Chromium reports a CSP violation. A test also confirms that an injected inline script is blocked.
 
-## Milestones 4–5 ⏳
+## Milestone 4 — Professional features ✅ (limits listed below)
 
-See the plan in the README and the original brief.
+### Done (each with unit and E2E tests)
+- **Compare documents** (Review → Compare, or from Version history). Blocks are aligned first, then paired paragraphs are compared word by word, and lists and tables are compared recursively. Tables keep their shape. The result opens in a new tab as tracked changes, so Accept and Reject work on it as usual. The current file is compared against a saved file or a saved version. Accepting or rejecting a change that covers a whole paragraph removes the paragraph. Tested on the DOCX fixture (an edit gives exactly 1 insertion and 1 deletion, with no spurious changes).
+- **Version history** (File → Version history). A compressed snapshot is kept on every save; with AutoSave, at most one every 10 minutes. Identical saves are skipped, and up to 100 versions are kept per file, stored only on this computer. Each version has a text preview and can be restored (Ctrl+Z undoes the restore), opened as a copy, or compared with the current text.
+- **Citations and bibliography** (References). Each document has its own list of sources: books, articles, websites and reports. In-text citations and the reference list are formatted in APA 7, MLA 9 or Chicago author-date. Changing the style or editing a source updates every citation and the bibliography. DOCX round trip uses Word's own model, CITATION fields plus `customXml` `b:Sources`, and LibreOffice renders our output correctly.
+- **Mail merge** (Tools). Recipients come from CSV: quotes, embedded newlines, `,` `;` or tab delimiters, BOM. «Field» placeholders preview each recipient in place. Finish & merge creates one document with a copy per recipient, separated by page breaks. Fields round-trip as Word MERGEFIELDs.
+- **Equations** (Insert → Equation, Alt+=). Equations are written in LaTeX with a palette and a live preview, rendered by KaTeX with MathML for screen readers, and exported to PDF as real text. In DOCX they become **native Word equations (OMML)**. **Word equations in opened files are now displayed and editable**: OMML is converted to LaTeX, and unedited equations are written back byte-for-byte. LibreOffice renders our OMML correctly: fractions, radicals, sums and integrals with limits, matrices, accents. In Markdown they are `$…$` and `$$…$$`.
+- **Charts and shapes** (Insert). Column, bar, line and pie charts are built from pasted data. Eight shape types take fill, outline and text. Both are drawn as SVG and inserted as 3× resolution pictures that keep their data for double-click editing, with alt text generated from the data.
+- **Cover pages** (Insert → Cover page): Classic, Color band and Minimal. They are filled in from the document properties and built from ordinary styles, so they round-trip.
+- **Restrict editing** (Review → Protect): read only, comments only, or tracked changes only. A transaction filter enforces it and a banner shows it. DOCX round trip is `w:documentProtection`; LibreOffice opens it.
+- **Accessibility checker** (Review → Accessibility). It checks:
+  - images without alt text
+  - skipped or empty headings
+  - tables without a header row, and merged cells
+  - low text contrast (WCAG ratio)
+  - vague link text
+  - runs of blank paragraphs
+  - a missing title
+  - long documents without headings
 
-- **M4:** Compare, citations, mail merge, equations, shapes and charts, protection, version history and an optional AI assistant.
-- **M5:** Packaging and signing, accessibility audit (axe), compatibility regression corpus, release docs.
+  One-click fixes cover alt text, header rows and the title.
+- **AI writing assistant** (Tools → AI assistant, **optional and off by default**). It can improve, proofread, shorten, lengthen, change the tone of, or summarize the selection, or follow a custom instruction. It uses Anthropic's Claude API (Claude Opus 5.5, official SDK, streaming, server-side fallback on policy declines).
+  - The main process refuses every request while the assistant is off.
+  - Each request shows exactly the text that will be sent, and goes out only when the user clicks Send.
+  - The API key is encrypted with the OS keychain (Electron `safeStorage`), or taken from `ANTHROPIC_API_KEY`.
+  - The E2E test runs against a local mock of the API. It checks that nothing is sent while the assistant is off or before Send, and verifies the exact request.
+- Menus now return focus to the document after an item is chosen, so the next keystroke types into the text instead of the menu button. This was a bug found while testing mail merge.
+
+### Known limitations (M4)
+- **Compare.** Formatting-only differences are not reported. Images and other objects that differ are shown in their revised state and counted, not marked.
+- **Citations.** There is no year disambiguation (2020a/2020b), and one source per citation (Word's `\m` multi-source citations import with their text but link only the first source). The bibliography lists every source in the document. ODT and Markdown get citations as plain text, with a warning.
+- **Equations.**
+  - The LaTeX→OMML subset covers fractions, scripts, radicals, n-ary operators, delimiters, matrices and cases, accents, bars, functions, text and about 150 symbols. Other LaTeX (for example `align`, `\overbrace`) is saved to DOCX as linear text, and the dialog warns before that happens.
+  - Word equations with constructs outside the reverse mapping stay preserved and unchanged, but not editable.
+  - ODT gets the LaTeX as text.
+- **Charts and shapes** are pictures in DOCX and ODT, not native Word or ODF charts or shapes, so they can't be edited as charts in Word. Charts and shapes from Word files are still preserved, not shown. There are no free-floating text boxes.
+- **Mail merge.** The recipient list is not saved with the document; choose it again after reopening. Merging produces one combined document only, with no per-recipient files or e-mail.
+- **Restrict editing has no password** (like Word's protection, it is not a security feature). Word password hashes on opened files are ignored, and ODT protection is not read or written.
+- **AI assistant.** It supports Claude only, with no local-model provider. It works on the selection as plain text: the replacement keeps paragraphs but not inline formatting, and a tracked-changes document records the replacement as a change.
+
+## Milestone 5 ⏳
+
+- **M5:** Packaging and signing, accessibility audit (axe), compatibility regression corpus, crash-recovery tests, release docs.
 
 ## Next recommended tasks
 
-1. Milestone 4: compare documents, citations and bibliography, mail merge, equations, shapes and charts, templates and cover pages, protection, accessibility checker, version history, optional AI assistant (off by default).
+1. Milestone 5: build and smoke-test the installers (AppImage/deb/rpm here; NSIS/dmg need their platforms), including OCR from inside the packaged asar. Add axe-core checks to E2E, a corpus-based compatibility regression suite and release docs.
 2. Per-section page setup in the layout engine (displayed landscape sections).
 3. PDF: text layer on rotated pages, moving and resizing annotations, a warning before editing digitally signed files.
+4. Native DOCX charts (`c:chartSpace`) so charts stay editable in Word.

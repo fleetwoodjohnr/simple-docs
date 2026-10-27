@@ -41,9 +41,14 @@ On open, every adapter produces a warning list (the ⚠ badge in the title bar).
 | Page size, orientation, margins, header/footer distance, gutter | ✅ | |
 | Headers and footers (default / first / even), PAGE / NUMPAGES / DATE / TITLE / AUTHOR fields, page-number format | ✅ | Other fields in headers keep their last result text |
 | Footnotes and endnotes | ✅ | Custom note separators are regenerated |
-| Charts, SmartArt, shapes, text boxes, VML, OLE objects, equations (OMML) | 🔒 | Raw XML and referenced parts written back |
+| Equations (OMML, inline and display) | ✅ | Shown and editable (converted to LaTeX); unedited equations are written back byte-for-byte; constructs outside the supported subset stay 🔒 preserved |
+| Charts, SmartArt, shapes, text boxes, VML, OLE objects | 🔒 | Raw XML and referenced parts written back |
+| Charts and shapes made in Simple Docs | 🟡 | Saved as pictures (with alt text); editable as charts only in Simple Docs |
+| Citations (CITATION fields) and bibliography sources (`customXml` `b:Sources`) | ✅ | APA / MLA / Chicago style choice kept; `\m` multi-source citations link their first source |
+| Mail-merge fields (MERGEFIELD) | ✅ | |
+| Editing restrictions (`w:documentProtection`: read only, comments, tracked changes) | ✅ | Password hashes are ignored (and not written) |
 | Content controls (SDT) | 🟡 | Content kept; the control wrapper is dropped (checkbox controls and the TOC control are kept) |
-| Fields (simple and complex) | 🟡 | The current result text is kept; the field code is dropped (warned) |
+| Other fields (simple and complex) | 🟡 | The current result text is kept; the field code is dropped (warned) |
 | Comments with replies and resolved state | ✅ | Via `comments.xml` + `commentsExtended.xml` |
 | Tracked insertions/deletions | ✅ | Tracked formatting changes from Word are shown as accepted (noted) |
 | Bookmarks | ❌ | Dropped silently (they have no visible content); M2 |
@@ -71,6 +76,8 @@ Preserved XML is written back only when everything it references (relationship i
 | Text boxes, drawings, other unknown elements | 🔒 | Preserved and written back to ODT; plain text in other formats |
 | Sections / columns | ❌ | Content kept, section formatting dropped (warned) |
 | Custom starting page number | ❌ | Not written (warned) |
+| Equations, citations, mail-merge fields | 🟡 | Saved as text (LaTeX, formatted citation, «field»), warned |
+| Editing restrictions | ❌ | Not read or written |
 
 ## RTF, DOC (through LibreOffice)
 
@@ -87,6 +94,8 @@ These are converted to DOCX by a locally installed LibreOffice and then go throu
 | Alignment, spacing, indents, page setup | — | ❌ warned |
 | Merged cells; lists inside cells | — | 🟡 split / flattened, warned |
 | Page breaks, preserved content | — | ❌ warned |
+| Equations | ✅ `$…$` / `$$…$$` | ✅ |
+| Citations, mail-merge fields | — | 🟡 plain text, warned |
 | Raw HTML in the source | 🟡 shown as text | — |
 
 Source mode shows the generated Markdown with syntax highlighting and a live preview. Edits sync back to the document.
