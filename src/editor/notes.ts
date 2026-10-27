@@ -68,10 +68,12 @@ export const Footnote = Node.create({
   },
   addCommands() {
     return {
+      // Like Word, a note goes after the selection rather than replacing it.
       insertNote:
         (kind) =>
-        ({ chain }) =>
+        ({ chain, state }) =>
           chain()
+            .setTextSelection(state.selection.to)
             .insertContent({ type: 'footnote', attrs: { kind, content: [{ type: 'paragraph' }] } })
             .run()
     }

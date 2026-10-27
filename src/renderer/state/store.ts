@@ -5,7 +5,7 @@ import type { FormatId, FormatWarning } from '@/formats/types'
 
 export type RibbonTab = 'home' | 'insert' | 'layout' | 'references' | 'review' | 'view' | 'tools'
 export type LeftPanel = 'outline' | 'pages' | 'recent'
-export type RightPanel = 'format' | 'page' | 'stats'
+export type RightPanel = 'format' | 'page' | 'stats' | 'comments'
 export type SaveStatus = 'saved' | 'unsaved' | 'saving' | 'error'
 
 export interface TabMeta {

@@ -80,6 +80,7 @@ describe('DOCX round trip', () => {
     expect(text(doc)).toContain('Tab\there')
     expect(doc.attrs!.page).toMatchObject({ size: 'a4', margins: { top: 54, bottom: 54, left: 63, right: 63 } })
     expect(doc.attrs!.meta).toMatchObject({ title: 'Quarterly Report', author: 'Test Author' })
+    expect(Object.values(doc.attrs!.comments as Record<string, { text: string }>).map((c) => c.text)).toEqual(['Expand this section.'])
   })
 
   it('is stable on a second round trip', () => {

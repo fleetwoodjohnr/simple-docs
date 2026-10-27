@@ -2,6 +2,7 @@ import { unzipSync, strFromU8 } from 'fflate'
 import type { JSONContent } from '@tiptap/core'
 import { makePageSetup, PAGE_SIZES, type DocMeta, type HeadersFooters, type PageNumberFormat, type PageSetup, type ParaProps, type RunProps, type StyleDef, type StyleMap } from '@/editor/model'
 import { Warnings, type ImportResult } from '../types'
+import type { CommentMap } from '@/editor/comments'
 import { NS, attr, child, children, elements, find, findAll, is, mimeFromExt, num, onOff, parseXml, serialize, textOf, toBase64, wval, type El } from './xml'
 
 // DOCX (WordprocessingML) → editor JSON. Unsupported elements are kept verbatim as
@@ -104,6 +105,64 @@ class Reader {
   inHF = false
   tocLevel = new Map<string, number>()
   notes = { footnote: new Map<string, JSONContent[]>(), endnote: new Map<string, JSONContent[]>() }
+  comments: CommentMap = {}
+  /** Word comment id → our thread id (replies map to their parent thread). */
+  commentIds = new Map<string, string>()
+  replyIds = new Set<string>()
+  activeComments = new Set<string>()
+  commentParts: string[] = []
+
+  commentRange(e: El) {
+    const wid = attr(e, NS.w, 'id') ?? ''
+    if (this.replyIds.has(wid)) return
+    const id = this.commentIds.get(wid)
+    if (!id) return
+    if (e.localName === 'commentRangeStart') this.activeComments.add(id)
+    else this.activeComments.delete(id)
+  }
+
+  /** comments.xml (+ commentsExtended.xml for threads/resolved) → comment threads. */
+  loadComments() {
+    const rel = [...this.rels.values()].find((x) => x.type.endsWith('/comments'))
+    const xml = rel && !rel.external ? this.text(rel.target) : null
+    if (!rel || !xml) return
+    this.commentParts.push(rel.target)
+    const extRel = [...this.rels.values()].find((x) => x.type.endsWith('/commentsExtended'))
+    const ext = new Map<string, { parent: string | null; done: boolean }>()
+    const extXml = extRel && this.text(extRel.target)
+    if (extRel && extXml) {
+      this.commentParts.push(extRel.target)
+      for (const c of elements(parseXml(extXml).documentElement))
+        ext.set(c.getAttribute('w15:paraId') ?? '', { parent: c.getAttribute('w15:paraIdParent') || null, done: c.getAttribute('w15:done') === '1' })
+    }
+    for (const r of this.rels.values()) if (/\/(commentsIds|commentsExtensible)$/.test(r.type)) this.commentParts.push(r.target)
+    const byPara = new Map<string, string>()
+    const list = children(parseXml(xml).documentElement, NS.w, 'comment').map((c) => {
+      const paras = children(c, NS.w, 'p')
+      const lastPara = paras[paras.length - 1]
+      const paraId = lastPara ? (lastPara.getAttributeNS(NS.w14, 'paraId') ?? '') : ''
+      return {
+        wid: attr(c, NS.w, 'id') ?? '',
+        author: attr(c, NS.w, 'author') ?? 'Author',
+        date: attr(c, NS.w, 'date') ?? '',
+        text: paras.map((p) => findAll(p, NS.w, 't').map(textOf).join('')).join('\n').trim(),
+        paraId
+      }
+    })
+    for (const c of list) {
+      const meta = ext.get(c.paraId)
+      if (meta?.parent && byPara.has(meta.parent)) {
+        const parentId = byPara.get(meta.parent)!
+        this.comments[parentId].replies.push({ author: c.author, date: c.date, text: c.text })
+        this.replyIds.add(c.wid)
+        continue
+      }
+      const id = `c${c.wid}`
+      this.commentIds.set(c.wid, id)
+      if (c.paraId) byPara.set(c.paraId, id)
+      this.comments[id] = { author: c.author, date: c.date, text: c.text, resolved: !!meta?.done, replies: [] }
+    }
+  }
   noteParts: string[] = []
 
   /** Read footnotes.xml / endnotes.xml into editable content keyed by note id. */
@@ -597,6 +656,7 @@ class Reader {
           case 'permEnd':
           case 'commentRangeStart':
           case 'commentRangeEnd':
+            this.commentRange(e)
             continue
           case 'r':
             this.run(e, out, linkMark, field)
@@ -666,6 +726,7 @@ class Reader {
     const rp = this.runProps(child(r, NS.w, 'rPr'))
     const marks = this.marksFor(rp)
     if (linkMark) marks.push(linkMark)
+    for (const id of this.activeComments) marks.push({ type: 'comment', attrs: { id } })
     const push = (n: JSONContent) => out[out.length - 1].push(n)
     const text = (t: string) => {
       if (!t || field.inInstr || field.skip) return
@@ -917,6 +978,8 @@ class Reader {
         else out.push(...this.blocks(child(e, NS.w, 'sdtContent')!, depth))
       } else if (is(e, NS.w, 'customXml') || is(e, NS.w, 'ins') || is(e, NS.w, 'moveTo')) {
         out.push(...this.blocks(e, depth))
+      } else if (is(e, NS.w, 'commentRangeStart') || is(e, NS.w, 'commentRangeEnd')) {
+        this.commentRange(e)
       } else if (is(e, NS.w, 'sectPr') || is(e, NS.w, 'tcPr') || is(e, NS.w, 'bookmarkStart') || is(e, NS.w, 'bookmarkEnd') || is(e, NS.w, 'proofErr') || is(e, NS.w, 'del')) {
         continue
       } else {
@@ -1121,6 +1184,7 @@ export function importDocx(data: Uint8Array): ImportResult {
   r.loadStyles()
   r.loadNumbering()
   r.loadNotes()
+  r.loadComments()
 
   const doc = parseXml(strFromU8(files[docPath]))
   const body = find(doc.documentElement, NS.w, 'body')
@@ -1140,7 +1204,6 @@ export function importDocx(data: Uint8Array): ImportResult {
         .map(serialize)
         .join('')
     : ''
-  if (find(doc.documentElement, NS.w, 'commentReference')) r.w.add('loss', 'Comments are not supported yet and will not be kept on save')
   if (findAll(doc.documentElement, NS.w, 'pgBorders').length) r.w.add('info', 'Page borders are preserved but not shown')
 
   // Overrides from [Content_Types].xml so carried parts keep their content type.
@@ -1148,9 +1211,9 @@ export function importDocx(data: Uint8Array): ImportResult {
   const ct = files['[Content_Types].xml']
   if (ct) for (const o of children(parseXml(strFromU8(ct)).documentElement, NS.ct, 'Override')) overrides[(attr(o, null, 'PartName') ?? '').replace(/^\//, '')] = attr(o, null, 'ContentType') ?? ''
 
-  const carry: DocxCarry = { parts: files, rels: [...r.rels.values()], sectPrExtra: extra, overrides, converted: [...(hfResult?.parts ?? []), ...r.noteParts] }
+  const carry: DocxCarry = { parts: files, rels: [...r.rels.values()], sectPrExtra: extra, overrides, converted: [...(hfResult?.parts ?? []), ...r.noteParts, ...r.commentParts] }
   return {
-    doc: { type: 'doc', attrs: { page, styles: r.styles, meta: r.meta(), hf: hfResult?.hf ?? null }, content: content.length ? content : [{ type: 'paragraph' }] },
+    doc: { type: 'doc', attrs: { page, styles: r.styles, meta: r.meta(), hf: hfResult?.hf ?? null, comments: Object.keys(r.comments).length ? r.comments : null }, content: content.length ? content : [{ type: 'paragraph' }] },
     warnings: r.w.list(),
     carry
   }

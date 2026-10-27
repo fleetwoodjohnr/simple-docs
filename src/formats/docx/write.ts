@@ -4,6 +4,7 @@ import { makePageSetup, resolveStyle, defaultStyles, type DocMeta, type HeadersF
 import { effectiveListType, DEFAULT_BULLETS, type ListType } from '@/editor/numbering'
 import { Warnings, type ExportResult } from '../types'
 import { HIGHLIGHT_NAMES, type DocxCarry } from './read'
+import type { CommentMap } from '@/editor/comments'
 import { escXml as x, extFromMime, imageSize, parseDataUrl } from './xml'
 
 // Editor JSON → DOCX. Element order inside pPr/rPr follows the OOXML schema
@@ -140,11 +141,12 @@ class Writer {
     switch (n.type) {
       case 'text': {
         const rpr = this.rPr(n.marks as Mark[], charStyle)
-        return (n.text ?? '')
+        const [pre, post] = this.commentMarkers(n)
+        return pre + (n.text ?? '')
           .split(/(\t)/)
           .filter(Boolean)
           .map((part) => (part === '\t' ? `<w:r>${rpr}<w:tab/></w:r>` : `<w:r>${rpr}<w:t xml:space="preserve">${x(part)}</w:t></w:r>`))
-          .join('')
+          .join('') + post
       }
       case 'hardBreak':
         return '<w:r><w:br/></w:r>'
@@ -289,6 +291,69 @@ class Writer {
   }
   usedCode = false
   tocLevels = new Set<number>()
+
+  // ----- comments -----
+  /** For each thread: Word ids (thread + replies) and the first/last text nodes it covers. */
+  commentSpans = new Map<string, { ids: number[]; first: JSONContent; last: JSONContent }>()
+  comments: CommentMap = {}
+
+  prepareComments(doc: JSONContent) {
+    this.comments = (doc.attrs?.comments as CommentMap | null) ?? {}
+    let next = 0
+    const walk = (n: JSONContent) => {
+      if (n.type === 'text')
+        for (const m of n.marks ?? []) {
+          const id = m.attrs?.id as string
+          if (m.type !== 'comment' || !this.comments[id]) continue
+          const span = this.commentSpans.get(id)
+          if (span) span.last = n
+          else this.commentSpans.set(id, { ids: Array.from({ length: 1 + this.comments[id].replies.length }, () => next++), first: n, last: n })
+        }
+      n.content?.forEach(walk)
+    }
+    walk(doc)
+  }
+
+  commentMarkers(n: JSONContent): [string, string] {
+    let pre = ''
+    let post = ''
+    for (const span of this.commentSpans.values()) {
+      if (span.first === n) pre += span.ids.map((i) => `<w:commentRangeStart w:id="${i}"/>`).join('')
+      if (span.last === n) post += span.ids.map((i) => `<w:commentRangeEnd w:id="${i}"/><w:r><w:rPr><w:rStyle w:val="CommentReference"/></w:rPr><w:commentReference w:id="${i}"/></w:r>`).join('')
+    }
+    return [pre, post]
+  }
+
+  commentsXml(): { comments: string; extended: string } | null {
+    if (!this.commentSpans.size) return null
+    const paraId = (i: number) => (0x10000000 + i).toString(16).toUpperCase()
+    const initials = (a: string) => x(a.split(/\s+/).map((p) => p[0] ?? '').join('').slice(0, 3))
+    const one = (id: number, c: { author: string; date: string; text: string }) => {
+      const lines = (c.text || ' ').split('\n')
+      const paras = lines.map((l, i) => {
+        const ref = i === 0 ? '<w:r><w:rPr><w:rStyle w:val="CommentReference"/></w:rPr><w:annotationRef/></w:r>' : ''
+        const pid = i === lines.length - 1 ? ` w14:paraId="${paraId(id)}" w14:textId="77777777"` : ''
+        return `<w:p${pid}><w:pPr><w:pStyle w:val="CommentText"/></w:pPr>${ref}<w:r><w:t xml:space="preserve">${x(l)}</w:t></w:r></w:p>`
+      })
+      const date = c.date && !isNaN(Date.parse(c.date)) ? ` w:date="${new Date(c.date).toISOString().replace(/\.\d+Z$/, 'Z')}"` : ''
+      return `<w:comment w:id="${id}" w:author="${x(c.author)}"${date} w:initials="${initials(c.author)}">${paras.join('')}</w:comment>`
+    }
+    let comments = ''
+    let extended = ''
+    for (const [tid, span] of this.commentSpans) {
+      const t = this.comments[tid]
+      comments += one(span.ids[0], t)
+      extended += `<w15:commentEx w15:paraId="${paraId(span.ids[0])}" w15:done="${t.resolved ? 1 : 0}"/>`
+      t.replies.forEach((r, i) => {
+        comments += one(span.ids[i + 1], r)
+        extended += `<w15:commentEx w15:paraId="${paraId(span.ids[i + 1])}" w15:paraIdParent="${paraId(span.ids[0])}" w15:done="${t.resolved ? 1 : 0}"/>`
+      })
+    }
+    return {
+      comments: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:comments ${NSDECL}>${comments}</w:comments>`,
+      extended: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w15:commentsEx xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" mc:Ignorable="w15">${extended}</w15:commentsEx>`
+    }
+  }
   notes = { footnote: [] as string[], endnote: [] as string[] }
   noteRels = { footnote: [] as Writer['rels'], endnote: [] as Writer['rels'] }
   usedNotes = new Set<'footnote' | 'endnote'>()
@@ -549,6 +614,10 @@ class Writer {
       out += '</w:style>'
     }
     out += `<w:style w:type="character" w:default="1" w:styleId="DefaultParagraphFont"><w:name w:val="Default Paragraph Font"/><w:uiPriority w:val="1"/><w:semiHidden/></w:style>`
+    if (this.commentSpans.size) {
+      out += `<w:style w:type="paragraph" w:styleId="CommentText"><w:name w:val="annotation text"/><w:basedOn w:val="Normal"/><w:rPr><w:sz w:val="20"/></w:rPr></w:style>`
+      out += `<w:style w:type="character" w:styleId="CommentReference"><w:name w:val="annotation reference"/><w:basedOn w:val="DefaultParagraphFont"/><w:rPr><w:sz w:val="16"/></w:rPr></w:style>`
+    }
     for (const kind of this.usedNotes) {
       const T = kind === 'footnote' ? 'Footnote' : 'Endnote'
       out += `<w:style w:type="character" w:styleId="${T}Reference"><w:name w:val="${kind} reference"/><w:basedOn w:val="DefaultParagraphFont"/><w:rPr><w:vertAlign w:val="superscript"/></w:rPr></w:style>`
@@ -618,6 +687,7 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
   const wr = new Writer(page, structuredClone(styles), carry)
 
   const hf = (doc.attrs?.hf as HeadersFooters | null | undefined) ?? null
+  wr.prepareComments(doc)
   const body = wr.blocks(doc.content)
   wr.headersFooters(hf)
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:document ${NSDECL}><w:body>${body}${wr.sectPr(hf)}</w:body></w:document>`
@@ -631,7 +701,7 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
     const skip = (path: string) => GENERATED.has(path) || converted.has(path) || [...converted].some((c) => path === c.replace(/([^/]+)$/, '_rels/$1.rels')) || path.startsWith('customXml/') || path === 'docProps/custom.xml'
     for (const [path, data] of Object.entries(carry.parts)) if (!skip(path)) files[path] = data
     for (const r of carry.rels) {
-      if (/\/(styles|numbering|header|footer|footnotes|endnotes)$/.test(r.type)) continue
+      if (/\/(styles|numbering|header|footer|footnotes|endnotes|comments|commentsExtended|commentsIds|commentsExtensible)$/.test(r.type)) continue
       if (r.type.endsWith('/hyperlink') || r.type.endsWith('/image') || !r.external) {
         const target = r.external ? r.target : r.target.startsWith('word/') ? r.target.slice(5) : `../${r.target}`
         if (!r.external && !files[r.target]) continue
@@ -650,6 +720,15 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
 
   files['word/document.xml'] = strToU8(documentXml)
   Object.assign(files, wr.hfFiles)
+  const cx = wr.commentsXml()
+  if (cx) {
+    files['word/comments.xml'] = strToU8(cx.comments)
+    files['word/commentsExtended.xml'] = strToU8(cx.extended)
+    wr.rels.push({ id: 'sdRcomments', type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments', target: 'comments.xml' })
+    wr.rels.push({ id: 'sdRcommentsEx', type: 'http://schemas.microsoft.com/office/2011/relationships/commentsExtended', target: 'commentsExtended.xml' })
+    overridesExtra['word/comments.xml'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml'
+    overridesExtra['word/commentsExtended.xml'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml'
+  }
   for (const kind of wr.usedNotes) {
     files[`word/${kind}s.xml`] = strToU8(wr.notesPart(kind))
     if (wr.noteRels[kind].length) files[`word/_rels/${kind}s.xml.rels`] = strToU8(relationshipsXml(wr.noteRels[kind]))

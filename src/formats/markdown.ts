@@ -57,7 +57,8 @@ const MARK_NAMES: Record<string, string> = {
   superscript: 'Superscript',
   highlight: 'Highlight',
   textStyle: 'Fonts, sizes and colors',
-  doubleStrike: 'Double strikethrough'
+  doubleStrike: 'Double strikethrough',
+  comment: 'Comments'
 }
 
 function escapeText(s: string): string {

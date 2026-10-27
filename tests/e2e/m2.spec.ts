@@ -148,3 +148,42 @@ test('footnotes: insert, edit, reserve space on the reference page, export', asy
     await quit(app)
   }
 })
+
+test('comments: add, reply, resolve, survive a DOCX round trip', async () => {
+  const { app, page } = await launch({ settings: { authorName: 'Test Reviewer' } })
+  const file = path.join(tempDir(), 'comments.docx')
+  try {
+    await page.keyboard.press('Control+n')
+    await doc(page).click()
+    await page.keyboard.type('The budget increased by forty percent.')
+    await withEditor(page, `(e) => e.commands.setTextSelection({ from: 25, to: 38 })`)
+    await page.keyboard.press('Control+Alt+m')
+    const thread = page.getByTestId('comment-thread')
+    await expect(thread).toHaveCount(1)
+    await page.getByLabel('Comment text').fill('Source for this figure?')
+    await page.getByRole('button', { name: 'Comment', exact: true }).click()
+    await expect(thread).toContainText('Source for this figure?')
+    await expect(thread).toContainText('Test Reviewer')
+    await page.getByLabel('Reply').fill('Finance report, Q3.')
+    await page.getByLabel('Reply').press('Enter')
+    await expect(thread).toContainText('Finance report, Q3.')
+    await expect(page.locator('[data-doc-scroll]:visible .sd-comment')).toHaveText('forty percent')
+
+    await stubDialogs(app, { save: file })
+    await page.keyboard.press('Control+s')
+    await expect(page.getByTestId('save-status')).toHaveText(/Saved/)
+    await page.keyboard.press('Control+w')
+    await stubDialogs(app, { open: [file] })
+    await page.keyboard.press('Control+o')
+    await expect(page.getByTestId('ribbon')).toBeVisible()
+    await page.evaluate(() => (window as never as { __sd: { set(s: object): void } }).__sd.set({ rightPanel: 'comments' }))
+    await expect(thread).toContainText('Source for this figure?')
+    await expect(thread).toContainText('Finance report, Q3.')
+    await expect(page.locator('[data-doc-scroll]:visible .sd-comment')).toHaveText('forty percent')
+    // resolve
+    await thread.getByRole('button', { name: 'Resolve' }).click()
+    expect(await withEditor<boolean>(page, `(e) => Object.values(e.state.doc.attrs.comments)[0].resolved`)).toBe(true)
+  } finally {
+    await quit(app)
+  }
+})

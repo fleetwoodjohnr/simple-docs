@@ -35,7 +35,8 @@ export function normalizeDoc(doc: JSONContent, o: NewDocOptions = {}): JSONConte
       page: (attrs.page as PageSetup | undefined) ?? makePageSetup(o.pageSize, o.margins),
       styles: { ...defaultStyles(o.font, o.fontSize), ...((attrs.styles as StyleMap | undefined) ?? {}) },
       meta: attrs.meta ?? {},
-      hf: attrs.hf ?? null
+      hf: attrs.hf ?? null,
+      comments: attrs.comments ?? null
     },
     content: doc.content?.length ? doc.content : [{ type: 'paragraph' }]
   }

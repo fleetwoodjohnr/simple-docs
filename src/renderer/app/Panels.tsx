@@ -10,6 +10,7 @@ import { useActiveEditor, useBodyEditor, usePageInfo, useSnapshot, useStats, use
 import { applyStyle, runCommand, updateBlocks, zoomTo } from './commands'
 import { IconBtn, NumberInput, Segmented, cx, inputCls } from '../ui'
 import { pageOf, paginationKey, PAGE_GAP } from '@/layout/plugin'
+import { CommentsPanel } from './Comments'
 import { MARGIN_PRESETS, PAGE_SIZES, ptToPx, withOrientation, withSize, type PageSetup, type StyleMap } from '@/editor/model'
 
 // ---------- helpers ----------
@@ -377,7 +378,7 @@ export function RightSidebar() {
   const body = useBodyEditor()
   if (!panel || !editor || !body) return null
   return (
-    <aside aria-label="Properties" className="slide-up flex w-[272px] shrink-0 flex-col border-l border-border bg-panel">
+    <aside aria-label="Properties" className="slide-up flex w-[312px] shrink-0 flex-col border-l border-border bg-panel">
       <PanelHeader
         value={panel}
         onChange={(v) => set({ rightPanel: v as RightPanel })}
@@ -385,12 +386,14 @@ export function RightSidebar() {
         tabs={[
           { id: 'format', label: 'Format' },
           { id: 'page', label: 'Page' },
+          { id: 'comments', label: 'Comments' },
           { id: 'stats', label: 'Stats' }
         ]}
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
         {panel === 'format' && <FormatPanel editor={editor} />}
         {panel === 'page' && <PagePanel editor={body} />}
+        {panel === 'comments' && <CommentsPanel editor={body} />}
         {panel === 'stats' && (
           <div className="px-4 py-2">
             <StatsView editor={body} />

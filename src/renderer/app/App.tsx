@@ -135,6 +135,11 @@ export function App() {
     const openNote = (e: Event) => set({ note: { tabId: get().active, pos: (e as CustomEvent<number>).detail } })
     window.addEventListener('sd:open-note', openNote)
     offs.push(() => window.removeEventListener('sd:open-note', openNote))
+    const openComment = () => get().rightPanel !== 'comments' && set({ rightPanel: 'comments' })
+    const newC = () => runCommand('review.comment')
+    window.addEventListener('sd:open-comment', openComment)
+    document.addEventListener('sd:new-comment', newC)
+    offs.push(() => window.removeEventListener('sd:open-comment', openComment), () => document.removeEventListener('sd:new-comment', newC))
     // Test/automation hook (renderer-only; exposes nothing the page could not already reach).
     ;(window as unknown as Record<string, unknown>).__sd = { get, set, editors, docs, runCommand }
     return () => {

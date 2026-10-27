@@ -4,6 +4,7 @@ import { activeEditor, activeTab, get, set, toast, updateSettings, HOME } from '
 import * as docs from '../state/documents'
 import { readAsDataUrl } from '@/editor/create'
 import { insertToc, updateTocsSettled } from '@/editor/toc'
+import { addComment, commentUiKey, focusComment, orderedCommentIds } from '@/editor/comments'
 import { emptyHF, resolveStyle, type HeadersFooters, type HFKind, type StyleMap } from '@/editor/model'
 import { bodyEditor } from '../state/store'
 
@@ -239,7 +240,7 @@ export function insertPageNumber(kind: HFKind, align: 'left' | 'center' | 'right
 
 function insertNoteAndEdit(e: Editor, kind: 'footnote' | 'endnote') {
   if (get().hf || get().note) return
-  const pos = e.state.selection.from
+  const pos = e.state.selection.to
   if (!e.chain().focus().insertNote(kind).run()) return
   set({ note: { tabId: get().active, pos } })
 }
@@ -396,13 +397,35 @@ def({ id: 'view.inspector', label: 'Format panel', shortcut: 'Mod-Shift-i', need
 def({ id: 'view.ribbon', label: 'Collapse ribbon', shortcut: 'Mod-F1', global: true, needsEditor: false, run: () => updateSettings({ ribbonCollapsed: !get().settings.ribbonCollapsed }), isActive: () => get().settings.ribbonCollapsed })
 def({ id: 'view.theme', label: 'Toggle dark mode', needsEditor: false, global: true, run: () => updateSettings({ theme: get().dark ? 'light' : 'dark' }) })
 def({ id: 'view.ruler', label: 'Ruler', needsEditor: false, run: () => updateSettings({ showRuler: !get().settings.showRuler }), isActive: () => get().settings.showRuler })
-def({ id: 'view.source', label: 'Markdown source', shortcut: 'Mod-Alt-m', run: () => toggleSource(), isActive: () => activeTab()?.mode === 'source' })
+def({ id: 'view.source', label: 'Markdown source', shortcut: 'Mod-Alt-u', run: () => toggleSource(), isActive: () => activeTab()?.mode === 'source' })
 
 function toggleSource() {
   const t = activeTab()
   if (!t) return
   set((s) => ({ tabs: s.tabs.map((x) => (x.id === t.id ? { ...x, mode: x.mode === 'source' ? 'rich' : 'source' } : x)) }))
 }
+
+// Review
+export function newComment() {
+  const body = bodyEditor()
+  if (!body) return
+  if (body.state.selection.empty) return toast('Select the text you want to comment on', 'info')
+  if (addComment(body, get().settings.authorName || 'Author')) set({ rightPanel: 'comments' })
+}
+function stepComment(dir: 1 | -1) {
+  const body = bodyEditor()
+  if (!body) return
+  const ids = orderedCommentIds(body.state.doc)
+  if (!ids.length) return toast('There are no comments')
+  const cur = commentUiKey.getState(body.state)?.active
+  const i = cur ? ids.indexOf(cur) : -1
+  focusComment(body, ids[(i + dir + ids.length) % ids.length])
+  set({ rightPanel: 'comments' })
+}
+def({ id: 'review.comment', label: 'New comment', shortcut: 'Mod-Alt-m', run: () => newComment() })
+def({ id: 'review.nextComment', label: 'Next comment', run: () => stepComment(1) })
+def({ id: 'review.prevComment', label: 'Previous comment', run: () => stepComment(-1) })
+def({ id: 'review.showComments', label: 'Show comments', needsEditor: false, run: () => set((s) => ({ rightPanel: s.rightPanel === 'comments' ? null : 'comments' })), isActive: () => get().rightPanel === 'comments' })
 
 // Tools
 def({ id: 'tools.stats', label: 'Word count', shortcut: 'Mod-Shift-g', run: () => set({ dialog: { kind: 'stats' } }) })

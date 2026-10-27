@@ -4,7 +4,7 @@ import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, CalendarDays, CaseSensitive, ChevronDown, ChevronUp, ClipboardPaste, Code2, Columns3, Copy, Eraser, Eye, FileDown, Focus,
   Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Info, Italic, Keyboard, Link2, List, ListChecks, ListOrdered, Maximize2, Minus, Moon, PaintBucket, Paintbrush, PanelLeft,
   PanelRight, Pilcrow, Plus, Printer, Quote, Redo2, Replace, Ruler, Scissors, Search, Settings, Sigma, SquareDashed, Strikethrough, Subscript, Superscript, Table2, Type, Underline, Undo2,
-  Volume2, WrapText, ZoomIn, ZoomOut, BookOpen, PanelTop, PanelBottom, Hash, ListTree, RefreshCw, FileCode2, ShieldCheck, Merge, Split, Trash2, Rows3, AlignStartVertical, AlignEndVertical, RectangleHorizontal, RectangleVertical
+  Volume2, WrapText, ZoomIn, ZoomOut, BookOpen, PanelTop, PanelBottom, Hash, ListTree, RefreshCw, MessageSquarePlus, MessagesSquare, FileCode2, ShieldCheck, Merge, Split, Trash2, Rows3, AlignStartVertical, AlignEndVertical, RectangleHorizontal, RectangleVertical
 } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { useApp, set, updateSettings, type RibbonTab } from '../state/store'
@@ -783,7 +783,16 @@ function ReviewTab() {
         </TextBtn>
       </Group>
       <Sep />
-      <Note>Comments, track changes and spell checking arrive in the next milestone.</Note>
+      <Group label="Comments">
+        <TextBtn icon={<MessageSquarePlus />} label="Comment on the selected text" shortcut={shortcutFor('review.comment')} onClick={() => runCommand('review.comment')}>
+          New comment
+        </TextBtn>
+        <Cmd id="review.prevComment" label="Previous comment" icon={<ChevronUp className="size-4" />} />
+        <Cmd id="review.nextComment" label="Next comment" icon={<ChevronDown className="size-4" />} />
+        <TextBtn icon={<MessagesSquare />} active={useApp((x) => x.rightPanel === 'comments')} onClick={() => runCommand('review.showComments')}>
+          Show comments
+        </TextBtn>
+      </Group>
     </>
   )
 }

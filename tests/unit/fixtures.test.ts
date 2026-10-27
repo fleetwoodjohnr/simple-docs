@@ -140,3 +140,43 @@ describe('footnotes and endnotes', () => {
     expect(() => Node.fromJSON(schema, back).check()).not.toThrow()
   })
 })
+
+describe('comments', () => {
+  const doc = {
+    type: 'doc',
+    attrs: {
+      comments: {
+        c1: { author: 'Ada Lovelace', date: '2026-01-02T03:04:05.000Z', text: 'Check this number.\nSecond line.', resolved: false, replies: [{ author: 'Grace Hopper', date: '2026-01-03T00:00:00.000Z', text: 'Verified.' }] },
+        c2: { author: 'Alan Turing', date: '2026-01-04T00:00:00.000Z', text: 'Fixed typo', resolved: true, replies: [] }
+      }
+    },
+    content: [
+      { type: 'paragraph', content: [{ type: 'text', text: 'Revenue grew ' }, { type: 'text', text: '12%', marks: [{ type: 'comment', attrs: { id: 'c1' } }] }, { type: 'text', text: ' this year.' }] },
+      { type: 'paragraph', content: [{ type: 'text', text: 'Spans ', marks: [{ type: 'comment', attrs: { id: 'c2' } }] }, { type: 'text', text: 'two paragraphs', marks: [{ type: 'comment', attrs: { id: 'c2' } }, { type: 'bold' }] }] }
+    ]
+  }
+  const zip = unzipSync(exportDocx(doc).data)
+
+  it('writes ranges, references, comments.xml and threading in commentsExtended.xml', () => {
+    const xml = strFromU8(zip['word/document.xml'])
+    expect(xml.match(/<w:commentRangeStart/g)).toHaveLength(3) // thread + reply + second thread
+    expect(xml.match(/<w:commentReference/g)).toHaveLength(3)
+    const comments = strFromU8(zip['word/comments.xml'])
+    expect(comments).toContain('w:author="Ada Lovelace"')
+    expect(comments).toContain('Verified.')
+    expect(strFromU8(zip['word/commentsExtended.xml'])).toContain('w15:paraIdParent=')
+    expect(strFromU8(zip['word/commentsExtended.xml'])).toContain('w15:done="1"')
+  })
+
+  it('round-trips threads, replies, resolved state and ranges', () => {
+    const back = importDocx(exportDocx(doc).data).doc
+    const threads = Object.values(back.attrs!.comments as Record<string, { author: string; text: string; resolved: boolean; replies: { author: string; text: string }[] }>)
+    expect(threads.map((t) => [t.author, t.text, t.resolved, t.replies.map((r) => r.text)])).toEqual([
+      ['Ada Lovelace', 'Check this number.\nSecond line.', false, ['Verified.']],
+      ['Alan Turing', 'Fixed typo', true, []]
+    ])
+    const marked = all(back, (n) => n.type === 'text' && !!n.marks?.some((m) => m.type === 'comment')).map((n) => n.text)
+    expect(marked).toEqual(['12%', 'Spans ', 'two paragraphs'])
+    expect(() => Node.fromJSON(schema, back).check()).not.toThrow()
+  })
+})

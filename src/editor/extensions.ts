@@ -13,6 +13,7 @@ import { Placeholder } from '@tiptap/extensions'
 import { NumberingPlugin } from './numbering'
 import { Toc, TocEntry, TocNavigation } from './toc'
 import { Footnote, NoteClicks } from './notes'
+import { Comment } from './comments'
 
 // ---------- helpers ----------
 
@@ -57,7 +58,7 @@ export const SdDocument = Node.create({
   topNode: true,
   content: 'block+',
   addAttributes() {
-    return { page: { default: null }, styles: { default: null }, meta: { default: null }, hf: { default: null } }
+    return { page: { default: null }, styles: { default: null }, meta: { default: null }, hf: { default: null }, comments: { default: null } }
   }
 })
 
@@ -434,6 +435,7 @@ export function createExtensions(opts: ExtensionOptions = {}): Extensions {
     TocNavigation,
     Footnote,
     NoteClicks,
+    Comment,
     TabKey,
     Numbering,
     ...(opts.placeholder ? [Placeholder.configure({ placeholder: opts.placeholder, showOnlyWhenEditable: true })] : [])

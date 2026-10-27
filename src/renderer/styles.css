@@ -707,3 +707,24 @@ body {
   background: color-mix(in oklab, var(--accent) 8%, transparent);
   border-radius: 2px;
 }
+
+/* ================= comments ================= */
+.sd-doc .sd-comment {
+  background: rgb(255 200 0 / 0.22);
+  border-bottom: 2px solid rgb(245 180 0 / 0.75);
+}
+.sd-doc .sd-comment.sd-comment-active,
+.sd-doc .sd-comment-active .sd-comment,
+.sd-doc .sd-comment-active {
+  background: rgb(255 190 0 / 0.45);
+}
+.sd-doc .sd-comment.sd-comment-resolved,
+.sd-doc .sd-comment-resolved {
+  background: none;
+  border-bottom-color: transparent;
+}
+.print-page .sd-comment,
+.print-page .sd-comment-active {
+  background: none !important;
+  border: 0 !important;
+}

@@ -13,7 +13,7 @@ const li = (...content: JSONContent[]): JSONContent => ({ type: 'listItem', cont
 export function richDoc(): JSONContent {
   const doc = emptyDoc({}, [
     { type: 'paragraph', attrs: { styleId: 'Title' }, content: [t('Quarterly Report')] },
-    { type: 'heading', attrs: { level: 1 }, content: [t('Introduction')] },
+    { type: 'heading', attrs: { level: 1 }, content: [t('Introduction', [{ type: 'comment', attrs: { id: 'c1' } }])] },
     p(t('Plain'), { type: 'footnote', attrs: { kind: 'footnote', content: [p(t('Footnote from the sample.'))] } }, t(', '), t('bold', [{ type: 'bold' }]), t(', '), t('italic', [{ type: 'italic' }]), t(', '), t('underlined', [{ type: 'underline' }]), t(' and '), t('struck', [{ type: 'strike' }]), t('.')),
     {
       type: 'paragraph',
@@ -44,5 +44,6 @@ export function richDoc(): JSONContent {
   doc.attrs!.page = withOrientation(withSize(makePageSetup('a4'), 'a4'), 'portrait')
   doc.attrs!.page.margins = { ...doc.attrs!.page.margins, top: 54, bottom: 54, left: 63, right: 63 }
   doc.attrs!.meta = { title: 'Quarterly Report', author: 'Test Author' }
+  doc.attrs!.comments = { c1: { author: 'Reviewer', date: '2026-01-01T00:00:00.000Z', text: 'Expand this section.', resolved: false, replies: [{ author: 'Writer', date: '2026-01-02T00:00:00.000Z', text: 'Will do.' }] } }
   return doc
 }
