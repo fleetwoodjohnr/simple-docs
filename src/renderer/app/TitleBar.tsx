@@ -152,7 +152,7 @@ export function TitleBar() {
             <Search className="size-4" />
           </IconBtn>
           <div className="mx-1 h-4 w-px bg-border" />
-          <Menu>
+          {tab.kind !== 'pdf' && <Menu>
             <MenuTrigger asChild>
               <Btn variant="primary" size="sm" className="h-7 gap-1.5 px-2.5">
                 <Download className="size-3.5" />
@@ -175,7 +175,7 @@ export function TitleBar() {
                 Print…
               </MenuItem>
             </MenuContent>
-          </Menu>
+          </Menu>}
         </div>
       )}
       <div className="no-drag ml-1 flex items-center gap-0.5">

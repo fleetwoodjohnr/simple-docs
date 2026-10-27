@@ -8,11 +8,11 @@ import { PdfEngine } from '@/pdf/engine'
 
 const fixture = readFileSync(path.join(import.meta.dirname, '../fixtures/complex.pdf'))
 let engine: PdfEngine
-const pdftotext = (bytes: Uint8Array) => {
+const pdftotext = (bytes: Uint8Array, raw = false) => {
   const dir = mkdtempSync(path.join(tmpdir(), 'sd-pdf-'))
   const f = path.join(dir, 'x.pdf')
   writeFileSync(f, bytes)
-  return execFileSync('pdftotext', [f, '-']).toString()
+  return execFileSync('pdftotext', [...(raw ? ['-raw'] : []), f, '-']).toString()
 }
 const hasPoppler = existsSync('/usr/bin/pdftotext')
 
@@ -41,6 +41,8 @@ describe('PDF engine (PDFium)', () => {
     const run = doc.runs(0).find((r) => r.text.trim() === 'Introduction')!
     const res = doc.editText(0, run.start, 'Overview')
     expect(res.ok).toBe(true)
+    // The embedded subset font cannot draw letters the document never used with it.
+    expect(res.method).toBe('substitute-font')
     const out = doc.save()
     doc.close()
     const txt = pdftotext(out)
@@ -95,7 +97,8 @@ describe('PDF engine (PDFium)', () => {
   it('rotates, inserts, deletes, reorders, merges and extracts pages', () => {
     const doc = engine.open(fixture)
     doc.rotate(0, 90)
-    expect(doc.pageInfo(0).rotation).toBe(90)
+    expect(doc.pageInfo(0)).toMatchObject({ rotation: 90, width: 792, height: 612 })
+    expect(doc.render(0, 0.5)).toMatchObject({ width: 396, height: 306 })
     doc.insertBlank(1, 595, 842)
     expect(doc.pageCount()).toBe(3)
     expect(doc.pageInfo(1)).toMatchObject({ width: 595, height: 842 })
@@ -124,6 +127,63 @@ describe('PDF engine (PDFium)', () => {
     const again = engine.open(doc.save())
     expect(again.getMeta('Title')).toBe('Renamed Report')
     again.close()
+    doc.close()
+  })
+})
+
+describe('PDF line editing', () => {
+  it('keeps the original font when the subset already has every character', () => {
+    const doc = engine.open(fixture)
+    const run = doc.runs(0).find((r) => r.text.trim() === 'Introduction')!
+    const res = doc.editText(0, run.start, 'Intro')
+    expect(res).toMatchObject({ ok: true, method: 'original-font' })
+    doc.close()
+  })
+
+  it.skipIf(!hasPoppler)('replaces a whole line made of several text objects', () => {
+    const doc = engine.open(fixture)
+    const line = doc.lines(0).find((l) => l.text.startsWith('Plain text with'))!
+    expect(line.end - line.start).toBeGreaterThan(10)
+    const res = doc.editText(0, line.start, 'A completely rewritten first sentence.', line.end)
+    expect(res.ok).toBe(true)
+    // PDF text does not reflow: compare in content-stream order.
+    const txt = pdftotext(doc.save(), true)
+    expect(txt).toContain('A completely rewritten first sentence.')
+    expect(txt).not.toContain('Plain text with')
+    expect(txt).toContain('Centered paragraph.')
+    doc.close()
+  })
+})
+
+describe('PDF edit rendering', () => {
+  /** Width (px) of dark ink within a horizontal band of the rendered page. */
+  const inkWidth = (img: { width: number; height: number; data: Uint8ClampedArray }, top: number, bottom: number) => {
+    let min = Infinity
+    let max = -1
+    for (let y = Math.max(0, top); y < Math.min(img.height, bottom); y++)
+      for (let x = 0; x < img.width; x++) {
+        const o = (y * img.width + x) * 4
+        if (img.data[o] < 100 && img.data[o + 1] < 100 && img.data[o + 2] < 100) {
+          min = Math.min(min, x)
+          max = Math.max(max, x)
+        }
+      }
+    return max >= 0 ? max - min : 0
+  }
+
+  it('draws every character of the replacement text', () => {
+    const doc = engine.open(fixture)
+    const run = doc.runs(0).find((r) => r.text.trim() === 'Introduction')!
+    const [, top, , bottom] = run.box
+    const band = (img: { height: number }) => [Math.round(img.height - top - 2), Math.round(img.height - bottom + 4)] as const
+    const before = doc.render(0, 1)
+    const wBefore = inkWidth(before, ...band(before))
+    doc.editText(0, run.start, 'Overview')
+    const after = doc.render(0, 1)
+    const wAfter = inkWidth(after, ...band(after))
+    // "Overview" has 8 of the 12 letters: its ink should be roughly 8/12 as wide, not a few stray glyphs.
+    expect(wAfter / wBefore).toBeGreaterThan(0.5)
+    expect(wAfter / wBefore).toBeLessThan(1.1)
     doc.close()
   })
 })

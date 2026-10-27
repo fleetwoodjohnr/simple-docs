@@ -4,8 +4,10 @@ import type { WrappedPdfiumModule } from '@embedpdf/pdfium'
 // Coordinates are PDF user space (points, origin bottom-left) unless noted.
 
 export interface PageInfo {
+  /** Displayed size in points (after /Rotate). */
   width: number
   height: number
+  /** 0, 90, 180 or 270 (clockwise). Text boxes are in unrotated page space. */
   rotation: number
 }
 
@@ -19,8 +21,9 @@ export interface TextRun {
   text: string
   /** Bounds in PDF points: left, top, right, bottom */
   box: [number, number, number, number]
-  /** Index of the first character (for editing / selection). */
+  /** Character range [start, end) on the page (for editing / selection). */
   start: number
+  end: number
   fontSize: number
 }
 
@@ -198,10 +201,10 @@ export class PdfDocument {
   // ---------- rendering ----------
   /** Render a page to RGBA pixels (including annotations and form fields). `scale` = pixels per point. */
   render(i: number, scale: number): { width: number; height: number; data: Uint8ClampedArray } {
+    // PDFium reports the size of the displayed (already rotated) page.
     const info = this.pageInfo(i)
-    const rotated = info.rotation % 180 !== 0
-    const w = Math.max(1, Math.round((rotated ? info.height : info.width) * scale))
-    const h = Math.max(1, Math.round((rotated ? info.width : info.height) * scale))
+    const w = Math.max(1, Math.round(info.width * scale))
+    const h = Math.max(1, Math.round(info.height * scale))
     return this.withPage(
       i,
       (page) => {
@@ -271,17 +274,35 @@ export class PdfDocument {
             }
             const sameLine = cur && Math.abs(cur.box[3] - bot) < (t - bot) * 0.6
             if (!cur || obj !== curObj || !sameLine) {
-              cur = { text: '', box: [l, t, r, bot], start: k, fontSize: this.m.FPDFText_GetFontSize(tp, k) }
+              cur = { text: '', box: [l, t, r, bot], start: k, end: k, fontSize: this.m.FPDFText_GetFontSize(tp, k) }
               out.push(cur)
               curObj = obj
             }
             cur.text += ch
+            cur.end = k + 1
             cur.box = [Math.min(cur.box[0], l), Math.max(cur.box[1], t), Math.max(cur.box[2], r), Math.min(cur.box[3], bot)]
           }
         })
         return out.filter((r) => r.text.trim())
       })
     )
+  }
+
+  /** Runs merged into visual lines (same baseline, close together) — what a reader thinks of as "a line of text". */
+  lines(i: number): TextRun[] {
+    const out: TextRun[] = []
+    for (const r of this.runs(i)) {
+      const prev = out[out.length - 1]
+      // Tolerances scale with the font size (glyph boxes of punctuation are tiny).
+      const fs = Math.max(prev?.fontSize ?? 0, r.fontSize, 4)
+      if (prev && Math.abs(prev.box[3] - r.box[3]) < fs * 0.4 && r.box[0] - prev.box[2] < fs * 1.2 && r.box[0] >= prev.box[2] - fs) {
+        const gap = r.box[0] - prev.box[2]
+        prev.text += (gap > r.fontSize * 0.2 && !/\s$/.test(prev.text) && !/^\s/.test(r.text) ? ' ' : '') + r.text
+        prev.end = r.end
+        prev.box = [Math.min(prev.box[0], r.box[0]), Math.max(prev.box[1], r.box[1]), Math.max(prev.box[2], r.box[2]), Math.min(prev.box[3], r.box[3])]
+      } else out.push({ ...r })
+    }
+    return out
   }
 
   /** Case-insensitive search; returns per-page hit boxes. */
@@ -301,26 +322,66 @@ export class PdfDocument {
   }
 
   // ---------- editing existing text ----------
+  private charsets = new Map<string, Set<string>>()
+
+  /** Characters drawn anywhere in the document with the font of this base name. */
+  fontCharset(fontName: string): Set<string> {
+    let set = this.charsets.get(fontName)
+    if (set) return set
+    set = new Set<string>()
+    for (let p = 0; p < this.pageCount(); p++)
+      this.withPage(p, (page) =>
+        this.withTextPage(page, (tp) => {
+          const n = this.m.FPDFText_CountChars(tp)
+          this.e.withBuf(260, (buf) => {
+            for (let k = 0; k < n; k++) {
+              const len = this.m.FPDFText_GetFontInfo(tp, k, buf, 256, 0)
+              if (len > 0 && this.m.pdfium.UTF8ToString(buf).replace(/^[A-Z]{6}\+/, '') === fontName) set!.add(String.fromCodePoint(this.m.FPDFText_GetUnicode(tp, k)))
+            }
+          })
+        })
+      )
+    this.charsets.set(fontName, set)
+    return set
+  }
   /**
    * Replace the text of the text object containing character `charIndex` on page `i`.
    * The content stream is rewritten (no overlay). The original font is kept when it can
    * encode the new text (verified by re-reading the page); otherwise the object is
    * recreated with a standard font of the same family (serif / sans / mono).
    */
-  editText(i: number, charIndex: number, newText: string): EditResult {
+  editText(i: number, charIndex: number, newText: string, endIndex = charIndex + 1): EditResult {
     return this.withPage(i, (page) => {
-      const obj = this.withTextPage(page, (tp) => this.m.FPDFText_GetTextObject(tp, charIndex))
+      // Every text object touched by the character range; the first one becomes the template.
+      const objs = this.withTextPage(page, (tp) => {
+        const list: number[] = []
+        for (let k = charIndex; k < endIndex; k++) {
+          const o = this.m.FPDFText_GetTextObject(tp, k)
+          if (o && !list.includes(o)) list.push(o)
+        }
+        return list
+      })
+      const obj = objs[0]
       if (!obj) return { ok: false, method: 'none', fontName: '' }
+      const others = objs.slice(1)
       const font = this.m.FPDFTextObj_GetFont(obj)
       const fontName = this.e.readUtf8((b, l) => this.m.FPDFFont_GetBaseFontName(font, b, l))
       const before = this.withTextPage(page, (tp) => this.e.readWide((b, l) => this.m.FPDFTextObj_GetText(obj, tp, b, l)))
-      // 1. Try the original font.
-      const w = this.e.wide(newText)
-      const set = this.m.FPDFText_SetText(obj, w)
-      this.e.free(w)
-      if (set && this.m.FPDFPage_GenerateContent(page)) {
+      const norm = (t: string) => t.replace(/\s+/g, ' ').trim()
+      // Embedded fonts are almost always subsets: they can only draw characters the document
+      // already uses with them. Anything else must go to a substitute font.
+      const embedded = this.m.FPDFFont_GetIsEmbedded(font)
+      const covered = !embedded || [...newText].every((c) => /\s/.test(c) || this.fontCharset(fontName).has(c))
+      // 1. Try the original font: the template object takes the whole new text, the rest are removed.
+      const w = covered ? this.e.wide(newText) : 0
+      const set = covered && this.m.FPDFText_SetText(obj, w)
+      if (w) this.e.free(w)
+      if (set) {
+        for (const o of others) this.m.FPDFPage_RemoveObject(page, o)
+        this.m.FPDFPage_GenerateContent(page)
         const after = this.withTextPage(page, (tp) => this.e.readWide((b, l) => this.m.FPDFTextObj_GetText(obj, tp, b, l)))
-        if (after.replace(/\s+/g, ' ').trim() === newText.replace(/\s+/g, ' ').trim()) return { ok: true, method: 'original-font', fontName }
+        if (norm(after) === norm(newText)) return { ok: true, method: 'original-font', fontName }
+        others.length = 0 // already removed
       }
       // 2. Recreate with a standard font at the same position, size and color.
       const flags = this.m.FPDFFont_GetFlags(font)
@@ -347,9 +408,27 @@ export class PdfDocument {
       if (matrix) this.e.withBuf(24, (p) => (this.e.setFloats(p, matrix), this.m.FPDFPageObj_SetMatrix(nobj, p)))
       this.m.FPDFPageObj_SetFillColor(nobj, color[0], color[1], color[2], color[3])
       this.m.FPDFPage_RemoveObject(page, obj)
+      for (const o of others) this.m.FPDFPage_RemoveObject(page, o)
       this.m.FPDFPage_InsertObject(page, nobj)
       this.m.FPDFPage_GenerateContent(page)
       return { ok: true, method: 'substitute-font', fontName: std }
+    })
+  }
+
+  /** Add new text as page content (one text object per line) with a standard font. Baseline of the first line at (x, y). */
+  addText(i: number, x: number, y: number, text: string, size = 12, color: [number, number, number, number] = [0, 0, 0, 255], fontName = 'Helvetica'): boolean {
+    return this.withPage(i, (page) => {
+      const font = this.m.FPDFText_LoadStandardFont(this.ptr, fontName)
+      text.split('\n').forEach((line, k) => {
+        const obj = this.m.FPDFPageObj_CreateTextObj(this.ptr, font, size)
+        const w = this.e.wide(line)
+        this.m.FPDFText_SetText(obj, w)
+        this.e.free(w)
+        this.e.withBuf(24, (p) => (this.e.setFloats(p, [1, 0, 0, 1, x, y - k * size * 1.25]), this.m.FPDFPageObj_SetMatrix(obj, p)))
+        this.m.FPDFPageObj_SetFillColor(obj, color[0], color[1], color[2], color[3])
+        this.m.FPDFPage_InsertObject(page, obj)
+      })
+      return this.m.FPDFPage_GenerateContent(page)
     })
   }
 

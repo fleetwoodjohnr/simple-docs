@@ -101,6 +101,9 @@ export interface SimpleDocsApi {
   print(): Promise<boolean>
   capturePage(rect: { x: number; y: number; width: number; height: number }): Promise<string>
 
+  /** Read a bundled renderer asset (file:// URL inside the app) — used for the PDFium WASM binary. */
+  readAsset(url: string): Promise<Uint8Array>
+
   /** Hunspell dictionary installed on the system for a language (Linux), or null. */
   spellDictionary(lang: string): Promise<{ aff: string; dic: string } | null>
 

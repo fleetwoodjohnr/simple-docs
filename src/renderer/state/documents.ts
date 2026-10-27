@@ -6,7 +6,8 @@ import { printDocument, renderPdf } from '@/export/print'
 import type { OpenedFile, RecoveryEntry } from '@/shared/ipc-types'
 import { docScope } from '../app/DocumentView'
 import { checker } from '../spell/client'
-import { HOME, carries, editors, get, set, toast, updateTab, type TabMeta } from './store'
+import { HOME, carries, editors, get, pdfSessions, set, toast, updateTab, type TabMeta } from './store'
+import { pdf } from '../pdf/client'
 
 const api = () => window.simpleDocs
 
@@ -124,11 +125,53 @@ export function activate(id: string) {
   requestAnimationFrame(() => editors.get(id)?.commands.focus())
 }
 
+async function openPdf(f: OpenedFile) {
+  try {
+    const opened = await pdf.open(f.data)
+    const id = newId()
+    pdfSessions.set(id, { doc: opened.id, pages: opened.pages, meta: { title: opened.title, author: opened.author, subject: opened.subject, keywords: opened.keywords }, undo: [] })
+    addTab({ id, kind: 'pdf', title: baseName(f.name), path: f.path || null, savedAt: f.mtime })
+    if (f.path) void addRecent(f.path, f.name)
+  } catch (e) {
+    toast(`Could not open ${f.name}: ${(e as Error).message}`, 'error')
+  }
+}
+
+/** Mark a PDF tab modified. */
+export function pdfChanged(id: string) {
+  updateTab(id, { dirty: true, status: 'unsaved' })
+}
+
+async function savePdf(tab: TabMeta, as: boolean): Promise<boolean> {
+  const session = pdfSessions.get(tab.id)
+  if (!session) return false
+  let path = tab.path
+  if (as || !path) {
+    path = await api().saveDialog(`${tab.title}.pdf`, ['pdf'])
+    if (!path) return false
+  }
+  try {
+    updateTab(tab.id, { status: 'saving' })
+    await api().writeFile(path, await pdf.save(session.doc))
+    updateTab(tab.id, { path, title: baseName(path), dirty: false, status: 'saved', savedAt: Date.now(), error: undefined })
+    await addRecent(path, `${baseName(path)}.pdf`)
+    return true
+  } catch (e) {
+    updateTab(tab.id, { status: 'error', error: (e as Error).message })
+    toast(`Save failed: ${(e as Error).message}`, 'error')
+    return false
+  }
+}
+
 export async function openFiles(files: OpenedFile[]) {
   for (const f of files) {
     const existing = f.path ? get().tabs.find((t) => t.path === f.path) : null
     if (existing) {
       activate(existing.id)
+      continue
+    }
+    if (/\.pdf$/i.test(f.name)) {
+      await openPdf(f)
       continue
     }
     const format = formatFromPath(f.name)
@@ -207,6 +250,7 @@ function confirmWarnings(tabId: string, format: FormatId, warnings: FormatWarnin
 
 export async function save(id = get().active, opts: { as?: boolean; format?: FormatId; auto?: boolean } = {}): Promise<boolean> {
   const tab = get().tabs.find((t) => t.id === id)
+  if (tab?.kind === 'pdf') return opts.auto ? false : savePdf(tab, !!opts.as)
   const editor = editors.get(id)
   if (!tab || !editor) return false
   let path = tab.path
@@ -257,6 +301,7 @@ export async function save(id = get().active, opts: { as?: boolean; format?: For
 
 export async function exportPdf(id = get().active) {
   const tab = get().tabs.find((t) => t.id === id)
+  if (tab?.kind === 'pdf') return void save(id, { as: true })
   const editor = editors.get(id)
   if (!tab || !editor) return
   const path = await api().saveDialog(`${tab.title}.pdf`, ['pdf'])
@@ -303,6 +348,9 @@ export function closeTab(id: string, force = false) {
     editors.get(id)?.destroy()
     editors.delete(id)
     carries.delete(id)
+    const ps = pdfSessions.get(id)
+    if (ps) void pdf.close(ps.doc)
+    pdfSessions.delete(id)
   })
 }
 

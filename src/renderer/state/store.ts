@@ -10,6 +10,8 @@ export type SaveStatus = 'saved' | 'unsaved' | 'saving' | 'error'
 
 export interface TabMeta {
   id: string
+  /** 'pdf' tabs open the PDF workspace instead of the word processor. */
+  kind?: 'doc' | 'pdf'
   title: string
   path: string | null
   format: FormatId | null
@@ -104,6 +106,16 @@ export const get = useApp.getState
 export const editors = new Map<string, Editor>()
 /** Format-specific data carried with a tab (e.g. original DOCX parts). */
 export const carries = new Map<string, unknown>()
+
+export interface PdfSession {
+  /** Engine document id (changes when undo reopens a snapshot). */
+  doc: number
+  pages: { width: number; height: number; rotation: number }[]
+  meta: { title: string; author: string; subject: string; keywords: string }
+  /** Snapshots for undo (whole-file; most recent last). */
+  undo: Uint8Array[]
+}
+export const pdfSessions = new Map<string, PdfSession>()
 
 /** The in-place header/footer editor while one is open (ribbon commands target it). */
 export const hfEditor: { current: Editor | null } = { current: null }

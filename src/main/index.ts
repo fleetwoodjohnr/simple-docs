@@ -1,12 +1,13 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, session, shell, type IpcMainInvokeEvent, type MenuItemConstructorOptions } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { OpenedFile, RecentFile, Settings } from '../shared/ipc-types'
 import * as store from './store'
 import * as lo from './libreoffice'
 
 const isMac = process.platform === 'darwin'
-const DOC_EXTENSIONS = ['docx', 'odt', 'md', 'markdown', 'html', 'htm', 'txt', 'rtf', 'doc']
+const DOC_EXTENSIONS = ['docx', 'odt', 'md', 'markdown', 'html', 'htm', 'txt', 'rtf', 'doc', 'pdf']
 const MAX_FILE_BYTES = 512 * 1024 * 1024
 
 let mainWindow: BrowserWindow | null = null
@@ -266,6 +267,13 @@ function registerIpc() {
     return 'data:image/jpeg;base64,' + img.resize({ width: 220 }).toJPEG(82).toString('base64')
   })
 
+  handle('asset:read', async (_e, url: unknown) => {
+    if (typeof url !== 'string' || !url.startsWith('file:')) throw new Error('Invalid asset URL')
+    const file = path.resolve(fileURLToPath(url))
+    const root = path.resolve(path.join(__dirname, '../renderer'))
+    if (!file.startsWith(root + path.sep) || !/\.(wasm|traineddata(\.gz)?)$/.test(file)) throw new Error('Asset outside the app')
+    return new Uint8Array(await fs.readFile(file))
+  })
   handle('spell:dictionary', async (_e, lang: unknown) => {
     if (typeof lang !== 'string' || !/^[a-z]{2,3}([-_][A-Z]{2})?$/.test(lang)) return null
     const name = lang.replace('-', '_')

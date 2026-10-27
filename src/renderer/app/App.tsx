@@ -14,6 +14,7 @@ import { FindBar, FloatingToolbar, EditorContextMenu } from './Overlays'
 import { SourceEditor } from './SourceEditor'
 import { TooltipProvider, Btn, cx } from '../ui'
 import { setTrackAuthor } from '@/editor/track'
+import { PdfWorkspace } from '../pdf/PdfWorkspace'
 
 setTrackAuthor(() => get().settings.authorName || 'Author')
 
@@ -44,6 +45,16 @@ function useTheme() {
 }
 
 function TabView({ tab, hidden }: { tab: TabMeta; hidden: boolean }) {
+  if (tab.kind === 'pdf')
+    return (
+      <div hidden={hidden} className="absolute inset-0">
+        <PdfWorkspace tabId={tab.id} />
+      </div>
+    )
+  return <DocTabView tab={tab} hidden={hidden} />
+}
+
+function DocTabView({ tab, hidden }: { tab: TabMeta; hidden: boolean }) {
   const editor = editors.get(tab.id)
   const { zoom, showMarks, showBoundaries, showRuler, painter, showMarkup } = useApp(useShallow((s) => ({ zoom: s.zoom, showMarks: s.showMarks, showBoundaries: s.showBoundaries, showRuler: s.settings.showRuler && !s.focusMode, painter: !!s.painter, showMarkup: s.showMarkup })))
   if (!editor) return null
@@ -129,6 +140,7 @@ function DropOverlay() {
 
 export function App() {
   const { ready, active, tabs, focusMode } = useApp(useShallow((s) => ({ ready: s.ready, active: s.active, tabs: s.tabs, focusMode: s.focusMode })))
+  const isPdf = tabs.find((t) => t.id === active)?.kind === 'pdf'
   useTheme()
   useEffect(() => {
     void boot()
@@ -158,9 +170,9 @@ export function App() {
       <div className="flex h-full flex-col">
         {!focusMode && <TitleBar />}
         <div className="relative flex min-h-0 flex-1 flex-col">
-          {!home && !focusMode && <Ribbon />}
+          {!home && !isPdf && !focusMode && <Ribbon />}
           <div className="flex min-h-0 flex-1">
-            {!home && !focusMode && <LeftSidebar />}
+            {!home && !isPdf && !focusMode && <LeftSidebar />}
             <main className="relative min-w-0 flex-1" aria-label="Document">
               {tabs.map((t) => (
                 <TabView key={t.id} tab={t} hidden={home || t.id !== active} />
@@ -171,10 +183,10 @@ export function App() {
                 </div>
               )}
             </main>
-            {!home && !focusMode && <RightSidebar />}
+            {!home && !isPdf && !focusMode && <RightSidebar />}
           </div>
-          {!home && !focusMode && <StatusBar />}
-          {!home && <Backstage />}
+          {!home && !isPdf && !focusMode && <StatusBar />}
+          {!home && !isPdf && <Backstage />}
         </div>
         {focusMode && (
           <Btn variant="secondary" size="sm" className="fixed right-4 top-4 z-50 opacity-40 hover:opacity-100" onClick={() => runCommand('view.focus')}>
