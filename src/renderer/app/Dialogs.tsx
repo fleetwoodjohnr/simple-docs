@@ -11,6 +11,7 @@ import { Btn, Field, Kbd, Modal, Segmented, Switch, cx, inputCls } from '../ui'
 import { FORMAT_LABELS } from '@/formats/types'
 import type { Settings } from '@/shared/ipc-types'
 import { refreshSpelling, resetSpelling } from '../spell/client'
+import { HistoryDialog } from './History'
 
 const close = () => set({ dialog: null })
 
@@ -36,6 +37,8 @@ export function Dialogs() {
       return <StyleDialog styleId={d.styleId} />
     case 'pdf-password':
       return <PdfPasswordDialog d={d} />
+    case 'history':
+      return <HistoryDialog />
     default:
       return null
   }

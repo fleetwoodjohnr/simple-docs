@@ -288,6 +288,7 @@ export async function save(id = get().active, opts: { as?: boolean; format?: For
     updateTab(id, { path, format, title, dirty: false, status: 'saved', savedAt: Date.now(), autosaveBlocked: false, error: undefined, warnings: format === tab.format ? tab.warnings : [] })
     clearTimers(id)
     void api().recoveryRemove(id)
+    void api().historyAdd(path!, JSON.stringify(editor.getJSON()), !!opts.auto)
     if (!opts.auto) {
       await addRecent(path!, `${title}.${EXT[format]}`)
       void captureThumbnail(id, path!)

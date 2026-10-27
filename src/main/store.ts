@@ -2,6 +2,7 @@ import { app } from 'electron'
 import { promises as fs, constants as fsc } from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import zlib from 'node:zlib'
 import { DEFAULT_SETTINGS, type RecentFile, type RecoveryEntry, type Settings } from '../shared/ipc-types'
 
 /**
@@ -126,4 +127,47 @@ export async function listRecovery(): Promise<RecoveryEntry[]> {
 export async function removeRecovery(id: string): Promise<void> {
   if (!validId(id)) return
   await fs.rm(path.join(recoveryDir(), `${id}.json`), { force: true })
+}
+
+// ---------- version history ----------
+// One gzip'd editor-JSON snapshot per save, in userData/history/<sha1(document path)>/<savedAt>.json.gz.
+const MAX_VERSIONS = 100 // ponytail: fixed cap per document; add a setting if people want more
+const historyDir = (docPath: string) => userFile(path.join('history', crypto.createHash('sha1').update(docPath).digest('hex')))
+
+export interface VersionInfo {
+  id: string
+  savedAt: number
+  bytes: number
+}
+
+export async function listVersions(docPath: string): Promise<VersionInfo[]> {
+  let names: string[] = []
+  try {
+    names = await fs.readdir(historyDir(docPath))
+  } catch {
+    return []
+  }
+  const out: VersionInfo[] = []
+  for (const n of names) {
+    const m = /^(\d{13})\.json\.gz$/.exec(n)
+    if (m) out.push({ id: m[1], savedAt: Number(m[1]), bytes: (await fs.stat(path.join(historyDir(docPath), n))).size })
+  }
+  return out.sort((a, b) => b.savedAt - a.savedAt)
+}
+
+export async function readVersion(docPath: string, id: string): Promise<string> {
+  if (!/^\d{13}$/.test(id)) throw new Error('Invalid version id')
+  return zlib.gunzipSync(await fs.readFile(path.join(historyDir(docPath), `${id}.json.gz`))).toString('utf8')
+}
+
+/** Store a version unless it equals the latest one. Automatic saves add one at most every `minGapMs`. */
+export async function addVersion(docPath: string, json: string, minGapMs = 0): Promise<boolean> {
+  const list = await listVersions(docPath)
+  const latest = list[0]
+  if (latest && Date.now() - latest.savedAt < minGapMs) return false
+  if (latest && (await readVersion(docPath, latest.id)) === json) return false
+  await fs.mkdir(historyDir(docPath), { recursive: true })
+  await atomicWrite(path.join(historyDir(docPath), `${Date.now()}.json.gz`), zlib.gzipSync(json))
+  for (const old of list.slice(MAX_VERSIONS - 1)) await fs.rm(path.join(historyDir(docPath), `${old.id}.json.gz`), { force: true })
+  return true
 }

@@ -238,6 +238,15 @@ function registerIpc() {
     return store.writeRecovery(id, payload)
   })
   handle('recovery:list', () => store.listRecovery())
+  handle('history:add', (_e, p: unknown, json: unknown, auto: unknown) => {
+    if (!isAbs(p) || typeof json !== 'string') throw new Error('Invalid arguments')
+    return store.addVersion(p, json, auto ? 10 * 60_000 : 0)
+  })
+  handle('history:list', (_e, p: unknown) => (isAbs(p) ? store.listVersions(p) : []))
+  handle('history:read', (_e, p: unknown, id: unknown) => {
+    if (!isAbs(p) || typeof id !== 'string') throw new Error('Invalid arguments')
+    return store.readVersion(p, id)
+  })
   handle('recovery:remove', (_e, id: unknown) => (typeof id === 'string' ? store.removeRecovery(id) : undefined))
 
   handle('settings:get', () => store.getSettings())

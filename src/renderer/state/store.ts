@@ -5,7 +5,7 @@ import type { FormatId, FormatWarning } from '@/formats/types'
 
 export type RibbonTab = 'home' | 'insert' | 'layout' | 'references' | 'review' | 'view' | 'tools'
 export type LeftPanel = 'outline' | 'pages' | 'recent'
-export type RightPanel = 'format' | 'page' | 'stats' | 'comments'
+export type RightPanel = 'format' | 'page' | 'stats' | 'comments' | 'a11y'
 export type SaveStatus = 'saved' | 'unsaved' | 'saving' | 'error'
 
 export interface TabMeta {
@@ -35,6 +35,7 @@ export type Dialog =
   | { kind: 'stats' }
   | { kind: 'style'; styleId: string | null }
   | { kind: 'pdf-password'; file: OpenedFile; wrong: boolean }
+  | { kind: 'history' }
   | { kind: 'export-warnings'; tabId: string; format: FormatId; warnings: FormatWarning[]; resolve: (ok: boolean) => void }
 
 export interface Toast {

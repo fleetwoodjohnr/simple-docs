@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowLeft, Clock, FileDown, FilePlus2, FileText, FolderOpen, LifeBuoy, MoreHorizontal, Pin, PinOff, Printer, Save, SaveAll, Search, Star, Trash2, X, Info } from 'lucide-react'
+import { History, ArrowLeft, Clock, FileDown, FilePlus2, FileText, FolderOpen, LifeBuoy, MoreHorizontal, Pin, PinOff, Printer, Save, SaveAll, Search, Star, Trash2, X, Info } from 'lucide-react'
 import { useApp, set, activeTab, editors } from '../state/store'
 import * as docs from '../state/documents'
 import { TEMPLATES } from '@/editor/templates'
@@ -236,6 +236,7 @@ export function Backstage() {
         {item(<FileDown />, 'Export as PDF…', () => runCommand('file.exportPdf'), 'file.exportPdf')}
         {item(<Printer />, 'Print…', () => runCommand('file.print'), 'file.print')}
         <div className="my-2 h-px bg-border" />
+        {item(<History />, 'Version history…', () => runCommand('file.history'))}
         {item(<Info />, 'Compatibility report', () => runCommand('tools.compat'))}
         {item(<X />, 'Close document', () => runCommand('file.close'), 'file.close')}
       </nav>

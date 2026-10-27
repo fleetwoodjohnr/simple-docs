@@ -94,6 +94,11 @@ export interface SimpleDocsApi {
   recoveryList(): Promise<RecoveryEntry[]>
   recoveryRemove(id: string): Promise<void>
 
+  /** Version history, keyed by document path. `auto` versions are kept at most every 10 minutes. */
+  historyAdd(docPath: string, json: string, auto: boolean): Promise<boolean>
+  historyList(docPath: string): Promise<{ id: string; savedAt: number; bytes: number }[]>
+  historyRead(docPath: string, id: string): Promise<string>
+
   settingsGet(): Promise<Settings>
   settingsSet(patch: Partial<Settings>): Promise<Settings>
 

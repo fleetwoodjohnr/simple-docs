@@ -268,6 +268,7 @@ def({ id: 'file.saveAs', label: 'Save as…', shortcut: 'Mod-Shift-s', global: t
 def({ id: 'file.exportPdf', label: 'Export as PDF…', shortcut: 'Mod-Shift-e', global: true, needsEditor: false, run: () => docs.exportPdf() })
 def({ id: 'file.print', label: 'Print…', shortcut: 'Mod-p', global: true, needsEditor: false, run: () => docs.print() })
 def({ id: 'file.close', label: 'Close document', shortcut: 'Mod-w', global: true, needsEditor: false, run: () => (get().active !== HOME ? docs.closeTab(get().active) : undefined) })
+def({ id: 'file.history', label: 'Version history…', run: () => set({ dialog: { kind: 'history' } }) })
 def({ id: 'file.home', label: 'Home', needsEditor: false, global: true, run: () => set({ active: HOME, backstage: false }) })
 def({ id: 'file.backstage', label: 'File', needsEditor: false, run: () => set((s) => ({ backstage: !s.backstage })) })
 def({ id: 'tab.next', label: 'Next tab', shortcut: isMac ? 'Ctrl-Tab' : 'Mod-Tab', global: true, needsEditor: false, run: () => cycleTab(1) })
@@ -457,6 +458,7 @@ function reviewAt(accept: boolean) {
 def({ id: 'review.comment', label: 'New comment', shortcut: 'Mod-Alt-m', run: () => newComment() })
 def({ id: 'review.nextComment', label: 'Next comment', run: () => stepComment(1) })
 def({ id: 'review.prevComment', label: 'Previous comment', run: () => stepComment(-1) })
+def({ id: 'review.a11y', label: 'Check accessibility', needsEditor: false, run: () => set((s) => ({ rightPanel: s.rightPanel === 'a11y' ? null : 'a11y' })), isActive: () => get().rightPanel === 'a11y' })
 def({ id: 'review.showComments', label: 'Show comments', needsEditor: false, run: () => set((s) => ({ rightPanel: s.rightPanel === 'comments' ? null : 'comments' })), isActive: () => get().rightPanel === 'comments' })
 
 // Tools

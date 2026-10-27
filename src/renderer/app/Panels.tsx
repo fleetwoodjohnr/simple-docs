@@ -11,6 +11,7 @@ import { applyStyle, runCommand, updateBlocks, zoomTo } from './commands'
 import { IconBtn, NumberInput, Segmented, cx, inputCls } from '../ui'
 import { pageOf, paginationKey, PAGE_GAP } from '@/layout/plugin'
 import { CommentsPanel } from './Comments'
+import { AccessibilityPanel } from './Accessibility'
 import { MARGIN_PRESETS, PAGE_SIZES, ptToPx, withOrientation, withSize, type PageSetup, type StyleMap } from '@/editor/model'
 
 // ---------- helpers ----------
@@ -387,6 +388,7 @@ export function RightSidebar() {
           { id: 'format', label: 'Format' },
           { id: 'page', label: 'Page' },
           { id: 'comments', label: 'Comments' },
+          { id: 'a11y', label: 'Check' },
           { id: 'stats', label: 'Stats' }
         ]}
       />
@@ -394,6 +396,7 @@ export function RightSidebar() {
         {panel === 'format' && <FormatPanel editor={editor} />}
         {panel === 'page' && <PagePanel editor={body} />}
         {panel === 'comments' && <CommentsPanel editor={body} />}
+        {panel === 'a11y' && <AccessibilityPanel editor={body} />}
         {panel === 'stats' && (
           <div className="px-4 py-2">
             <StatsView editor={body} />

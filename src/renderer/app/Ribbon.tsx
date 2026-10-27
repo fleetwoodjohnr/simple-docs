@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Editor } from '@tiptap/core'
-import {
+import { Accessibility,
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, CalendarDays, CaseSensitive, ChevronDown, ChevronUp, ClipboardPaste, Code2, Columns3, Copy, Eraser, Eye, FileDown, Focus,
   Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Info, Italic, Keyboard, Link2, List, ListChecks, ListOrdered, Maximize2, Minus, Moon, PaintBucket, Paintbrush, PanelLeft,
   PanelRight, Pilcrow, Plus, Printer, Quote, Redo2, Replace, Ruler, Scissors, Search, Settings, Sigma, SquareDashed, Strikethrough, Subscript, Superscript, Table2, Type, Underline, Undo2,
@@ -799,6 +799,9 @@ function ReviewTab() {
         </TextBtn>
         <TextBtn icon={<ShieldCheck />} label="What this file format can and cannot keep" onClick={() => runCommand('tools.compat')}>
           Compatibility
+        </TextBtn>
+        <TextBtn icon={<Accessibility />} active={useApp((x) => x.rightPanel === 'a11y')} label="Find images without alt text, skipped headings, low contrast and more" onClick={() => runCommand('review.a11y')}>
+          Accessibility
         </TextBtn>
       </Group>
       <Sep />
