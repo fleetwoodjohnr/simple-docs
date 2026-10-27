@@ -3,8 +3,10 @@ import type { Editor } from '@tiptap/core'
 import { useEditorState } from '@tiptap/react'
 import { TextSelection } from '@tiptap/pm/state'
 import { BubbleMenu } from '@tiptap/react/menus'
-import { ArrowDown, ArrowUp, Bold, CaseSensitive, ClipboardPaste, Copy, ExternalLink, Highlighter, Italic, Link2, Regex, Scissors, Strikethrough, TextSelect, Underline, WholeWord, X, Trash2, Merge, Split, Rows3 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Bold, CaseSensitive, ClipboardPaste, Copy, ExternalLink, Highlighter, Italic, Link2, Regex, Scissors, Strikethrough, TextSelect, Underline, WholeWord, X, Trash2, Merge, Split, Rows3, BookPlus, EyeOff } from 'lucide-react'
 import { searchKey, setSearch, gotoMatch, replaceAll, replaceCurrent, type SearchQuery } from '@/editor/search'
+import { misspelledAt } from '@/editor/spell'
+import { addToDictionary, ignoreWord, suggestions } from '../spell/client'
 import { useApp, set, toast } from '../state/store'
 import { applyStyle, runCommand, shortcutFor } from './commands'
 import { useSnapshot } from './hooks'
@@ -195,10 +197,42 @@ export function FloatingToolbar({ editor }: { editor: Editor }) {
 export function EditorContextMenu({ editor, children }: { editor: Editor; children: ReactNode }) {
   const s = useSnapshot(editor)
   const href = editor.getAttributes('link').href as string | undefined
+  const [spell, setSpell] = useState<{ word: string; from: number; to: number; list: string[] | null } | null>(null)
+  const onContextMenu = (e: React.MouseEvent) => {
+    const hit = editor.view.posAtCoords({ left: e.clientX, top: e.clientY })
+    const m = hit ? misspelledAt(editor.view, hit.pos) : null
+    setSpell(m ? { ...m, list: null } : null)
+    if (m) void suggestions(m.word).then((list) => setSpell((cur) => (cur && cur.word === m.word ? { ...cur, list } : cur)))
+  }
+  const replaceWith = (w: string) => spell && editor.chain().focus().insertContentAt({ from: spell.from, to: spell.to }, w).run()
   return (
     <CtxMenu>
-      <CtxTrigger asChild>{children}</CtxTrigger>
+      <CtxTrigger asChild onContextMenu={onContextMenu}>
+        {children}
+      </CtxTrigger>
       <CtxContent>
+        {spell && (
+          <>
+            {spell.list === null ? (
+              <div className="px-2.5 py-1.5 text-[12px] text-text-3">Finding suggestions…</div>
+            ) : spell.list.length ? (
+              spell.list.map((w) => (
+                <CtxItem key={w} onSelect={() => replaceWith(w)}>
+                  <span className="font-semibold">{w}</span>
+                </CtxItem>
+              ))
+            ) : (
+              <div className="px-2.5 py-1.5 text-[12px] text-text-3">No suggestions</div>
+            )}
+            <CtxItem icon={<BookPlus />} onSelect={() => void addToDictionary(spell.word)}>
+              Add “{spell.word}” to dictionary
+            </CtxItem>
+            <CtxItem icon={<EyeOff />} onSelect={() => ignoreWord(spell.word)}>
+              Ignore all
+            </CtxItem>
+            <CtxSep />
+          </>
+        )}
         <CtxItem icon={<Scissors />} shortcut="Mod-x" onSelect={() => runCommand('edit.cut')}>
           Cut
         </CtxItem>

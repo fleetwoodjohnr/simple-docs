@@ -33,6 +33,7 @@ const api: SimpleDocsApi = {
   exportPdf: (opts) => ipcRenderer.invoke('pdf:export', opts),
   print: () => ipcRenderer.invoke('print'),
   capturePage: (rect) => ipcRenderer.invoke('capture-page', rect),
+  spellDictionary: (lang) => ipcRenderer.invoke('spell:dictionary', lang),
   libreOfficeAvailable: () => ipcRenderer.invoke('lo:available'),
   libreOfficeConvert: (data, from, to) => ipcRenderer.invoke('lo:convert', data, from, to),
   windowMinimize: () => void ipcRenderer.invoke('window:minimize'),

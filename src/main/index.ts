@@ -140,8 +140,8 @@ function hardenSessions() {
   const allowed = new Set(['clipboard-read', 'clipboard-sanitized-write', 'local-fonts', 'fullscreen'])
   session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => cb(allowed.has(permission)))
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => allowed.has(permission))
-  // ponytail: Linux spellcheck would download Hunspell dictionaries from a CDN; disabled until bundled dictionaries land (M2).
-  if (process.platform === 'linux') session.defaultSession.setSpellCheckerEnabled(false)
+  // The renderer runs its own offline spellchecker; Chromium's would download dictionaries on Linux.
+  session.defaultSession.setSpellCheckerEnabled(false)
 
   app.on('web-contents-created', (_e, contents) => {
     contents.on('will-navigate', (ev, url) => {
@@ -266,6 +266,19 @@ function registerIpc() {
     return 'data:image/jpeg;base64,' + img.resize({ width: 220 }).toJPEG(82).toString('base64')
   })
 
+  handle('spell:dictionary', async (_e, lang: unknown) => {
+    if (typeof lang !== 'string' || !/^[a-z]{2,3}([-_][A-Z]{2})?$/.test(lang)) return null
+    const name = lang.replace('-', '_')
+    for (const dir of ['/usr/share/hunspell', '/usr/share/myspell', '/usr/share/myspell/dicts']) {
+      try {
+        const [aff, dic] = await Promise.all([fs.readFile(path.join(dir, `${name}.aff`), 'utf8'), fs.readFile(path.join(dir, `${name}.dic`), 'utf8')])
+        return { aff, dic }
+      } catch {
+        /* try next */
+      }
+    }
+    return null
+  })
   handle('lo:available', () => lo.findSoffice() !== null)
   handle('lo:convert', (_e, data: unknown, from: unknown, to: unknown) => {
     if (!isBytes(data) || typeof from !== 'string' || typeof to !== 'string') throw new Error('Invalid arguments')

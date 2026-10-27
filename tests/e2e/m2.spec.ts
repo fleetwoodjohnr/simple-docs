@@ -220,3 +220,23 @@ test('track changes: record, show, accept', async () => {
     await quit(app)
   }
 })
+
+test('spell checking: offline underline, suggestions, add to dictionary', async () => {
+  const { app, page } = await launch()
+  try {
+    await page.keyboard.press('Control+n')
+    await doc(page).click()
+    await page.keyboard.type('This sentense has a mispelled word and Zorblax.')
+    const bad = page.locator('[data-doc-scroll]:visible .sd-misspelled')
+    await expect.poll(async () => (await bad.allTextContents()).sort(), { timeout: 10_000 }).toEqual(['Zorblax', 'mispelled', 'sentense'])
+    await bad.filter({ hasText: 'mispelled' }).click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'misspelled', exact: true }).click()
+    expect(await withEditor<string>(page, `(e) => e.getText()`)).toContain('a misspelled word')
+    await bad.filter({ hasText: 'Zorblax' }).click({ button: 'right' })
+    await page.getByRole('menuitem', { name: /Add “Zorblax” to dictionary/ }).click()
+    await expect.poll(async () => (await bad.allTextContents()).sort(), { timeout: 10_000 }).toEqual(['sentense'])
+    expect(await page.evaluate(() => (window as never as { __sd: { get(): { settings: { customWords: string[] } } } }).__sd.get().settings.customWords)).toContain('Zorblax')
+  } finally {
+    await quit(app)
+  }
+})

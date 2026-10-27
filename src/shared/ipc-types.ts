@@ -46,6 +46,7 @@ export interface Settings {
   uiScale: number
   shortcuts: Record<string, string>
   quickAccess: string[]
+  customWords: string[]
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -67,7 +68,8 @@ export const DEFAULT_SETTINGS: Settings = {
   reduceMotion: false,
   uiScale: 1,
   shortcuts: {},
-  quickAccess: ['file.save', 'edit.undo', 'edit.redo']
+  quickAccess: ['file.save', 'edit.undo', 'edit.redo'],
+  customWords: []
 }
 
 export interface PdfOptions {
@@ -98,6 +100,9 @@ export interface SimpleDocsApi {
   exportPdf(options: PdfOptions): Promise<Uint8Array>
   print(): Promise<boolean>
   capturePage(rect: { x: number; y: number; width: number; height: number }): Promise<string>
+
+  /** Hunspell dictionary installed on the system for a language (Linux), or null. */
+  spellDictionary(lang: string): Promise<{ aff: string; dic: string } | null>
 
   libreOfficeAvailable(): Promise<boolean>
   libreOfficeConvert(data: Uint8Array, fromExt: string, toExt: string): Promise<Uint8Array>

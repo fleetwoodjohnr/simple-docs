@@ -5,6 +5,7 @@ import { formatFromPath, type FormatId, type FormatWarning } from '@/formats/typ
 import { printDocument, renderPdf } from '@/export/print'
 import type { OpenedFile, RecoveryEntry } from '@/shared/ipc-types'
 import { docScope } from '../app/DocumentView'
+import { checker } from '../spell/client'
 import { HOME, carries, editors, get, set, toast, updateTab, type TabMeta } from './store'
 
 const api = () => window.simpleDocs
@@ -77,7 +78,7 @@ function markDirty(id: string) {
 // ---------- tabs ----------
 
 function makeEditor(id: string, content: JSONContent, onRepair?: () => void): Editor {
-  const opts = { content, placeholder: 'Start writing…', onDocFiles: (files: File[]) => void openDroppedFiles(files) }
+  const opts = { content, placeholder: 'Start writing…', onDocFiles: (files: File[]) => void openDroppedFiles(files), spellChecker: checker }
   let editor: Editor
   try {
     editor = createDocEditor(opts)

@@ -434,8 +434,8 @@ export function StatusBar() {
       </button>
       <span className="px-2 tabular-nums">{st.chars.toLocaleString()} characters</span>
       <span className="px-2">{settings.language}</span>
-      <span className="px-2" title="Spell checking arrives with bundled offline dictionaries in the next milestone">
-        Spelling: {window.simpleDocs.platform === 'linux' ? 'off' : settings.spellcheck ? 'on' : 'off'}
+      <span className="px-2" data-testid="spelling-status">
+        Spelling: {settings.spellcheck ? 'on' : 'off'}
       </span>
       <div className="flex-1" />
       <TrackIndicator editor={editor} />

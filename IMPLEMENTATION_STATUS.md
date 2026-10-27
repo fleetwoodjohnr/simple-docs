@@ -1,6 +1,6 @@
 # Implementation status
 
-_Last updated: 2026-10-26 · Milestone 1 complete._
+_Last updated: 2026-10-27 · Milestone 1 complete · Milestone 2 in progress (6 of 9 items done)._
 
 "Done" means implemented **and** covered by a passing automated test or a manual check recorded below. A button existing in the UI does not count.
 
@@ -9,8 +9,8 @@ _Last updated: 2026-10-26 · Milestone 1 complete._
 | Suite | Result |
 |---|---|
 | `npm run typecheck` (strict, main + renderer) | ✅ clean |
-| `npm test` (vitest) | ✅ 27 / 27 |
-| `npm run e2e:headless` (Playwright + Electron) | ✅ 7 / 7 |
+| `npm test` (vitest) | ✅ 55 / 55 |
+| `npm run e2e:headless` (Playwright + Electron) | ✅ 13 / 13 |
 | Independent consumer: our DOCX → LibreOffice → PDF | ✅ (in `docx.test.ts`) |
 
 Acceptance criteria from the brief:
@@ -99,7 +99,26 @@ Two optimizations got there. ProseMirror `posAtCoords` (O(characters)) was repla
 - **Images** are stored inline as data URLs. Simple, but large image-heavy documents use more memory.
 - **Unit placeholders.** The References and Review tabs show only working items (links, outline, word count, read-aloud, compatibility). TOC, footnotes, comments and track changes are M2.
 
-## Milestone 2 — Advanced document editing ⏳ next
+## Milestone 2 — Advanced document editing 🟡 in progress
+
+### Done (each with unit + E2E tests)
+- **Headers & footers**: edited in place (double-click a margin or Insert → Header/Footer); default / different first page / odd-even; fields PAGE, NUMPAGES, DATE, TITLE, AUTHOR; Insert → Page number presets; page-number format (1, i, I, a, A) and start value; rendered on sheets and in PDF; DOCX header/footer parts (with their own image relationships), `titlePg`, `evenAndOddHeaders`, `pgNumType` read and written.
+- **Table of contents**: References → Table of contents / Update table (F9); page numbers from the live layout (settles in ≤3 passes); Ctrl/Cmd-click jumps to the heading; written as Word's TOC content control + `TOC \o` field with dot-leader tabs, read back as a TOC.
+- **Footnotes & endnotes**: Ctrl+Alt+F / Ctrl+Alt+D; numbered automatically (1,2,3 / i,ii,iii); the layout engine reserves note space on the page of each reference (paragraph splits account for notes on their lines); notes edited in a popover from the reference or the note; endnotes on the last page; DOCX `footnotes.xml`/`endnotes.xml` round trip; Markdown GFM footnotes; TXT notes list.
+- **Comments**: Ctrl+Alt+M on a selection; threaded replies, resolve/reopen, delete, next/previous, right-panel Comments tab; overlapping ranges; DOCX `comments.xml` + `commentsExtended.xml` (threads, resolved state).
+- **Track changes**: Ctrl+Shift+T; insertions/deletions recorded per author (minute-resolution timestamps so typing merges), deleting your own insertion is a real delete, one undo step per edit; accept/reject at cursor or all, next/previous change, Markup/Final view, status-bar indicator; DOCX `w:ins`/`w:del`/`w:trackRevisions` round trip; Markdown/TXT export the final text.
+- **Spell checking (offline)**: nspell in a Web Worker with bundled English (US/UK) Hunspell dictionaries; other languages use system Hunspell dictionaries on Linux; wavy underlines, right-click suggestions, Add to dictionary (persisted), Ignore all. Chromium's own spellchecker is disabled (it would download dictionaries).
+
+### Remaining in M2
+7. Grammar checking — harper.js evaluated (Apache-2.0) but its package is ~95 MB unpacked; deferred until a slimmer build is chosen.
+8. Style editor dialog and custom styles; advanced tables (borders, padding, sort, distribute, text↔table, repeated header row on continuation pages, can't-split rows).
+9. Native ODT reader/writer (today ODT works through the LibreOffice bridge).
+10. Section breaks with per-section page setup and columns (currently: last section's setup, warned).
+
+### Performance note
+With spell checking on, the 240-page benchmark is: full pagination 54 ms, keystroke → frame median 66 ms (max 96 ms), up from 45 ms. The spell plugin rescans the whole document 400 ms after typing stops; scoping the rescan to changed ranges is the next optimization.
+
+## Milestone 2 — original plan (for reference)
 
 Planned, in order:
 
@@ -123,6 +142,7 @@ See the plan in the README and the original brief.
 
 ## Next recommended tasks
 
-1. M2 item 1 (headers and footers). It unlocks page numbers, which is the most visible missing layout feature.
-2. Native ODT (M2 item 9) to drop the LibreOffice requirement for acceptance items 12–13.
-3. Repeated table header rows in the paginator. The row-spacer mechanism supports a second widget.
+1. Native ODT reader/writer (M2 item 9) to drop the LibreOffice requirement for acceptance items 12–13.
+2. Style editor + table tools (M2 item 8), including repeated header rows in the paginator (the row-spacer widget can carry a cloned header).
+3. Incremental spell-check rescans (changed ranges only) to bring large-document keystroke latency back under 50 ms.
+4. Then Milestone 3 (PDF workspace on PDFium WASM).

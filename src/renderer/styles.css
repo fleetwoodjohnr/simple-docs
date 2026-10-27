@@ -748,3 +748,14 @@ body {
   text-decoration: none;
   color: inherit;
 }
+
+/* ================= spelling ================= */
+.sd-doc .sd-misspelled {
+  text-decoration: underline wavy #e5484d;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-skip-ink: none;
+}
+.print-page .sd-misspelled {
+  text-decoration: none;
+}

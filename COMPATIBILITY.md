@@ -38,13 +38,13 @@ On open, every adapter produces a warning list (the ⚠ badge in the title bar).
 | Hyperlinks, external and internal anchors | ✅ | |
 | Page breaks; section breaks | ✅ / 🟡 | A section break becomes a page break; the last section's page setup is used |
 | Page size, orientation, margins, header/footer distance, gutter | ✅ | |
-| Headers and footers | 🔒 | Written back on save; editing is M2 |
-| Footnotes and endnotes | 🔒 | References preserved inline with their text; the parts are written back |
+| Headers and footers (default / first / even), PAGE / NUMPAGES / DATE / TITLE / AUTHOR fields, page-number format | ✅ | Other fields in headers keep their last result text |
+| Footnotes and endnotes | ✅ | Custom note separators are regenerated |
 | Charts, SmartArt, shapes, text boxes, VML, OLE objects, equations (OMML) | 🔒 | Raw XML and referenced parts written back |
-| Content controls (SDT) | 🟡 | Content kept; the control wrapper is dropped (checkbox controls are kept) |
+| Content controls (SDT) | 🟡 | Content kept; the control wrapper is dropped (checkbox controls and the TOC control are kept) |
 | Fields (simple and complex) | 🟡 | The current result text is kept; the field code is dropped (warned) |
-| Comments | ❌ | Warned; M2 |
-| Tracked changes | 🟡 | Accepted on import (warned); M2 |
+| Comments with replies and resolved state | ✅ | Via `comments.xml` + `commentsExtended.xml` |
+| Tracked insertions/deletions | ✅ | Tracked formatting changes from Word are shown as accepted (noted) |
 | Bookmarks | ❌ | Dropped silently (they have no visible content); M2 |
 | Document properties (title, subject, author, keywords, description, dates) | ✅ | |
 | Multiple columns | ❌ | Shown as one column (warned) |
@@ -87,4 +87,4 @@ Import detects the encoding: UTF-8, UTF-8/16 BOMs, and Windows-1252 as a fallbac
 |---|---|
 | Page size, margins, page breaks identical to the editor | ✅ (asserted by tests) |
 | Selectable/searchable text, embedded font subsets, working links, heading outline (bookmarks), tagged PDF | ✅ |
-| Headers and footers, page numbers | ⏳ M2 |
+| Headers and footers, page numbers, footnotes | ✅ |

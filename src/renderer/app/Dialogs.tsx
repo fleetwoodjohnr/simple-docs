@@ -7,6 +7,7 @@ import { StatsView } from './Panels'
 import { Btn, Field, Kbd, Modal, Segmented, Switch, cx, inputCls } from '../ui'
 import { FORMAT_LABELS } from '@/formats/types'
 import type { Settings } from '@/shared/ipc-types'
+import { refreshSpelling, resetSpelling } from '../spell/client'
 
 const close = () => set({ dialog: null })
 
@@ -374,15 +375,34 @@ function SettingsDialog() {
               <Row label="Collapse ribbon by default">
                 <Switch label="Collapse ribbon" checked={s.ribbonCollapsed} onChange={(ribbonCollapsed) => up({ ribbonCollapsed })} />
               </Row>
-              <Row label="Spell checking" hint={window.simpleDocs.platform === 'linux' ? 'On Linux, offline dictionaries ship in the next update' : 'Uses the operating system’s spell checker'}>
-                <Switch label="Spell checking" checked={s.spellcheck} onChange={(spellcheck) => up({ spellcheck })} />
+              <Row label="Spell checking" hint="Offline. English (US/UK) is built in; other languages use Hunspell dictionaries installed on this computer.">
+                <Switch
+                  label="Spell checking"
+                  checked={s.spellcheck}
+                  onChange={(spellcheck) => {
+                    up({ spellcheck })
+                    setTimeout(refreshSpelling, 50)
+                  }}
+                />
               </Row>
-              <Row label="Language">
-                <select className={cx(inputCls, 'w-40')} value={s.language} onChange={(e) => up({ language: e.target.value })}>
+              <Row label="Proofing language">
+                <select
+                  className={cx(inputCls, 'w-40')}
+                  value={s.language}
+                  onChange={(e) => {
+                    up({ language: e.target.value })
+                    setTimeout(resetSpelling, 50)
+                  }}
+                >
                   {['en-US', 'en-GB', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'pt-BR', 'nl-NL'].map((l) => (
                     <option key={l}>{l}</option>
                   ))}
                 </select>
+              </Row>
+              <Row label="Custom dictionary" hint={s.customWords.length ? s.customWords.slice(0, 12).join(', ') + (s.customWords.length > 12 ? '…' : '') : 'Words you add from the right-click menu appear here'}>
+                <Btn size="sm" disabled={!s.customWords.length} onClick={() => (up({ customWords: [] }), setTimeout(resetSpelling, 50))}>
+                  Clear
+                </Btn>
               </Row>
               <Row label="Keyboard shortcuts">
                 <Btn size="sm" onClick={() => set({ dialog: { kind: 'shortcuts' } })}>

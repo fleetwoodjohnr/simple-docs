@@ -4,6 +4,7 @@ import { createExtensions } from './extensions'
 import { Pagination, type PaginationOptions } from '@/layout/plugin'
 import { Search } from './search'
 import { makeNoteMeasurer } from './notes-render'
+import { Spellcheck, type SpellChecker } from './spell'
 import { defaultStyles, makePageSetup, MARGIN_PRESETS, PAGE_SIZES, type DocMeta, type PageSetup, type StyleMap } from './model'
 
 export interface NewDocOptions {
@@ -69,15 +70,16 @@ export interface CreateEditorOptions extends PaginationOptions {
   onDocFiles?: (files: File[]) => void
   /** Validate content against the schema (throws on invalid structure). */
   strict?: boolean
+  spellChecker?: SpellChecker
 }
 
 export function createDocEditor(opts: CreateEditorOptions): Editor {
   return new Editor({
-    extensions: [...createExtensions({ placeholder: opts.placeholder }), Pagination.configure({ onLayout: opts.onLayout, noteHeight: makeNoteMeasurer() }), Search],
+    extensions: [...createExtensions({ placeholder: opts.placeholder }), Pagination.configure({ onLayout: opts.onLayout, noteHeight: makeNoteMeasurer() }), Search, Spellcheck.configure({ checker: opts.spellChecker ?? null })],
     content: opts.content,
     enableContentCheck: opts.strict ?? true,
     editorProps: {
-      attributes: { class: 'sd-doc', spellcheck: 'true', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Document body' },
+      attributes: { class: 'sd-doc', spellcheck: 'false', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Document body' },
       handlePaste(view, event) {
         const files = Array.from(event.clipboardData?.files ?? []).filter((f) => IMAGE_TYPES.test(f.type))
         if (!files.length) return false
