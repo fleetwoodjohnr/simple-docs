@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Editor } from '@tiptap/core'
-import { Shapes, BarChart3, Users, Braces, ChevronLeft, ChevronRight, BookMarked, Library, BookImage, Lock, GitCompare, Accessibility,
+import { Sparkles, Shapes, BarChart3, Users, Braces, ChevronLeft, ChevronRight, BookMarked, Library, BookImage, Lock, GitCompare, Accessibility,
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, CalendarDays, CaseSensitive, ChevronDown, ChevronUp, ClipboardPaste, Code2, Columns3, Copy, Eraser, Eye, FileDown, Focus,
   Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Info, Italic, Keyboard, Link2, List, ListChecks, ListOrdered, Maximize2, Minus, Moon, PaintBucket, Paintbrush, PanelLeft,
   PanelRight, Pilcrow, Plus, Printer, Quote, Redo2, Replace, Ruler, Scissors, Search, Settings, Sigma, SquareDashed, Strikethrough, Subscript, Superscript, Table2, Type, Underline, Undo2,
@@ -1050,6 +1050,12 @@ function MailMergeGroup() {
 function ToolsTab() {
   return (
     <>
+      <Group label="Assistant">
+        <TextBtn icon={<Sparkles />} label="Rewrite, proofread or summarize the selection with Claude (optional, off until you turn it on)" onClick={() => runCommand('tools.ai')}>
+          AI assistant
+        </TextBtn>
+      </Group>
+      <Sep />
       <MailMergeGroup />
       <Sep />
       <Group label="Tools">

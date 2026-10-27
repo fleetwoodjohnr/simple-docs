@@ -40,6 +40,7 @@ export type Dialog =
   | { kind: 'sources'; insert: boolean }
   | { kind: 'equation'; pos?: number }
   | { kind: 'drawing'; mode: 'chart' | 'shape'; pos?: number }
+  | { kind: 'ai' }
   | { kind: 'export-warnings'; tabId: string; format: FormatId; warnings: FormatWarning[]; resolve: (ok: boolean) => void }
 
 export interface Toast {

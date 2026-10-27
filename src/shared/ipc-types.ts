@@ -47,6 +47,8 @@ export interface Settings {
   shortcuts: Record<string, string>
   quickAccess: string[]
   customWords: string[]
+  /** Optional AI writing assistant; off unless the user turns it on. */
+  aiEnabled: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -69,7 +71,8 @@ export const DEFAULT_SETTINGS: Settings = {
   uiScale: 1,
   shortcuts: {},
   quickAccess: ['file.save', 'edit.undo', 'edit.redo'],
-  customWords: []
+  customWords: [],
+  aiEnabled: false
 }
 
 export interface PdfOptions {
@@ -124,6 +127,13 @@ export interface SimpleDocsApi {
   windowClose(): void
   setTitleBarColors(colors: { color: string; symbolColor: string }): void
   openExternal(url: string): Promise<void>
+
+  /** AI assistant (Claude API). Requests are refused unless Settings → AI assistant is on. */
+  aiStatus(): Promise<{ hasStoredKey: boolean; envCredentials: boolean; weakStorage: boolean }>
+  aiSetKey(key: string | null): Promise<void>
+  aiRun(id: string, action: string, instruction: string, text: string): Promise<string>
+  aiCancel(id: string): Promise<void>
+  onAiText(cb: (id: string, delta: string) => void): () => void
 
   onOpenFiles(cb: (files: OpenedFile[]) => void): () => void
   onCloseRequest(cb: () => void): () => void

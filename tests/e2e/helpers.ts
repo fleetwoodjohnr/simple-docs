@@ -13,11 +13,11 @@ export function tempDir(prefix = 'sd-e2e-'): string {
   return mkdtempSync(path.join(tmpdir(), prefix))
 }
 
-export async function launch(opts: { userData?: string; settings?: Record<string, unknown> } = {}): Promise<Launched> {
+export async function launch(opts: { userData?: string; settings?: Record<string, unknown>; env?: Record<string, string> } = {}): Promise<Launched> {
   const userData = opts.userData ?? tempDir('sd-profile-')
   mkdirSync(userData, { recursive: true })
   if (opts.settings) writeFileSync(path.join(userData, 'settings.json'), JSON.stringify(opts.settings))
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, SIMPLE_DOCS_USER_DATA: userData } })
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ...opts.env, SIMPLE_DOCS_USER_DATA: userData } })
   const page = await app.firstWindow()
   const violations: string[] = []
   page.on('console', (m) => /Content.Security.Policy/i.test(m.text()) && violations.push(m.text()))

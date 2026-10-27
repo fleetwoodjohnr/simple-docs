@@ -6,6 +6,7 @@ import type { OpenedFile, RecentFile, Settings } from '../shared/ipc-types'
 import * as store from './store'
 import * as lo from './libreoffice'
 import { recognize, stopOcr } from './ocr'
+import { aiStatus, cancelAi, runAi, setApiKey } from './ai'
 
 const isMac = process.platform === 'darwin'
 const DOC_EXTENSIONS = ['docx', 'odt', 'md', 'markdown', 'html', 'htm', 'txt', 'rtf', 'doc', 'pdf']
@@ -283,6 +284,18 @@ function registerIpc() {
     if (!file.startsWith(root + path.sep) || !/\.(wasm|traineddata(\.gz)?)$/.test(file)) throw new Error('Asset outside the app')
     return new Uint8Array(await fs.readFile(file))
   })
+  handle('ai:status', () => aiStatus())
+  handle('ai:set-key', (_e, key: unknown) => {
+    if (key !== null && (typeof key !== 'string' || key.length > 400 || /\s/.test(key.trim()))) throw new Error('Invalid key')
+    return setApiKey(key as string | null)
+  })
+  handle('ai:run', async (e, id: unknown, action: unknown, instruction: unknown, text: unknown) => {
+    // Enforced here too, not only in the UI: no request leaves the app while the assistant is off.
+    if (!(await store.getSettings()).aiEnabled) throw new Error('The AI assistant is turned off (Settings → AI assistant).')
+    if (typeof id !== 'string' || !/^[\w-]{1,64}$/.test(id) || typeof action !== 'string' || typeof instruction !== 'string' || instruction.length > 2000 || typeof text !== 'string') throw new Error('Invalid arguments')
+    return runAi(id, action, instruction, text, (delta) => !e.sender.isDestroyed() && e.sender.send('ai:text', id, delta))
+  })
+  handle('ai:cancel', (_e, id: unknown) => (typeof id === 'string' ? cancelAi(id) : undefined))
   handle('ocr:recognize', async (_e, image: unknown) => {
     if (!(image instanceof Uint8Array) || image.byteLength > 200 * 1024 * 1024) throw new Error('Invalid image')
     return recognize(image)

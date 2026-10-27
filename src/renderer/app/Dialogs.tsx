@@ -14,6 +14,7 @@ import { refreshSpelling, resetSpelling } from '../spell/client'
 import { HistoryDialog } from './History'
 import { EquationDialog } from './EquationDialog'
 import { DrawingDialog } from './DrawingDialog'
+import { AiSettings, AssistantDialog } from './Assistant'
 import { SourcesDialog } from './Citations'
 
 const close = () => set({ dialog: null })
@@ -23,7 +24,7 @@ export function Dialogs() {
   if (!d) return null
   switch (d.kind) {
     case 'settings':
-      return <SettingsDialog />
+      return <SettingsDialog initial={d.section} />
     case 'confirm-close':
       return <ConfirmClose d={d} />
     case 'link':
@@ -48,6 +49,8 @@ export function Dialogs() {
       return <EquationDialog pos={d.pos} />
     case 'drawing':
       return <DrawingDialog mode={d.mode} pos={d.pos} />
+    case 'ai':
+      return <AssistantDialog />
     default:
       return null
   }
@@ -506,17 +509,18 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 const ACCENTS = ['#5b5bd6', '#2563eb', '#0891b2', '#059669', '#d97706', '#dc2626', '#db2777', '#7c3aed', '#3f3f46']
 const FONTS = ['Calibri', 'Cambria', 'Arial', 'Times New Roman', 'Georgia', 'Liberation Sans', 'Liberation Serif']
 
-function SettingsDialog() {
+function SettingsDialog({ initial }: { initial?: string }) {
   const s = useApp((x) => x.settings)
   const lo = useApp((x) => x.libreOffice)
-  const [section, setSection] = useState('appearance')
+  const [section, setSection] = useState(initial ?? 'appearance')
   const up = (p: Partial<Settings>) => void updateSettings(p)
   const sections = [
     ['appearance', 'Appearance'],
     ['editor', 'Editor'],
     ['documents', 'New documents'],
     ['saving', 'Saving & recovery'],
-    ['privacy', 'Privacy & formats']
+    ['privacy', 'Privacy & formats'],
+    ['ai', 'AI assistant']
   ]
   return (
     <Modal open onOpenChange={(o) => !o && close()} title="Settings" width={720}>
@@ -663,15 +667,16 @@ function SettingsDialog() {
               </Row>
             </>
           )}
+          {section === 'ai' && <AiSettings />}
           {section === 'privacy' && (
             <div className="space-y-3 py-3 text-[13px] leading-relaxed text-text-2">
               <p>
-                <strong className="text-text">Simple Docs works fully offline.</strong> It makes no network requests, has no account, and sends no telemetry. Documents, settings and recovery snapshots stay on this computer.
+                <strong className="text-text">Simple Docs works fully offline.</strong> It makes no network requests, has no account, and sends no telemetry. Documents, settings, version history and recovery snapshots stay on this computer. The one exception is the optional AI assistant: it is off unless you turn it on, and even then sends only the text you review and approve for each request.
               </p>
               <p>Links you open from a document go to your default browser.</p>
               <div className="rounded-lg border border-border p-3">
                 <div className="font-medium text-text">LibreOffice converter</div>
-                <div className="mt-1">{lo ? 'Detected — ODT, RTF and legacy DOC files can be opened and saved.' : 'Not found — install LibreOffice to open and save ODT, RTF and legacy DOC files. DOCX, Markdown, HTML, text and PDF export work without it.'}</div>
+                <div className="mt-1">{lo ? 'Detected — RTF and legacy DOC files can be opened, and RTF saved.' : 'Not found — install LibreOffice to open RTF and legacy DOC files. DOCX, ODT, Markdown, HTML, text, PDF and OCR work without it.'}</div>
               </div>
             </div>
           )}
