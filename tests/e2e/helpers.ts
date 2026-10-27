@@ -17,7 +17,9 @@ export async function launch(opts: { userData?: string; settings?: Record<string
   const userData = opts.userData ?? tempDir('sd-profile-')
   mkdirSync(userData, { recursive: true })
   if (opts.settings) writeFileSync(path.join(userData, 'settings.json'), JSON.stringify(opts.settings))
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, ...opts.env, SIMPLE_DOCS_USER_DATA: userData } })
+  // SD_PACKAGED=path/to/binary runs the suite against an electron-builder output instead of the dev build.
+  const packaged = process.env.SD_PACKAGED
+  const app = await electron.launch({ ...(packaged ? { executablePath: packaged, args: [] } : { args: ['.'] }), env: { ...process.env, ...opts.env, SIMPLE_DOCS_USER_DATA: userData } })
   const page = await app.firstWindow()
   const violations: string[] = []
   page.on('console', (m) => /Content.Security.Policy/i.test(m.text()) && violations.push(m.text()))

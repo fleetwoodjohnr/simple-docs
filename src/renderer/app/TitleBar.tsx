@@ -18,7 +18,7 @@ export function Logo({ size = 22 }: { size?: number }) {
       </defs>
       <rect x="1" y="1" width="30" height="30" rx="8" fill="url(#sd-logo)" />
       <path d="M10 9.5h8.5l3.5 3.5v9.5a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 9 22.5v-11.5A1.5 1.5 0 0 1 10.5 9.5Z" fill="#fff" fillOpacity=".96" />
-      <path d="M18.5 9.5V13h3.5" fill="none" stroke="var(--accent)" strokeOpacity=".5" strokeWidth="1.2" />
+      <path d="M18.5 9.5V12a1 1 0 0 0 1 1H22Z" fill="color-mix(in oklab, var(--accent) 35%, #fff)" />
       <path d="M12 16.5h7M12 19h7M12 21.5h4.5" stroke="var(--accent)" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   )

@@ -1,6 +1,7 @@
 appId: app.simpledocs.desktop
 productName: Simple Docs
 copyright: Copyright © Simple Docs contributors
+icon: resources/icon.png
 directories:
   output: release
   buildResources: resources
@@ -9,10 +10,13 @@ files:
   - package.json
   - "!node_modules/@tesseract.js-data/eng/4.0.0/**"
 asar: true
+# The OCR worker thread starts from app.asar.unpacked, so tesseract.js and everything it requires must be there.
 asarUnpack:
   - node_modules/tesseract.js/**
   - node_modules/tesseract.js-core/**
   - node_modules/@tesseract.js-data/eng/4.0.0_best_int/**
+  - node_modules/{bmp-js,idb-keyval,is-url,node-fetch,punycode,regenerator-runtime,tr46,wasm-feature-detect,webidl-conversions,whatwg-url,zlibjs}/**
+  - node_modules/@exodus/bytes/**
 fileAssociations:
   - ext: docx
     name: Word Document
@@ -33,7 +37,10 @@ fileAssociations:
     name: PDF Document
     role: Editor
 linux:
-  target: [AppImage, deb, rpm]
+  # deb/rpm also need `homepage` and `author.email` in package.json (and rpmbuild): see RELEASE.md
+  target: [AppImage]
+  syncDesktopName: true
+  icon: resources/icon.png
   category: Office
   mimeTypes:
     - application/vnd.openxmlformats-officedocument.wordprocessingml.document

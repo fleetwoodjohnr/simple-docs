@@ -16,10 +16,20 @@ const workerPath = () => unpacked(require.resolve('tesseract.js/src/worker-scrip
 
 let worker: Promise<Worker> | null = null
 
+/** Reject instead of waiting forever (a worker that fails to load never settles). */
+const within = <T>(p: Promise<T>, ms: number, what: string) =>
+  Promise.race([p, new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`${what} did not respond`)), ms))])
+
 /** Recognize words in an encoded image (PNG/JPEG). */
 export async function recognize(image: Uint8Array): Promise<OcrWord[]> {
-  worker ??= createWorker('eng', OEM.LSTM_ONLY, { langPath: langPath(), workerPath: workerPath(), cacheMethod: 'none', gzip: true })
-  const w = await worker
+  worker ??= within(createWorker('eng', OEM.LSTM_ONLY, { langPath: langPath(), workerPath: workerPath(), cacheMethod: 'none', gzip: true }), 30_000, 'The OCR engine')
+  let w: Worker
+  try {
+    w = await worker
+  } catch (e) {
+    worker = null // allow a retry
+    throw e
+  }
   const { data } = await w.recognize(Buffer.from(image), {}, { blocks: true })
   return (data.blocks ?? [])
     .flatMap((b) => b.paragraphs.flatMap((p) => p.lines.flatMap((l) => l.words)))
