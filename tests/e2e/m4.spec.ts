@@ -110,3 +110,23 @@ test('protect: read only blocks typing, survives a DOCX round trip, and can be s
     await quit(app)
   }
 })
+
+test('cover page: inserted from document properties onto its own page', async () => {
+  const { app, page } = await launch({ settings: { authorName: 'Ada Lovelace' } })
+  try {
+    await page.keyboard.press('Control+n')
+    await doc(page).click()
+    await page.keyboard.type('Body text.')
+    await withEditor(page, `(e) => e.chain().command(({ tr }) => (tr.setDocAttribute('meta', { title: 'Annual Review' }), true)).run()`)
+    await page.getByRole('tab', { name: 'Insert', exact: true }).click()
+    await page.getByRole('button', { name: 'Cover page' }).click()
+    await page.getByRole('menuitem', { name: /Classic/ }).click()
+    await settle(page, 500)
+    await expect(page.locator('[data-doc-scroll]:visible .page-sheet')).toHaveCount(2)
+    expect(await withEditor(page, `(e) => e.state.doc.content.content.map((n) => n.type.name + ':' + n.textContent)`)).toEqual(
+      expect.arrayContaining(['paragraph:Annual Review', 'paragraph:Ada Lovelace', 'pageBreak:', 'paragraph:Body text.'])
+    )
+  } finally {
+    await quit(app)
+  }
+})

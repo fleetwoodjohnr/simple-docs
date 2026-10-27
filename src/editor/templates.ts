@@ -137,3 +137,69 @@ export function welcomeDoc(): JSONContent[] {
     bullets('Use the ribbon above, or select text for the floating toolbar.', 'Ctrl/⌘ + Enter inserts a page break; content flows across real pages.', 'Save as DOCX, ODT, Markdown, HTML or text, and export to PDF.')
   ]
 }
+
+// ---------- cover pages ----------
+// Built from ordinary styled paragraphs and a page break, so they survive DOCX/ODT round trips.
+
+export interface CoverInfo {
+  title: string
+  subtitle: string
+  author: string
+}
+
+const run = (text: string, marks: JSONContent['marks']) => (text ? [t(text, marks)] : undefined)
+const color = (c: string) => ({ type: 'textStyle', attrs: { color: c } })
+
+export const COVER_PAGES: { id: string; name: string; build: (c: CoverInfo) => JSONContent[] }[] = [
+  {
+    id: 'classic',
+    name: 'Classic (centered)',
+    build: (c) => [
+      p(c.title, { styleId: 'Title', align: 'center', spaceBefore: 200 }),
+      p(c.subtitle, { styleId: 'Subtitle', align: 'center' }),
+      p(c.author, { align: 'center', spaceBefore: 260 }),
+      p(today(), { align: 'center' }),
+      { type: 'pageBreak' }
+    ]
+  },
+  {
+    id: 'band',
+    name: 'Color band',
+    build: (c) => [
+      // A borderless one-cell table gives a padded color band.
+      {
+        type: 'table',
+        attrs: { tableStyle: 'plain' },
+        content: [
+          {
+            type: 'tableRow',
+            content: [
+              {
+                type: 'tableCell',
+                attrs: { background: '#3f3fb0' },
+                content: [
+                  { type: 'paragraph', attrs: { styleId: 'Title', spaceBefore: 150 }, content: run(c.title, [color('#ffffff')]) },
+                  { type: 'paragraph', attrs: { styleId: 'Subtitle', spaceAfter: 18 }, content: run(c.subtitle, [color('#dcdcff')]) }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      p(c.author, { spaceBefore: 300 }),
+      p(today()),
+      { type: 'pageBreak' }
+    ]
+  },
+  {
+    id: 'minimal',
+    name: 'Minimal',
+    build: (c) => [
+      { type: 'paragraph', content: run(today(), [{ type: 'textStyle', attrs: { color: '#595966', smallCaps: true } }]) },
+      p(c.title, { styleId: 'Title', spaceBefore: 280 }),
+      p(c.subtitle, { styleId: 'Subtitle' }),
+      p(c.author, { spaceBefore: 24 }),
+      { type: 'pageBreak' }
+    ]
+  }
+]

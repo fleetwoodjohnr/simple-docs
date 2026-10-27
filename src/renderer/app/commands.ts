@@ -9,6 +9,7 @@ import { changesAtSelection, gotoChange, resolveChanges, setTracking } from '@/e
 import { distributeColumns, setCellAlign, sortTable, tableToText, textToTable } from '@/editor/tables'
 import { updateStyleFromSelection } from '@/editor/style-ops'
 import { emptyHF, resolveStyle, type HeadersFooters, type HFKind, type StyleMap } from '@/editor/model'
+import { COVER_PAGES } from '@/editor/templates'
 import { bodyEditor } from '../state/store'
 
 // Central command registry. Ribbon buttons, menus, the floating toolbar, the
@@ -230,6 +231,17 @@ export function applyPainter(e: Editor) {
 export const SYMBOLS = '©®™§¶†‡•…–—‘’“”«»‹›°±×÷≠≈≤≥∞√∑∏∫∂µπΩαβγδεθλσφψω€£¥¢¤←→↑↓↔⇒⇔✓✗★☆♠♣♥♦½¼¾⅓⅔¹²³ⁿ∈∉∩∪⊂⊃∀∃∅∇'.split('')
 
 /** Put a page number (optionally "Page X of Y") in the default header or footer. */
+/** Insert a cover page at the start of the document, filled from the document's properties. */
+export function insertCoverPage(id: string) {
+  const editor = bodyEditor()
+  const cover = COVER_PAGES.find((c) => c.id === id)
+  if (!editor || !cover) return
+  const meta = (editor.state.doc.attrs.meta ?? {}) as { title?: string; subject?: string; author?: string }
+  const tab = get().tabs.find((t) => t.id === get().active)
+  const info = { title: meta.title || tab?.title || 'Document title', subtitle: meta.subject || 'Subtitle', author: meta.author || get().settings.authorName || 'Author' }
+  editor.chain().focus().insertContentAt(0, cover.build(info)).setTextSelection(1).scrollIntoView().run()
+}
+
 export function insertPageNumber(kind: HFKind, align: 'left' | 'center' | 'right', withTotal: boolean) {
   const body = bodyEditor()
   if (!body) return

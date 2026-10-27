@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Editor } from '@tiptap/core'
-import { Lock, GitCompare, Accessibility,
+import { BookImage, Lock, GitCompare, Accessibility,
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, CalendarDays, CaseSensitive, ChevronDown, ChevronUp, ClipboardPaste, Code2, Columns3, Copy, Eraser, Eye, FileDown, Focus,
   Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Info, Italic, Keyboard, Link2, List, ListChecks, ListOrdered, Maximize2, Minus, Moon, PaintBucket, Paintbrush, PanelLeft,
   PanelRight, Pilcrow, Plus, Printer, Quote, Redo2, Replace, Ruler, Scissors, Search, Settings, Sigma, SquareDashed, Strikethrough, Subscript, Superscript, Table2, Type, Underline, Undo2,
@@ -8,7 +8,7 @@ import { Lock, GitCompare, Accessibility,
 } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { useApp, set, updateSettings, type RibbonTab } from '../state/store'
-import { applyStyle, changeCase, FONT_SIZES, insertPageNumber, runCommand, shortcutFor, SYMBOLS, updateBlocks, zoomTo } from './commands'
+import { insertCoverPage, applyStyle, changeCase, FONT_SIZES, insertPageNumber, runCommand, shortcutFor, SYMBOLS, updateBlocks, zoomTo } from './commands'
 import { useActiveEditor, useBodyEditor, useSnapshot, type Snapshot } from './hooks'
 import { useEditorState } from '@tiptap/react'
 import { ColorGrid, IconBtn, Menu, MenuCheck, MenuContent, MenuItem, MenuLabel, MenuSep, MenuTrigger, NumberInput, Pop, PopClose, PopContent, PopTrigger, SubMenu, Tip, cx } from '../ui'
@@ -16,6 +16,7 @@ import { MARGIN_PRESETS, PAGE_SIZES, withOrientation, withSize, type PageSetup, 
 import { pageOf } from '@/layout/plugin'
 import { fontStack } from '@/editor/styles-css'
 import { PROTECTION_LABELS, setProtection, type ProtectionMode } from '@/editor/protection'
+import { COVER_PAGES } from '@/editor/templates'
 import { setTableStyle, TABLE_STYLES, type TableStyle } from '@/editor/tables'
 
 const TABS: { id: RibbonTab; label: string }[] = [
@@ -528,6 +529,18 @@ function InsertTab({ editor }: { editor: Editor }) {
   return (
     <>
       <Group label="Pages">
+        <Menu>
+          <DropBtn label="Cover page" icon={<BookImage />}>
+            Cover page
+          </DropBtn>
+          <MenuContent>
+            {COVER_PAGES.map((c) => (
+              <MenuItem key={c.id} onSelect={() => insertCoverPage(c.id)}>
+                {c.name}
+              </MenuItem>
+            ))}
+          </MenuContent>
+        </Menu>
         <TextBtn icon={<FileDown />} label="Page break" shortcut={shortcutFor('insert.pageBreak')} onClick={() => runCommand('insert.pageBreak')}>
           Page break
         </TextBtn>
