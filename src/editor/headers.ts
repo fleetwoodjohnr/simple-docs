@@ -1,7 +1,7 @@
 import { generateHTML, type Extensions, type JSONContent } from '@tiptap/core'
 import { createExtensions } from './extensions'
 import { emptyHF, hfVariantFor, type DocMeta, type HeadersFooters, type HFKind, type PageSetup } from './model'
-import { formatNumber } from './numbering'
+import { pageLabel } from './numbering'
 
 // Static rendering of headers/footers for page sheets and print. Fields are
 // substituted per page, so one HTML template serves every page.
@@ -14,10 +14,7 @@ export function hfOf(doc: { attrs: Record<string, unknown> }): HeadersFooters {
   return (doc.attrs.hf as HeadersFooters | null) ?? emptyHF()
 }
 
-export function pageLabel(page: PageSetup, pageIndex: number): string {
-  const n = page.numbering
-  return formatNumber((n?.start ?? 1) + pageIndex, n?.format ?? '1')
-}
+export { pageLabel }
 
 function template(content: unknown[]): string {
   let html = cache.get(content)

@@ -11,6 +11,7 @@ import Image from '@tiptap/extension-image'
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table'
 import { Placeholder } from '@tiptap/extensions'
 import { NumberingPlugin } from './numbering'
+import { Toc, TocEntry, TocNavigation } from './toc'
 
 // ---------- helpers ----------
 
@@ -427,6 +428,9 @@ export function createExtensions(opts: ExtensionOptions = {}): Extensions {
     PreservedBlock,
     PreservedInline,
     Field,
+    Toc,
+    TocEntry,
+    TocNavigation,
     TabKey,
     Numbering,
     ...(opts.placeholder ? [Placeholder.configure({ placeholder: opts.placeholder, showOnlyWhenEditable: true })] : [])

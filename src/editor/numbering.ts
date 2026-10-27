@@ -118,3 +118,9 @@ export function NumberingPlugin() {
     }
   })
 }
+
+/** Rendered page number for a 0-based page index, honouring the document's numbering format/start. */
+export function pageLabel(page: { numbering?: { format: '1' | 'i' | 'I' | 'a' | 'A'; start: number } } | null | undefined, pageIndex: number): string {
+  const n = page?.numbering
+  return formatNumber((n?.start ?? 1) + pageIndex, n?.format ?? '1')
+}

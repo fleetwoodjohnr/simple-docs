@@ -53,3 +53,42 @@ test('headers, footers and page numbers appear on every page and in the PDF', as
     await quit(app)
   }
 })
+
+test('table of contents uses live page numbers', async () => {
+  const { app, page } = await launch()
+  try {
+    await page.keyboard.press('Control+n')
+    await doc(page).click()
+    await withEditor(page, `(e) => {
+      const lorem = { type: 'paragraph', content: [{ type: 'text', text: 'Body text for the chapter. '.repeat(40) }] }
+      const h = (level, text) => ({ type: 'heading', attrs: { level }, content: [{ type: 'text', text }] })
+      e.commands.setContent({ type: 'doc', attrs: e.state.doc.attrs, content: [
+        { type: 'paragraph' },
+        h(1, 'Alpha'), lorem, h(2, 'Alpha detail'), lorem, { type: 'pageBreak' },
+        h(1, 'Beta'), lorem, { type: 'pageBreak' },
+        h(1, 'Gamma'), lorem
+      ] })
+      e.commands.setTextSelection(1)
+    }`)
+    await settle(page, 600)
+    await page.getByRole('tab', { name: 'References' }).click()
+    await page.getByRole('button', { name: 'Table of contents' }).click()
+    await settle(page, 1200)
+    const entries = await withEditor<[string, string][]>(page, `(e) => { const out = []; e.state.doc.descendants(n => { if (n.type.name === 'tocEntry') out.push([n.textContent, n.attrs.page]) }); return out }`)
+    const sheets = await page.locator('[data-doc-scroll]:visible .page-sheet').count()
+    // headings land on pages per the editor's own layout
+    const pageOf = await withEditor<Record<string, number>>(page, `(e) => {
+      const st = e.state.plugins.map(p => p.getState(e.state)).find(s => s && Array.isArray(s.breaks))
+      const out = {}
+      e.state.doc.descendants((n, pos) => { if (n.type.name === 'heading') out[n.textContent] = st.breaks.filter(b => b.pos <= pos).length + 1 })
+      return out
+    }`)
+    expect(entries.map(([t]) => t)).toEqual(['Alpha', 'Alpha detail', 'Beta', 'Gamma'])
+    for (const [t, p] of entries) expect(Number(p)).toBe(pageOf[t])
+    expect(Number(entries.at(-1)![1])).toBeGreaterThan(2)
+    expect(sheets).toBeGreaterThanOrEqual(3)
+    await expect(page.locator('[data-doc-scroll]:visible .sd-toc')).toBeVisible()
+  } finally {
+    await quit(app)
+  }
+})

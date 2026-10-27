@@ -595,3 +595,42 @@ body {
   background: none;
   padding: 0;
 }
+
+/* ================= table of contents ================= */
+.sd-doc .sd-toc {
+  margin: 0 0 12pt;
+}
+.sd-doc .toc-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 4pt;
+  margin: 0 0 4pt;
+  line-height: calc(var(--lhf, 1.2) * var(--lh, 1.15));
+}
+.sd-doc .toc-entry[data-level='1'] {
+  font-weight: 600;
+}
+.sd-doc .toc-entry[data-level='2'] {
+  padding-left: 14pt;
+}
+.sd-doc .toc-entry[data-level='3'] {
+  padding-left: 28pt;
+}
+.sd-doc .toc-entry[data-level='4'],
+.sd-doc .toc-entry[data-level='5'],
+.sd-doc .toc-entry[data-level='6'] {
+  padding-left: 42pt;
+}
+.sd-doc .toc-text {
+  min-width: 0;
+}
+.sd-doc .toc-dots {
+  flex: 1;
+  min-width: 12pt;
+  border-bottom: 1.5px dotted #9a9aa6;
+  transform: translateY(-0.28em);
+}
+.sd-doc .toc-page {
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}

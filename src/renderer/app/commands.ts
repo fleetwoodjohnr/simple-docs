@@ -3,6 +3,7 @@ import { TextSelection } from '@tiptap/pm/state'
 import { activeEditor, activeTab, get, set, toast, updateSettings, HOME } from '../state/store'
 import * as docs from '../state/documents'
 import { readAsDataUrl } from '@/editor/create'
+import { insertToc, updateTocsSettled } from '@/editor/toc'
 import { emptyHF, resolveStyle, type HeadersFooters, type HFKind, type StyleMap } from '@/editor/model'
 import { bodyEditor } from '../state/store'
 
@@ -356,6 +357,8 @@ def({ id: 'insert.hr', label: 'Horizontal line', run: (e) => chain(e!).setHorizo
 def({ id: 'insert.codeBlock', label: 'Code block', run: (e) => chain(e!).toggleCodeBlock().run(), isActive: (e) => e.isActive('codeBlock') })
 def({ id: 'insert.quote', label: 'Block quote', run: (e) => chain(e!).toggleBlockquote().run(), isActive: (e) => e.isActive('blockquote') })
 def({ id: 'insert.date', label: 'Date', run: (e) => chain(e!).insertContent(new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })).run() })
+def({ id: 'insert.toc', label: 'Table of contents', run: (e) => insertToc(e!) })
+def({ id: 'toc.update', label: 'Update table of contents', shortcut: 'F9', run: (e) => updateTocsSettled(e!) })
 def({ id: 'insert.header', label: 'Edit header', run: () => editHF('header') })
 def({ id: 'insert.footer', label: 'Edit footer', run: () => editHF('footer') })
 def({ id: 'insert.lineBreak', label: 'Line break', shortcut: 'Shift-Enter', run: (e) => chain(e!).setHardBreak().run() })

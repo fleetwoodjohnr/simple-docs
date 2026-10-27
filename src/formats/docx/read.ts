@@ -102,6 +102,47 @@ class Reader {
   imageCount = 0
   /** Parsing a header/footer: page-number style fields become live field nodes. */
   inHF = false
+  tocLevel = new Map<string, number>()
+
+  /** A Word TOC content control → our toc node (entries keep their text and cached page numbers). */
+  tocBlock(sdt: El): JSONContent[] {
+    const before: JSONContent[] = []
+    const entries: JSONContent[] = []
+    let max = 3
+    for (const p of findAll(child(sdt, NS.w, 'sdtContent'), NS.w, 'p')) {
+      const style = wval(child(child(p, NS.w, 'pPr'), NS.w, 'pStyle'))
+      const level = style ? this.tocLevel.get(style) : undefined
+      const instr = findAll(p, NS.w, 'instrText').map(textOf).join('')
+      const m = /\\o\s*"\d+-(\d+)"/.exec(instr)
+      if (m) max = Number(m[1])
+      const full = findAll(p, NS.w, 't').map(textOf).join('').trim()
+      if (!level) {
+        if (full) before.push({ type: 'paragraph', attrs: { styleId: style ? this.normId(style) : 'TOCHeading' }, content: [{ type: 'text', text: full }] })
+        continue
+      }
+      // Text before the last tab is the title; after it, the cached page number.
+      const runs = findAll(p, NS.w, 'r').filter((r) => !findAll(r, NS.w, 'instrText').length)
+      let text = ''
+      let page = ''
+      let afterTab = false
+      for (const r of runs) {
+        for (const e of elements(r)) {
+          if (is(e, NS.w, 'tab')) {
+            if (afterTab) text += page
+            afterTab = true
+            page = ''
+          } else if (is(e, NS.w, 't')) {
+            if (afterTab) page += textOf(e)
+            else text += textOf(e)
+          }
+        }
+      }
+      if (!afterTab) text += page
+      entries.push({ type: 'tocEntry', attrs: { level, page: page.trim(), target: null }, content: text.trim() ? [{ type: 'text', text: text.trim() }] : undefined })
+    }
+    if (!entries.length) return [...before, ...this.blocks(child(sdt, NS.w, 'sdtContent')!)]
+    return [...before, { type: 'toc', attrs: { maxLevel: max }, content: entries }]
+  }
 
   constructor(
     public files: Record<string, Uint8Array>,
@@ -330,6 +371,12 @@ class Reader {
       const id = attr(s, NS.w, 'styleId')
       const name = (wval(child(s, NS.w, 'name')) ?? '').toLowerCase()
       if (!id) continue
+      const tm = /^toc ([1-9])$/.exec(name)
+      if (tm) {
+        this.tocLevel.set(id, Number(tm[1]))
+        this.styleIdMap.set(id, `TOC${tm[1]}`)
+      }
+      if (name === 'toc heading') this.styleIdMap.set(id, 'TOCHeading')
       const hm = /^heading ([1-9])$/.exec(name)
       if (hm) {
         this.styleIdMap.set(id, `Heading${hm[1]}`)
@@ -835,9 +882,9 @@ class Reader {
         if (depth > 0) this.w.add('info', 'Nested tables are supported but edited as regular tables')
         out.push(this.table(e, depth))
       } else if (is(e, NS.w, 'sdt')) {
-        const inner = this.blocks(child(e, NS.w, 'sdtContent')!, depth)
-        if (find(child(e, NS.w, 'sdtPr'), NS.w, 'docPartGallery')) this.w.add('info', 'Content controls (like a table of contents) are kept as their content')
-        out.push(...inner)
+        const gallery = wval(find(child(e, NS.w, 'sdtPr'), NS.w, 'docPartGallery'))
+        if (gallery === 'Table of Contents') out.push(...this.tocBlock(e))
+        else out.push(...this.blocks(child(e, NS.w, 'sdtContent')!, depth))
       } else if (is(e, NS.w, 'customXml') || is(e, NS.w, 'ins') || is(e, NS.w, 'moveTo')) {
         out.push(...this.blocks(e, depth))
       } else if (is(e, NS.w, 'sectPr') || is(e, NS.w, 'tcPr') || is(e, NS.w, 'bookmarkStart') || is(e, NS.w, 'bookmarkEnd') || is(e, NS.w, 'proofErr') || is(e, NS.w, 'del')) {

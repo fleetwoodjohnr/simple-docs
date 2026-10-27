@@ -4,7 +4,7 @@ import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, CalendarDays, CaseSensitive, ChevronDown, ChevronUp, ClipboardPaste, Code2, Columns3, Copy, Eraser, Eye, FileDown, Focus,
   Highlighter, Image as ImageIcon, IndentDecrease, IndentIncrease, Info, Italic, Keyboard, Link2, List, ListChecks, ListOrdered, Maximize2, Minus, Moon, PaintBucket, Paintbrush, PanelLeft,
   PanelRight, Pilcrow, Plus, Printer, Quote, Redo2, Replace, Ruler, Scissors, Search, Settings, Sigma, SquareDashed, Strikethrough, Subscript, Superscript, Table2, Type, Underline, Undo2,
-  Volume2, WrapText, ZoomIn, ZoomOut, BookOpen, PanelTop, PanelBottom, Hash, FileCode2, ShieldCheck, Merge, Split, Trash2, Rows3, AlignStartVertical, AlignEndVertical, RectangleHorizontal, RectangleVertical
+  Volume2, WrapText, ZoomIn, ZoomOut, BookOpen, PanelTop, PanelBottom, Hash, ListTree, RefreshCw, FileCode2, ShieldCheck, Merge, Split, Trash2, Rows3, AlignStartVertical, AlignEndVertical, RectangleHorizontal, RectangleVertical
 } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { useApp, set, updateSettings, type RibbonTab } from '../state/store'
@@ -729,6 +729,15 @@ function LayoutTab({ editor, s }: { editor: Editor; s: Snapshot }) {
 function ReferencesTab() {
   return (
     <>
+      <Group label="Table of contents">
+        <TextBtn icon={<ListTree />} label="Insert a table of contents built from your headings" onClick={() => runCommand('insert.toc')}>
+          Table of contents
+        </TextBtn>
+        <TextBtn icon={<RefreshCw />} label="Update entries and page numbers" shortcut={shortcutFor('toc.update')} onClick={() => runCommand('toc.update')}>
+          Update table
+        </TextBtn>
+      </Group>
+      <Sep />
       <Group label="Links">
         <TextBtn icon={<Link2 />} label="Insert hyperlink" shortcut={shortcutFor('insert.link')} onClick={() => runCommand('insert.link')}>
           Hyperlink
@@ -738,7 +747,7 @@ function ReferencesTab() {
         </TextBtn>
       </Group>
       <Sep />
-      <Note>Table of contents, footnotes, endnotes, citations and captions arrive in the next milestone.</Note>
+      <Note>Footnotes, endnotes, citations and captions are coming next.</Note>
     </>
   )
 }

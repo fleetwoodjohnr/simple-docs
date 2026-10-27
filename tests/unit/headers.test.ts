@@ -62,3 +62,37 @@ describe('headers and footers', () => {
     expect(hfVariantFor({ ...hf, differentFirst: false }, 0)).toBe('default')
   })
 })
+
+describe('table of contents', () => {
+  const doc = richDoc()
+  doc.content!.splice(1, 0, { type: 'paragraph', attrs: { styleId: 'TOCHeading' }, content: [{ type: 'text', text: 'Contents' }] }, {
+    type: 'toc',
+    attrs: { maxLevel: 2 },
+    content: [
+      { type: 'tocEntry', attrs: { level: 1, page: '1', target: 0 }, content: [{ type: 'text', text: 'Introduction' }] },
+      { type: 'tocEntry', attrs: { level: 2, page: '1', target: 1 }, content: [{ type: 'text', text: 'Lists' }] },
+      { type: 'tocEntry', attrs: { level: 1, page: '2', target: 3 }, content: [{ type: 'text', text: 'After the break' }] }
+    ]
+  })
+  const out = exportDocx(doc).data
+
+  it('writes a Word TOC content control with a TOC field and dot-leader tabs', () => {
+    const xml = strFromU8(unzipSync(out)['word/document.xml'])
+    expect(xml).toContain('<w:docPartGallery w:val="Table of Contents"/>')
+    expect(xml).toContain('TOC \\o "1-2" \\h \\z \\u')
+    expect(xml).toContain('w:leader="dot"')
+    expect(strFromU8(unzipSync(out)['word/styles.xml'])).toContain('<w:name w:val="toc 2"/>')
+  })
+
+  it('reads it back as a toc node with levels and page numbers', () => {
+    const back = importDocx(out).doc
+    const toc = back.content!.find((n) => n.type === 'toc')!
+    expect(toc.attrs!.maxLevel).toBe(2)
+    expect(toc.content!.map((e) => [e.attrs!.level, e.content?.[0]?.text, e.attrs!.page])).toEqual([
+      [1, 'Introduction', '1'],
+      [2, 'Lists', '1'],
+      [1, 'After the break', '2']
+    ])
+    expect(back.content!.some((n) => n.attrs?.styleId === 'TOCHeading')).toBe(true)
+  })
+})

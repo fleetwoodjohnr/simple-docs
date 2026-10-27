@@ -263,6 +263,8 @@ class Writer {
         return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>'
       case 'table':
         return this.table(n)
+      case 'toc':
+        return this.toc(n)
       case 'preservedBlock':
         return this.preserved(n, true)
       default:
@@ -270,6 +272,22 @@ class Writer {
     }
   }
   usedCode = false
+  tocLevels = new Set<number>()
+
+  /** TOC as Word's content control + TOC field, with the current entries as the cached result. */
+  toc(n: JSONContent): string {
+    const entries = n.content ?? []
+    const max = Number(n.attrs?.maxLevel) || 3
+    const right = Math.round(this.contentWidthPx * 15)
+    const paras = entries.map((e, i) => {
+      const level = Math.min(9, Number(e.attrs?.level) || 1)
+      this.tocLevels.add(level)
+      const begin = i === 0 ? `<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \\o "1-${max}" \\h \\z \\u </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>` : ''
+      const end = i === entries.length - 1 ? '<w:r><w:fldChar w:fldCharType="end"/></w:r>' : ''
+      return `<w:p><w:pPr><w:pStyle w:val="TOC${level}"/><w:tabs><w:tab w:val="right" w:leader="dot" w:pos="${right}"/></w:tabs></w:pPr>${begin}${this.inline(e.content)}<w:r><w:tab/></w:r><w:r><w:t>${x(String(e.attrs?.page ?? ''))}</w:t></w:r>${end}</w:p>`
+    })
+    return `<w:sdt><w:sdtPr><w:docPartObj><w:docPartGallery w:val="Table of Contents"/><w:docPartUnique/></w:docPartObj></w:sdtPr><w:sdtContent>${paras.join('')}</w:sdtContent></w:sdt>`
+  }
 
   /** Raw XML is written back only when every part it references travels with the document. */
   preserved(n: JSONContent, block: boolean): string {
@@ -481,12 +499,15 @@ class Writer {
     const wordName = (id: string, name: string) => {
       const h = /^Heading([1-9])$/.exec(id)
       if (h) return `heading ${h[1]}`
-      return ({ Caption: 'caption', NoSpacing: 'No Spacing', ListParagraph: 'List Paragraph' } as Record<string, string>)[id] ?? name
+      const toc = /^TOC([1-9])$/.exec(id)
+      if (toc) return `toc ${toc[1]}`
+      return ({ Caption: 'caption', NoSpacing: 'No Spacing', ListParagraph: 'List Paragraph', TOCHeading: 'TOC Heading' } as Record<string, string>)[id] ?? name
     }
     let out = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="w14">`
     out += `<w:docDefaults><w:rPrDefault>${runXml({ fontFamily: normal.run.fontFamily ?? 'Calibri', fontSize: normal.run.fontSize ?? 11 }) || '<w:rPr/>'}</w:rPrDefault><w:pPrDefault>${paraXml({ spaceAfter: normal.para.spaceAfter ?? 8, lineHeight: normal.para.lineHeight ?? 1.15 }) || '<w:pPr/>'}</w:pPrDefault></w:docDefaults>`
     const ids = Object.keys(this.styles)
     if (!ids.includes('ListParagraph')) this.styles.ListParagraph = { id: 'ListParagraph', name: 'List Paragraph', type: 'paragraph', basedOn: 'Normal', para: { contextual: true } as ParaProps }
+    for (const lvl of this.tocLevels) if (!ids.includes(`TOC${lvl}`)) this.styles[`TOC${lvl}`] = { id: `TOC${lvl}`, name: `toc ${lvl}`, type: 'paragraph', basedOn: 'Normal', next: 'Normal', para: { spaceAfter: 4, indentLeft: (lvl - 1) * 14 }, run: lvl === 1 ? { bold: true } : {} }
     if (this.usedCode && !ids.includes('Code')) this.styles.Code = { id: 'Code', name: 'Code', type: 'paragraph', basedOn: 'Normal', run: { fontFamily: 'Courier New', fontSize: 9.5 }, para: { spaceAfter: 0, lineHeight: 1 } }
     for (const s of Object.values(this.styles)) {
       if (s.type !== 'paragraph') continue
