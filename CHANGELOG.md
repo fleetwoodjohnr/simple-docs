@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **New application icon.** A white page with a text cursor on an indigo tile, drawn to Apple's icon grid on macOS. The title bar logo matches it.
 - **Word charts and shapes.** Charts and shapes are saved to DOCX as native Word charts (with their data in an embedded workbook, so Word's *Edit Data* works) and native Word shapes, not pictures. Charts and plainly coloured shapes in Word and LibreOffice files open as editable drawings, and go back unchanged unless edited.
 - **Mail merge.** The recipient list is saved with the document (DOCX) and can be removed from the ribbon.
 - **PDF.**

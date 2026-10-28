@@ -19,6 +19,7 @@ npm run build && npm start  # production build
 | `npm run e2e` | Build, then Playwright drives the real Electron app (acceptance tests, ODT/RTF bridge, 240-page performance) |
 | `npm run e2e:headless` | Same, under `xvfb-run` (Linux CI / no display) |
 | `npm run fixtures` | Regenerate `tests/fixtures/complex.{docx,odt,rtf,pdf}`, `protected.pdf` and `scanned.pdf` from `tests/fixtures/src/*.fodt` (LibreOffice, poppler, ImageMagick) |
+| `npm run icons` | Regenerate `resources/icon.png` and the macOS `icon-mac.png` from `resources/icon.svg` (ImageMagick with librsvg) |
 | `npm run dist` | Build installers with electron-builder (AppImage, deb and rpm on Linux; NSIS on Windows; dmg and zip on macOS). See [RELEASE.md](RELEASE.md) |
 | `SD_PACKAGED=release/linux-unpacked/simple-docs npx playwright test` | Run the E2E suite against a packaged build |
 

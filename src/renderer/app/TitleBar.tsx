@@ -12,14 +12,15 @@ export function Logo({ size = 22 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
       <defs>
         <linearGradient id="sd-logo" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="var(--accent)" />
+          <stop offset="0" stopColor="color-mix(in oklab, var(--accent) 82%, #fff)" />
           <stop offset="1" stopColor="color-mix(in oklab, var(--accent) 55%, #1b1b3a)" />
         </linearGradient>
       </defs>
-      <rect x="1" y="1" width="30" height="30" rx="8" fill="url(#sd-logo)" />
-      <path d="M10 9.5h8.5l3.5 3.5v9.5a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 9 22.5v-11.5A1.5 1.5 0 0 1 10.5 9.5Z" fill="#fff" fillOpacity=".96" />
-      <path d="M18.5 9.5V12a1 1 0 0 0 1 1H22Z" fill="color-mix(in oklab, var(--accent) 35%, #fff)" />
-      <path d="M12 16.5h7M12 19h7M12 21.5h4.5" stroke="var(--accent)" strokeWidth="1.4" strokeLinecap="round" />
+      {/* the app icon (resources/icon.svg) without its shadow and sheen */}
+      <rect x="1" y="1" width="30" height="30" rx="7" fill="url(#sd-logo)" />
+      <path d="M10.1 6H19.2L23.4 10.2V23.7a1.5 1.5 0 0 1-1.5 1.5H10.1a1.5 1.5 0 0 1-1.5-1.5V7.5A1.5 1.5 0 0 1 10.1 6Z" fill="#fff" />
+      <path d="M19.2 6V9.1a1.1 1.1 0 0 0 1.1 1.1H23.4Z" fill="color-mix(in oklab, var(--accent) 35%, #fff)" />
+      <rect x="11.2" y="9.3" width="1.8" height="6.7" rx=".9" fill="var(--accent)" />
     </svg>
   )
 }

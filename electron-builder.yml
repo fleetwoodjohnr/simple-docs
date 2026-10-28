@@ -42,7 +42,8 @@ linux:
   # deb and rpm take the maintainer and homepage from package.json; rpm also needs rpmbuild (RELEASE.md)
   target: [AppImage, deb, rpm]
   syncDesktopName: true
-  icon: resources/icon.png
+  # one PNG per size: the hicolor theme has no 1024x1024 directory, so a lone 1024 px icon is never found
+  icon: resources/icons
   category: Office
   mimeTypes:
     - application/vnd.openxmlformats-officedocument.wordprocessingml.document
@@ -70,6 +71,8 @@ mac:
       arch: [arm64, x64]
     - target: zip
       arch: [arm64, x64]
+  # Apple's icon grid: an 824 px tile inset 100 px, with a shadow (npm run icons)
+  icon: resources/icon-mac.png
   category: public.app-category.productivity
   # Unsigned: Apple Silicon only runs signed code, so sign ad hoc. With a Developer ID certificate, remove both lines.
   identity: "-"

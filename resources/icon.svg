@@ -1,12 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 32 32">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Source of the app icon. Regenerate the PNGs with `npm run icons`. -->
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#5b5bd6"/>
-      <stop offset="1" stop-color="#3e3e90"/>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7172f4"/>
+      <stop offset=".5" stop-color="#5354cc"/>
+      <stop offset="1" stop-color="#2f2f84"/>
     </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".16"/>
+      <stop offset=".5" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#eaecfa"/>
+    </linearGradient>
+    <linearGradient id="fold" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#bfc1f2"/>
+      <stop offset="1" stop-color="#e8e9fc"/>
+    </linearGradient>
+    <linearGradient id="caret" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6869ee"/>
+      <stop offset="1" stop-color="#3b3bae"/>
+    </linearGradient>
+    <filter id="lift" x="-25%" y="-20%" width="150%" height="150%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="30" result="b"/>
+      <feOffset in="b" dy="36" result="o"/>
+      <feFlood flood-color="#0e0e36" flood-opacity=".5"/>
+      <feComposite in2="o" operator="in" result="s"/>
+      <feMerge><feMergeNode in="s"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
   </defs>
-  <rect x="2" y="2" width="28" height="28" rx="7" fill="url(#g)"/>
-  <path d="M10 9.5h8.5l3.5 3.5v9.5a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 9 22.5v-11.5A1.5 1.5 0 0 1 10.5 9.5Z" fill="#fff" fill-opacity=".96"/>
-  <path d="M18.5 9.5V12a1 1 0 0 0 1 1H22Z" fill="#c7c7f0"/>
-  <path d="M12 16.5h7M12 19h7M12 21.5h4.5" stroke="#5b5bd6" stroke-width="1.4" stroke-linecap="round"/>
+  <!-- tile, top sheen, faint inner edge -->
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#tile)"/>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#sheen)"/>
+  <rect x="65" y="65" width="894" height="894" rx="199" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width="2"/>
+  <!-- page with a folded corner, and the text cursor where writing starts -->
+  <path d="M336 214H608L732 338V742a44 44 0 0 1-44 44H336a44 44 0 0 1-44-44V258a44 44 0 0 1 44-44Z" fill="url(#paper)" filter="url(#lift)"/>
+  <path d="M608 214V304a34 34 0 0 0 34 34H732Z" fill="url(#fold)"/>
+  <rect x="372" y="312" width="48" height="200" rx="24" fill="url(#caret)"/>
 </svg>
