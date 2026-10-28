@@ -54,7 +54,9 @@ const api: SimpleDocsApi = {
   onOpenFiles: (cb) => on<[OpenedFile[]]>('app:open-files', cb),
   onCloseRequest: (cb) => on('app:close-request', cb),
   onMenuCommand: (cb) => on<[string]>('app:menu-command', cb),
-  confirmClose: () => void ipcRenderer.invoke('app:confirm-close')
+  confirmClose: () => void ipcRenderer.invoke('app:confirm-close'),
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  appVersion: () => ipcRenderer.invoke('app:version')
 }
 
 contextBridge.exposeInMainWorld('simpleDocs', api)

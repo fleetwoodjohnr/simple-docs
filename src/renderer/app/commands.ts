@@ -483,6 +483,7 @@ def({ id: 'review.showComments', label: 'Show comments', needsEditor: false, run
 def({ id: 'tools.stats', label: 'Word count', shortcut: 'Mod-Shift-g', run: () => set({ dialog: { kind: 'stats' } }) })
 def({ id: 'tools.settings', label: 'Settings', shortcut: isMac ? 'Mod-,' : 'Mod-Alt-s', global: true, needsEditor: false, run: () => set({ dialog: { kind: 'settings' } }) })
 def({ id: 'tools.shortcuts', label: 'Keyboard shortcuts', shortcut: 'Mod-/', global: true, needsEditor: false, run: () => set({ dialog: { kind: 'shortcuts' } }) })
+def({ id: 'app.checkUpdates', label: 'Check for updates…', needsEditor: false, run: () => void window.simpleDocs.checkForUpdates() })
 def({ id: 'tools.compat', label: 'Compatibility report', run: () => set({ dialog: { kind: 'compat', tabId: get().active } }) })
 def({ id: 'tools.speak', label: 'Read aloud', run: (e) => speak(e!) })
 

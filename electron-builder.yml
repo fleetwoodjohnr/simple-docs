@@ -2,6 +2,12 @@ appId: app.simpledocs.desktop
 productName: Simple Docs
 copyright: Copyright © Simple Docs contributors
 icon: resources/icon.png
+# Updates: the app reads its releases from here (electron-updater); CI builds with --publish never and the tag job uploads.
+publish:
+  provider: github
+  owner: fleetwoodjohnr
+  repo: simple-docs
+  releaseType: release
 directories:
   output: release
   buildResources: resources

@@ -509,6 +509,22 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 const ACCENTS = ['#5b5bd6', '#2563eb', '#0891b2', '#059669', '#d97706', '#dc2626', '#db2777', '#7c3aed', '#3f3f46']
 const FONTS = ['Calibri', 'Cambria', 'Arial', 'Times New Roman', 'Georgia', 'Liberation Sans', 'Liberation Serif']
 
+function UpdateSettings() {
+  const on = useApp((x) => x.settings.updateCheck)
+  const [version, setVersion] = useState('')
+  useEffect(() => void window.simpleDocs.appVersion().then(setVersion), [])
+  return (
+    <>
+      <Row label="Check automatically" hint="Once a day at startup, Simple Docs asks GitHub whether a newer version exists. Nothing is downloaded until you choose Install.">
+        <Switch label="Check for updates automatically" checked={on} onChange={(updateCheck) => void updateSettings({ updateCheck })} />
+      </Row>
+      <Row label="Version" hint={version ? `Simple Docs ${version}` : undefined}>
+        <Btn onClick={() => void window.simpleDocs.checkForUpdates()}>Check now</Btn>
+      </Row>
+    </>
+  )
+}
+
 function SettingsDialog({ initial }: { initial?: string }) {
   const s = useApp((x) => x.settings)
   const lo = useApp((x) => x.libreOffice)
@@ -519,6 +535,7 @@ function SettingsDialog({ initial }: { initial?: string }) {
     ['editor', 'Editor'],
     ['documents', 'New documents'],
     ['saving', 'Saving & recovery'],
+    ['updates', 'Updates'],
     ['privacy', 'Privacy & formats'],
     ['ai', 'AI assistant']
   ]
@@ -667,11 +684,12 @@ function SettingsDialog({ initial }: { initial?: string }) {
               </Row>
             </>
           )}
+          {section === 'updates' && <UpdateSettings />}
           {section === 'ai' && <AiSettings />}
           {section === 'privacy' && (
             <div className="space-y-3 py-3 text-[13px] leading-relaxed text-text-2">
               <p>
-                <strong className="text-text">Simple Docs works fully offline.</strong> It makes no network requests, has no account, and sends no telemetry. Documents, settings, version history and recovery snapshots stay on this computer. The one exception is the optional AI assistant: it is off unless you turn it on, and even then sends only the text you review and approve for each request.
+                <strong className="text-text">Simple Docs works fully offline.</strong> It has no account and sends no telemetry. Documents, settings, version history and recovery snapshots stay on this computer. It goes online in two cases only: the update check, which asks GitHub once a day whether there is a newer version (no document data; turn it off under Updates), and the optional AI assistant, which is off unless you turn it on and then sends only the text you review and approve for each request.
               </p>
               <p>Links you open from a document go to your default browser.</p>
               <div className="rounded-lg border border-border p-3">

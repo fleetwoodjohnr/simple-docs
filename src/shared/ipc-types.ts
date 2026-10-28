@@ -49,6 +49,10 @@ export interface Settings {
   customWords: string[]
   /** Optional AI writing assistant; off unless the user turns it on. */
   aiEnabled: boolean
+  /** Ask GitHub for a newer version at startup (at most daily). */
+  updateCheck: boolean
+  /** When the automatic update check last ran (ms since epoch). */
+  lastUpdateCheck: number
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -72,7 +76,9 @@ export const DEFAULT_SETTINGS: Settings = {
   shortcuts: {},
   quickAccess: ['file.save', 'edit.undo', 'edit.redo'],
   customWords: [],
-  aiEnabled: false
+  aiEnabled: false,
+  updateCheck: true,
+  lastUpdateCheck: 0
 }
 
 export interface PdfOptions {
@@ -140,4 +146,7 @@ export interface SimpleDocsApi {
   onCloseRequest(cb: () => void): () => void
   onMenuCommand(cb: (id: string) => void): () => void
   confirmClose(): void
+  /** Check GitHub for a newer version now; the main process shows the outcome in native dialogs. */
+  checkForUpdates(): Promise<void>
+  appVersion(): Promise<string>
 }

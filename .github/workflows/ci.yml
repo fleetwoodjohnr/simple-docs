@@ -1,4 +1,5 @@
-# Build and test on Linux, Windows and macOS; tags (v*) also draft a GitHub release with the installers.
+# Build and test on Linux, Windows and macOS; tags (v*) also draft a GitHub release with the installers and the
+# latest*.yml files the in-app updater reads (it only sees the release once the draft is published).
 # Builds are unsigned (see RELEASE.md): macOS gets an ad-hoc signature so Apple Silicon will run it.
 name: CI
 
@@ -76,6 +77,8 @@ jobs:
             release/*.exe
             release/*.dmg
             release/*.zip
+            release/*.blockmap
+            release/latest*.yml
 
       - uses: actions/upload-artifact@v7
         if: failure()
@@ -100,6 +103,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # The in-app updater downloads the names written in latest*.yml, where spaces are dashes
+          for f in dist/*' '*; do [ -e "$f" ] && mv "$f" "${f// /-}"; done
           # Notes: the newest CHANGELOG section
           awk '/^## /{n++} n==1' CHANGELOG.md > notes.md
           gh release create "$GITHUB_REF_NAME" dist/* --draft --title "Simple Docs ${GITHUB_REF_NAME#v}" --notes-file notes.md

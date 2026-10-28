@@ -7,6 +7,7 @@ import * as store from './store'
 import * as lo from './libreoffice'
 import { recognize, stopOcr } from './ocr'
 import { aiStatus, cancelAi, runAi, setApiKey } from './ai'
+import { checkForUpdates, installIfRequested, scheduleUpdateCheck } from './updater'
 
 const isMac = process.platform === 'darwin'
 const DOC_EXTENSIONS = ['docx', 'odt', 'md', 'markdown', 'html', 'htm', 'txt', 'rtf', 'doc', 'pdf']
@@ -125,7 +126,21 @@ function buildMenu() {
     return
   }
   const template: MenuItemConstructorOptions[] = [
-    { role: 'appMenu' },
+    {
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { label: 'Check for Updates…', click: () => void checkForUpdates(mainWindow, true) },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    },
     {
       label: 'File',
       submenu: [
@@ -344,6 +359,8 @@ function registerIpc() {
     if (typeof url !== 'string' || !/^(https?:|mailto:)/i.test(url)) throw new Error('Blocked URL')
     await shell.openExternal(url)
   })
+  handle('update:check', () => checkForUpdates(mainWindow, true))
+  handle('app:version', () => app.getVersion())
   handle('app:confirm-close', () => {
     allowClose = true
     mainWindow?.close()
@@ -375,12 +392,14 @@ if (!app.requestSingleInstanceLock()) {
     buildMenu()
     pendingOpen.push(...filesFromArgv(process.argv))
     createWindow(await store.getSettings())
+    scheduleUpdateCheck(() => mainWindow)
     app.on('activate', async () => {
       if (!mainWindow) createWindow(await store.getSettings())
     })
   })
 
   app.on('window-all-closed', () => {
+    if (installIfRequested()) return
     if (!isMac) app.quit()
   })
   app.on('will-quit', () => void stopOcr())

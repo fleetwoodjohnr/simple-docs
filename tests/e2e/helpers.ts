@@ -19,7 +19,8 @@ export async function launch(opts: { userData?: string; settings?: Record<string
   if (opts.settings) writeFileSync(path.join(userData, 'settings.json'), JSON.stringify(opts.settings))
   // SD_PACKAGED=path/to/binary runs the suite against an electron-builder output instead of the dev build.
   const packaged = process.env.SD_PACKAGED
-  const app = await electron.launch({ ...(packaged ? { executablePath: packaged, args: [] } : { args: ['.'] }), env: { ...process.env, ...opts.env, SIMPLE_DOCS_USER_DATA: userData } })
+  // Update checks go to a closed local port unless a test serves a feed: tests never contact GitHub.
+  const app = await electron.launch({ ...(packaged ? { executablePath: packaged, args: [] } : { args: ['.'] }), env: { ...process.env, SD_UPDATE_URL: 'http://127.0.0.1:9', ...opts.env, SIMPLE_DOCS_USER_DATA: userData } })
   const page = await app.firstWindow()
   const violations: string[] = []
   page.on('console', (m) => /Content.Security.Policy/i.test(m.text()) && violations.push(m.text()))
