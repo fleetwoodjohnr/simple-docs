@@ -23,16 +23,16 @@ jobs:
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
 
-      # poppler (pdftotext, pdftoppm) lets the tests check exported PDFs; LibreOffice is the independent DOCX/ODT reader.
+      # poppler (pdftotext, pdftoppm) lets the tests check exported PDFs; LibreOffice is the independent DOCX/ODT reader (Calc reads the chart workbooks).
       - name: Test tools (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y xvfb poppler-utils libreoffice-writer rpm
+        run: sudo apt-get update && sudo apt-get install -y xvfb poppler-utils libreoffice-writer libreoffice-calc rpm
       - name: Test tools (macOS)
         if: runner.os == 'macOS'
         run: brew install poppler
@@ -65,7 +65,7 @@ jobs:
             macOS) SD_PACKAGED="$PWD/release/mac-arm64/Simple Docs.app/Contents/MacOS/Simple Docs" npx playwright test ;;
           esac
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: installers-${{ runner.os }}
           if-no-files-found: error
@@ -77,7 +77,7 @@ jobs:
             release/*.dmg
             release/*.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: test-results-${{ runner.os }}
@@ -90,8 +90,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           pattern: installers-*

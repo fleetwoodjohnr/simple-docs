@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allCommands } from '../../src/renderer/app/commands'
+import { allCommands, isMac } from '../../src/renderer/app/commands'
 
 describe('keyboard shortcuts', () => {
   it('has no duplicate default bindings', () => {
@@ -22,7 +22,7 @@ describe('keyboard shortcuts', () => {
       'file.saveAs': 'Mod-Shift-s',
       'file.print': 'Mod-p',
       'edit.undo': 'Mod-z',
-      'edit.redo': 'Mod-y',
+      'edit.redo': isMac ? 'Mod-Shift-z' : 'Mod-y', // ⌘⇧Z is the Mac convention
       'fmt.bold': 'Mod-b',
       'fmt.italic': 'Mod-i',
       'fmt.underline': 'Mod-u',
