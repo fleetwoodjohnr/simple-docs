@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { Editor, type JSONContent } from '@tiptap/core'
+import { type JSONContent, type Editor } from '@tiptap/core'
 import { createExtensions } from '@/editor/extensions'
 import { distributeColumns, setTableStyle, sortTable, tableToText, textToTable } from '@/editor/tables'
 import { exportDocx } from '@/formats/docx/write'
 import { importDocx } from '@/formats/docx/read'
 import { exportOdt } from '@/formats/odt/write'
 import { importOdt } from '@/formats/odt/read'
+import { testEditor } from './editor'
 
 const cell = (t: string, h = false): JSONContent => ({ type: h ? 'tableHeader' : 'tableCell', attrs: { colwidth: [120] }, content: [{ type: 'paragraph', content: [{ type: 'text', text: t }] }] })
 const table = (rows: string[][]): JSONContent => ({ type: 'table', content: rows.map((r, i) => ({ type: 'tableRow', content: r.map((t) => cell(t, i === 0)) })) })
-const make = (content: JSONContent[]) => new Editor({ extensions: createExtensions(), content: { type: 'doc', content } })
+const make = (content: JSONContent[]) => testEditor({ extensions: createExtensions(), content: { type: 'doc', content } })
 const rowsOf = (e: Editor) => {
   const out: string[][] = []
   e.state.doc.descendants((n) => {
@@ -93,7 +94,7 @@ describe('style operations', () => {
   it('updates a style from the selection and clears the direct formatting', async () => {
     const { updateStyleFromSelection } = await import('@/editor/style-ops')
     const { defaultStyles } = await import('@/editor/model')
-    const e = new Editor({
+    const e = testEditor({
       extensions: createExtensions(),
       content: { type: 'doc', attrs: { styles: defaultStyles() }, content: [{ type: 'paragraph', attrs: { styleId: 'Quote', align: 'center', spaceAfter: 20 }, content: [{ type: 'text', text: 'Quoted', marks: [{ type: 'textStyle', attrs: { color: '#ff0000', fontSize: '14pt' } }] }] }] }
     })

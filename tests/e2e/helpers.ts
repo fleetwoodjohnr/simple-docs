@@ -1,4 +1,4 @@
-import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
+import { _electron as electron, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -44,6 +44,12 @@ export async function quit(app: ElectronApplication) {
   await app.evaluate(({ app }) => app.exit(0)).catch(() => {})
   const v = cspViolations.get(app)
   if (v?.length) throw new Error(`CSP violations:\n${v.join('\n')}`)
+}
+
+/** Double-click an inline node right of its middle, where ProseMirror's click position falls after the node. */
+export async function dblclickRight(l: Locator) {
+  const b = (await l.boundingBox())!
+  await l.dblclick({ position: { x: b.width * 0.85, y: b.height / 2 } })
 }
 
 const mac = process.platform === 'darwin'

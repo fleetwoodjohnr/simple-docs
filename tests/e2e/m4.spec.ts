@@ -3,7 +3,7 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { strFromU8, unzipSync } from 'fflate'
-import { LINE_END, doc, launch, quit, settle, stubDialogs, tempDir, withEditor } from './helpers'
+import { LINE_END, dblclickRight, doc, launch, quit, settle, stubDialogs, tempDir, withEditor } from './helpers'
 
 test('accessibility checker finds issues and fixes them in place', async () => {
   const { app, page } = await launch()
@@ -222,7 +222,7 @@ test('equations: insert, edit by double-click, survive DOCX and appear in the PD
     await page.getByTestId('equation-save').click()
     const eq = doc(page).locator('.sd-equation')
     await expect(eq.locator('.katex')).toBeVisible()
-    await eq.dblclick()
+    await dblclickRight(eq)
     await expect(page.getByLabel('LaTeX')).toHaveValue('a^2 + b^2 = c^2')
     await page.getByLabel('LaTeX').fill('a^2 + b^2 = c^2 + \\frac{1}{2}')
     await page.getByTestId('equation-save').click()
@@ -296,7 +296,7 @@ test('charts and shapes: insert from data, edit by double-click, saved as native
     await expect(doc(page).locator('img:not(.ProseMirror-separator)')).toHaveCount(2)
     await expect(doc(page).locator('img[alt^="Pie chart"]')).toHaveCount(1)
     // Still editable charts after the round trip: the editor opens with the data.
-    await doc(page).locator('img[alt^="Pie chart"]').dblclick()
+    await dblclickRight(doc(page).locator('img[alt^="Pie chart"]'))
     await expect(page.getByLabel('Chart data')).toHaveValue(/Q2,150/)
     await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Revenue by quarter')
   } finally {

@@ -1,15 +1,16 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { Editor, type JSONContent } from '@tiptap/core'
+import { type JSONContent, type Editor } from '@tiptap/core'
 import { createExtensions } from '@/editor/extensions'
 import { compareDocuments } from '@/editor/compare'
 import { listChanges, resolveChanges } from '@/editor/track'
+import { testEditor } from './editor'
 
 const rev = { author: 'Compare', date: '2026-10-27T10:00:00.000Z' }
 const p = (...parts: (string | JSONContent)[]): JSONContent => ({ type: 'paragraph', content: parts.map((t) => (typeof t === 'string' ? { type: 'text', text: t } : t)) })
 const doc = (...content: JSONContent[]): JSONContent => ({ type: 'doc', content })
 const bold = (t: string): JSONContent => ({ type: 'text', text: t, marks: [{ type: 'bold' }] })
-const load = (json: JSONContent) => new Editor({ extensions: createExtensions(), content: json })
+const load = (json: JSONContent) => testEditor({ extensions: createExtensions(), content: json })
 // (trailing blank lines come from the editor's trailing-paragraph rule)
 const text = (e: Editor) => e.state.doc.textBetween(0, e.state.doc.content.size, '\n').replace(/\n+$/, '')
 

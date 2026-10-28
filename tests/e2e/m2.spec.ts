@@ -114,9 +114,15 @@ test('footnotes: insert, edit, reserve space on the reference page, export', asy
       e.commands.focus('end')
     }`)
     await settle(page, 500)
+    // Slow frames (a busy machine): the note editor has focus before the next frame, so no typed key is lost.
+    await page.evaluate(() => {
+      const raf = window.requestAnimationFrame.bind(window)
+      Object.assign(window, { sdRaf: raf, requestAnimationFrame: (f: FrameRequestCallback) => (setTimeout(() => raf(f), 200), 0) })
+    })
     await page.keyboard.press('ControlOrMeta+Alt+f')
-    await expect(page.getByTestId('note-editor')).toBeVisible()
     await page.keyboard.type('Primary source, 2024.')
+    await page.evaluate(() => Object.assign(window, { requestAnimationFrame: (window as unknown as { sdRaf: typeof requestAnimationFrame }).sdRaf }))
+    await expect(page.getByTestId('note-editor')).toBeVisible()
     await page.keyboard.press('Escape')
     await settle(page, 600)
 

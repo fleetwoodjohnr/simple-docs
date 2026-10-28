@@ -45,9 +45,10 @@ export const Equation = Node.create({
       new Plugin({
         props: {
           // Double-click an equation to edit it.
-          handleDoubleClickOn: (_view, pos, node) => {
+          handleDoubleClickOn: (_view, _pos, node, nodePos) => {
+            // nodePos, not the click position: past the node's midpoint that is the position after it
             if (node.type.name !== 'equation') return false
-            window.dispatchEvent(new CustomEvent('sd:edit-equation', { detail: pos }))
+            window.dispatchEvent(new CustomEvent('sd:edit-equation', { detail: nodePos }))
             return true
           }
         }

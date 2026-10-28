@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import katex from 'katex'
 import { latexToOmml, ommlToLatex } from '@/editor/math/omml'
+import { testEditor } from './editor'
 
 const M = 'xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"'
 const parse = (omml: string) => new DOMParser().parseFromString(omml.replace(/^<m:(oMath(Para)?)>/, `<m:$1 ${M}>`), 'application/xml').documentElement
@@ -61,7 +62,6 @@ describe('OMML → LaTeX', () => {
 })
 
 describe('equations in documents', async () => {
-  const { Editor } = await import('@tiptap/core')
   const { createExtensions } = await import('@/editor/extensions')
   const { exportDocx } = await import('@/formats/docx/write')
   const { importDocx } = await import('@/formats/docx/read')
@@ -76,14 +76,14 @@ describe('equations in documents', async () => {
   }
 
   it('renders with KaTeX (MathML for assistive technology)', () => {
-    const e = new Editor({ extensions: createExtensions(), content: doc })
+    const e = testEditor({ extensions: createExtensions(), content: doc })
     const eq = e.view.dom.querySelector('.sd-equation')!
     expect(eq.querySelector('.katex')).not.toBeNull()
     expect(eq.querySelector('math annotation')?.textContent).toBe('E=mc^2')
   })
 
   it('round-trips through DOCX as Office Math', () => {
-    const e = new Editor({ extensions: createExtensions(), content: doc })
+    const e = testEditor({ extensions: createExtensions(), content: doc })
     const bytes = exportDocx(e.getJSON()).data
     const xmlText = strFromU8(unzipSync(bytes)['word/document.xml'])
     expect(xmlText).toContain('<m:oMath><m:r><m:t xml:space="preserve">E=m</m:t></m:r><m:sSup><m:e><m:r><m:t xml:space="preserve">c</m:t></m:r></m:e>')
@@ -100,7 +100,7 @@ describe('equations in documents', async () => {
   })
 
   it('round-trips through Markdown as $…$ and $$…$$, leaving prices alone', () => {
-    const e = new Editor({ extensions: createExtensions(), content: doc })
+    const e = testEditor({ extensions: createExtensions(), content: doc })
     const text = new TextDecoder().decode(exportMarkdown(e.getJSON()).data)
     expect(text).toContain('Energy $E=mc^2$ holds.')
     expect(text).toContain('$$\\frac{a}{b}$$')

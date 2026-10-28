@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { Editor } from '@tiptap/core'
+import { type Editor } from '@tiptap/core'
 import { strFromU8, unzipSync } from 'fflate'
 import { createExtensions } from '@/editor/extensions'
 import { setProtection, setProtectionNotice } from '@/editor/protection'
@@ -8,8 +8,9 @@ import { addComment } from '@/editor/comments'
 import { listChanges, resolveChanges, setTracking } from '@/editor/track'
 import { exportDocx } from '@/formats/docx/write'
 import { importDocx } from '@/formats/docx/read'
+import { testEditor } from './editor'
 
-const make = () => new Editor({ extensions: createExtensions(), content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello world' }] }] } })
+const make = () => testEditor({ extensions: createExtensions(), content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello world' }] }] } })
 const text = (e: Editor) => e.state.doc.textContent
 
 describe('restrict editing', () => {

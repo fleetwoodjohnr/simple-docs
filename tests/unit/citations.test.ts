@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { Editor, type JSONContent } from '@tiptap/core'
+import { type JSONContent } from '@tiptap/core'
 import { strFromU8, unzipSync } from 'fflate'
 import { createExtensions } from '@/editor/extensions'
 import { formatCitation, formatEntry, insertBibliography, insertCitation, makeTag, saveSource, setCitationStyle, type Source } from '@/editor/citations'
 import { exportDocx } from '@/formats/docx/write'
 import { importDocx } from '@/formats/docx/read'
 import { exportMarkdown } from '@/formats/markdown'
+import { testEditor } from './editor'
 
 const book: Source = { type: 'book', authors: ['Lovelace, Ada Augusta'], title: 'Notes on the Analytical Engine', year: '1843', publisher: 'Taylor' }
 const article: Source = { type: 'article', authors: ['Turing, Alan Mathison', 'Hopper, Grace'], title: 'Computing machinery and intelligence', year: '1950', container: 'Mind', volume: '59', issue: '236', pages: '433–460', doi: '10.1093/mind/LIX.236.433' }
@@ -45,7 +46,7 @@ describe('citation formatting', () => {
 })
 
 describe('citations in a document', () => {
-  const make = () => new Editor({ extensions: createExtensions(), content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'As argued ' }] }] } })
+  const make = () => testEditor({ extensions: createExtensions(), content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'As argued ' }] }] } })
 
   it('inserts citations and a bibliography that follow the style', () => {
     const e = make()

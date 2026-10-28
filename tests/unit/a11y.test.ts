@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import { expect, it } from 'vitest'
-import { Editor, type JSONContent } from '@tiptap/core'
+import { type JSONContent } from '@tiptap/core'
 import { createExtensions } from '@/editor/extensions'
 import { checkAccessibility, contrast } from '@/editor/a11y'
+import { testEditor } from './editor'
 
 const p = (text: string, marks?: JSONContent['marks']): JSONContent => ({ type: 'paragraph', content: text ? [{ type: 'text', text, marks }] : undefined })
 const h = (level: number, text: string): JSONContent => ({ type: 'heading', attrs: { level }, content: text ? [{ type: 'text', text }] : undefined })
 const rules = (content: JSONContent[], attrs: Record<string, unknown> = { meta: { title: 'T' } }) =>
-  checkAccessibility(new Editor({ extensions: createExtensions(), content: { type: 'doc', attrs, content } }).state.doc).map((i) => i.rule)
+  checkAccessibility(testEditor({ extensions: createExtensions(), content: { type: 'doc', attrs, content } }).state.doc).map((i) => i.rule)
 
 it('contrast ratio follows WCAG', () => {
   expect(contrast('#000000', '#ffffff')).toBeCloseTo(21, 0)

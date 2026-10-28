@@ -216,7 +216,11 @@ test('acceptance 18: autosave and crash recovery', async () => {
     await doc(page).click()
     await page.keyboard.type('Unsaved recovery text')
     await expect.poll(() => (existsSync(path.join(userData, 'recovery')) ? readdirSync(path.join(userData, 'recovery')).length : 0), { timeout: 10_000 }).toBeGreaterThan(0)
-    app.process().kill('SIGKILL')
+    // Relaunch once the process is gone: until then Windows still holds its single-instance lock.
+    const crashed = app.process()
+    const exited = new Promise((r) => crashed.once('exit', r))
+    crashed.kill('SIGKILL')
+    await exited
     ;({ app, page } = await launch({ userData }))
     await expect(page.getByTestId('recovery')).toBeVisible()
     await page.getByRole('button', { name: 'Restore' }).first().click()

@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { Editor } from '@tiptap/core'
+import { type Editor } from '@tiptap/core'
 import { createExtensions } from '@/editor/extensions'
 import { listChanges, resolveChanges, setTrackAuthor } from '@/editor/track'
+import { testEditor } from './editor'
 
 setTrackAuthor(() => 'Alice')
 
 function make(text = 'The quick brown fox') {
-  return new Editor({ extensions: createExtensions(), content: { type: 'doc', attrs: { trackChanges: true }, content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] } })
+  return testEditor({ extensions: createExtensions(), content: { type: 'doc', attrs: { trackChanges: true }, content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] } })
 }
 const marked = (e: Editor, name: string) => {
   const out: string[] = []
@@ -71,7 +72,7 @@ describe('track changes', () => {
   })
 
   it('does nothing while tracking is off', () => {
-    const e = new Editor({ extensions: createExtensions(), content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'abc' }] }] } })
+    const e = testEditor({ extensions: createExtensions(), content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'abc' }] }] } })
     e.chain().deleteRange({ from: 1, to: 2 }).run()
     expect(e.getText()).toBe('bc')
   })

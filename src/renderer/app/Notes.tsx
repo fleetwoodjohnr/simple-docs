@@ -66,7 +66,9 @@ export function NoteEditor({ body, pos }: { body: Editor; pos: number }) {
       body.view.dispatch(body.state.tr.setNodeMarkup(pos, undefined, { ...n.attrs, content: editor.getJSON().content ?? [] }))
     }
     editor.on('update', commit)
-    requestAnimationFrame(() => editor.commands.focus('end'))
+    // Tiptap's focus() moves DOM focus a frame later; keys typed right after opening must land here, not in the body.
+    editor.commands.focus('end')
+    editor.view.focus()
     return () => {
       editor.off('update', commit)
       if (hfEditor.current === editor) hfEditor.current = null

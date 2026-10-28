@@ -382,9 +382,10 @@ export const SdImage = Image.extend({
       ...(this.parent?.() ?? []),
       new Plugin({
         props: {
-          handleDoubleClickOn: (_view, pos, node) => {
+          handleDoubleClickOn: (_view, _pos, node, nodePos) => {
+            // nodePos, not the click position: past the node's midpoint that is the position after it
             if (node.type.name !== 'image' || !node.attrs.drawing) return false
-            window.dispatchEvent(new CustomEvent('sd:edit-drawing', { detail: pos }))
+            window.dispatchEvent(new CustomEvent('sd:edit-drawing', { detail: nodePos }))
             return true
           }
         }

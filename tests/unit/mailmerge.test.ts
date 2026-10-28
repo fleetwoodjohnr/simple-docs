@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { Editor, type JSONContent } from '@tiptap/core'
+import { type JSONContent } from '@tiptap/core'
 import { strFromU8, unzipSync } from 'fflate'
 import { createExtensions } from '@/editor/extensions'
 import { insertMergeField, mergeDocuments, mergeFieldsIn, parseCsv, setMergePreview, toCsv } from '@/editor/mailmerge'
 import { exportBytes } from '@/formats/registry'
 import { exportDocx } from '@/formats/docx/write'
 import { importDocx } from '@/formats/docx/read'
+import { testEditor } from './editor'
 
 describe('CSV parsing', () => {
   it('handles quotes, escaped quotes, embedded newlines, CRLF, BOM and blank lines', () => {
@@ -58,14 +59,14 @@ describe('merge', () => {
 
   it('makes one copy per record with page breaks and keeps field formatting', () => {
     const out = mergeDocuments(doc, [{ Name: 'Ada', City: 'London' }, { Name: 'Alan', City: '' }])
-    const e = new Editor({ extensions: createExtensions(), content: out })
+    const e = testEditor({ extensions: createExtensions(), content: out })
     expect(e.state.doc.content.content.map((n) => n.type.name + ':' + n.textContent)).toEqual(['paragraph:Dear Ada, welcome to London.', 'pageBreak:', 'paragraph:Dear Alan, welcome to .'])
     expect(out.content![0].content![1]).toEqual({ type: 'text', text: 'Ada', marks: [{ type: 'bold' }] })
     expect(mergeFieldsIn(doc)).toEqual(['Name', 'City'])
   })
 
   it('previews a record without changing the document, and round-trips fields through DOCX as MERGEFIELD', () => {
-    const e = new Editor({ extensions: createExtensions(), content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hi ' }] }] } })
+    const e = testEditor({ extensions: createExtensions(), content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hi ' }] }] } })
     e.commands.setTextSelection(4)
     insertMergeField(e, 'First Name')
     const before = e.getJSON()
