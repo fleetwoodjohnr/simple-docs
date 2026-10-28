@@ -30,7 +30,8 @@ const REL = {
   hyperlink: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink',
   office: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument',
   core: 'http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties',
-  app: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties'
+  app: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties',
+  thumbnail: 'http://schemas.openxmlformats.org/package/2006/relationships/metadata/thumbnail'
 }
 
 const CT = {
@@ -816,7 +817,8 @@ function parseSizePt(v: string | undefined | null): number | null {
   return m[2] === 'px' ? parseFloat(m[1]) * 0.75 : parseFloat(m[1])
 }
 
-export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): ExportResult {
+/** `thumbnail`: a PNG of page 1, the preview file managers, Finder and Word show for the file. */
+export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null, thumbnail?: Uint8Array): ExportResult {
   const page = (doc.attrs?.page as PageSetup | undefined) ?? makePageSetup()
   const styles: StyleMap = { ...defaultStyles(), ...((doc.attrs?.styles as StyleMap | undefined) ?? {}) }
   const meta = (doc.attrs?.meta ?? {}) as DocMeta
@@ -917,8 +919,9 @@ export function exportDocx(doc: JSONContent, carry: DocxCarry | null = null): Ex
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Simple Docs</Application></Properties>`
   )
   files['_rels/.rels'] = strToU8(
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL.office}" Target="word/document.xml"/><Relationship Id="rId2" Type="${REL.core}" Target="docProps/core.xml"/><Relationship Id="rId3" Type="${REL.app}" Target="docProps/app.xml"/></Relationships>`
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL.office}" Target="word/document.xml"/><Relationship Id="rId2" Type="${REL.core}" Target="docProps/core.xml"/><Relationship Id="rId3" Type="${REL.app}" Target="docProps/app.xml"/>${thumbnail ? `<Relationship Id="rId4" Type="${REL.thumbnail}" Target="docProps/thumbnail.png"/>` : ''}</Relationships>`
   )
+  if (thumbnail) files['docProps/thumbnail.png'] = thumbnail
 
   for (const p of unreachable(files)) delete files[p]
 

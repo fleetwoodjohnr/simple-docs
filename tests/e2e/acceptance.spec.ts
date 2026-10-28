@@ -201,8 +201,15 @@ test('acceptance 18: autosave and crash recovery', async () => {
     await stubDialogs(app, { save: file })
     await page.keyboard.press('ControlOrMeta+s')
     await expect(page.getByTestId('save-status')).toHaveText(/Saved/)
+    // The file carries a 256 px picture of page 1, the preview file managers show
+    const thumbWidth = () => {
+      const png = unzipSync(readFileSync(file))['docProps/thumbnail.png']
+      return png ? new DataView(png.buffer, png.byteOffset).getUint32(16) : 0 // IHDR width
+    }
+    expect(thumbWidth()).toBe(256)
     await page.keyboard.type(' with autosaved words')
     await expect.poll(() => strFromU8(unzipSync(readFileSync(file))['word/document.xml']).includes('autosaved words'), { timeout: 10_000 }).toBe(true)
+    expect(thumbWidth()).toBe(256)
 
     // Crash recovery: unsaved edits survive a hard kill
     await page.keyboard.press('ControlOrMeta+n')

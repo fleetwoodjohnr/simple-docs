@@ -43,16 +43,17 @@ export async function importBytes(format: FormatId, data: Uint8Array, lo: LibreO
   }
 }
 
-export async function exportBytes(format: FormatId, doc: JSONContent, carry: unknown, lo: LibreOfficeBridge): Promise<ExportResult> {
-  const out = await exportAs(format, doc, carry, lo)
+/** `thumbnail`: a PNG of page 1, embedded as the file's preview (DOCX and ODT). */
+export async function exportBytes(format: FormatId, doc: JSONContent, carry: unknown, lo: LibreOfficeBridge, thumbnail?: Uint8Array): Promise<ExportResult> {
+  const out = await exportAs(format, doc, carry, lo, thumbnail)
   if (doc.attrs?.mergeData && format !== 'docx') out.warnings.push({ level: 'loss', message: 'The mail-merge recipient list isn’t saved in this format (DOCX keeps it)' })
   return out
 }
 
-async function exportAs(format: FormatId, doc: JSONContent, carry: unknown, lo: LibreOfficeBridge): Promise<ExportResult> {
+async function exportAs(format: FormatId, doc: JSONContent, carry: unknown, lo: LibreOfficeBridge, thumbnail?: Uint8Array): Promise<ExportResult> {
   switch (format) {
     case 'docx':
-      return exportDocx(doc, (carry as DocxCarry | undefined) ?? null)
+      return exportDocx(doc, (carry as DocxCarry | undefined) ?? null, thumbnail)
     case 'md':
       return exportMarkdown(doc)
     case 'html':
@@ -60,7 +61,7 @@ async function exportAs(format: FormatId, doc: JSONContent, carry: unknown, lo: 
     case 'txt':
       return exportText(doc)
     case 'odt':
-      return exportOdt(doc)
+      return exportOdt(doc, thumbnail)
     default: {
       if (!VIA_LIBREOFFICE.includes(format)) throw new Error(`Cannot save as ${format}`)
       if (format === 'doc') throw new Error('Saving in the legacy .doc format is not supported. Save as DOCX instead.')

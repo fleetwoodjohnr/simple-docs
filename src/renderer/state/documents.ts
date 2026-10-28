@@ -1,6 +1,7 @@
 import type { Editor, JSONContent } from '@tiptap/core'
 import { createDocEditor, emptyDoc, normalizeDoc, type NewDocOptions } from '@/editor/create'
 import { exportBytes, importBytes, type LibreOfficeBridge } from '@/formats/registry'
+import { toBase64 } from '@/formats/docx/xml'
 import { formatFromPath, type FormatId, type FormatWarning } from '@/formats/types'
 import { printDocument, printImages, renderPdf } from '@/export/print'
 import type { OpenedFile, RecoveryEntry } from '@/shared/ipc-types'
@@ -57,6 +58,7 @@ async function writeRecovery(id: string) {
   const editor = editors.get(id)
   const tab = get().tabs.find((t) => t.id === id)
   if (!editor || !tab?.dirty) return
+  void pageOneThumb(id)
   try {
     await api().recoveryWrite(id, JSON.stringify({ title: tab.title, path: tab.path, format: tab.format, doc: editor.getJSON() }))
   } catch {
@@ -189,6 +191,7 @@ export async function openFiles(files: OpenedFile[]) {
       const loss = r.warnings.some((w) => w.level === 'loss')
       addTab({ id, title: baseName(f.name), path: f.path || null, format, warnings: r.warnings, autosaveBlocked: loss, savedAt: f.mtime })
       if (f.path) void addRecent(f.path, f.name)
+      setTimeout(() => void pageOneThumb(id), 1000) // once the pages are laid out
       if (loss) toast(`Opened ${f.name} with compatibility notes — see the ⚠ badge`, 'info')
     } catch (e) {
       toast(`Could not open ${f.name}: ${(e as Error).message}`, 'error')
@@ -259,19 +262,32 @@ async function addRecent(path: string, name: string) {
   }
 }
 
-async function captureThumbnail(id: string, path: string) {
-  await new Promise((r) => setTimeout(r, 50))
-  const sheet = document.querySelector(`[data-doc-scroll="${id}"] .page-sheet`)
-  if (!sheet) return
-  const r = sheet.getBoundingClientRect()
-  const visibleH = Math.min(r.height, window.innerHeight - r.top)
-  if (r.width < 50 || visibleH < 80 || r.top < 0) return
-  try {
-    const thumbnail = await api().capturePage({ x: r.left, y: r.top, width: r.width, height: Math.min(visibleH, r.width * 1.294) })
-    set({ recents: await api().recentUpdate(path, { thumbnail }) })
-  } catch {
-    /* non-critical */
+/**
+ * Per tab, the latest picture of page 1: the preview embedded in saved DOCX/ODT files, and the recents thumbnail.
+ * Only what is on screen can be captured, so page 1 is captured whenever it is visible: on open, at the idle
+ * recovery snapshot and on save. Edits further down rarely change page 1, so the last capture stays accurate.
+ */
+const thumbs = new Map<string, Uint8Array>()
+
+/** Captures page 1 if it is on screen and uncovered; returns the latest capture for the tab, or null. */
+async function pageOneThumb(id: string): Promise<Uint8Array | null> {
+  const scroller = document.querySelector(`[data-doc-scroll="${id}"]`)
+  const r = scroller?.querySelector('.page-sheet')?.getBoundingClientRect()
+  const view = scroller?.getBoundingClientRect()
+  // Visible part of the document area: below the sticky ruler, above the status bar.
+  const top = Math.max(view?.top ?? 0, scroller?.querySelector('[data-testid=ruler]')?.getBoundingClientRect().bottom ?? 0)
+  const firstLine = scroller?.querySelector('.ProseMirror > *')?.getBoundingClientRect().top ?? -1
+  const y = Math.max(r?.top ?? 0, top) // the page's blank top margin may sit under the ruler
+  const height = r && view ? Math.min(r.bottom, view.bottom, r.top + r.width * 1.294) - y : 0
+  if (r && r.width >= 50 && height >= 80 && firstLine >= top && !get().dialog && !get().backstage) {
+    try {
+      const png = await api().capturePage({ x: r.left, y, width: r.width, height })
+      if (png) thumbs.set(id, png)
+    } catch {
+      /* non-critical */
+    }
   }
+  return thumbs.get(id) ?? null
 }
 
 // ---------- save / export ----------
@@ -303,7 +319,9 @@ export async function save(id = get().active, opts: { as?: boolean; format?: For
   }
   try {
     updateTab(id, { status: 'saving' })
-    const result = await exportBytes(format, editor.getJSON(), carries.get(id), lo)
+    await new Promise((r) => setTimeout(r, 50)) // let overlays such as the File backstage close first
+    const thumb = await pageOneThumb(id)
+    const result = await exportBytes(format, editor.getJSON(), carries.get(id), lo, thumb ?? undefined)
     const losses = result.warnings.filter((w) => w.level === 'loss')
     if (losses.length && (asNew || format !== tab.format)) {
       if (!(await confirmWarnings(id, format, losses))) {
@@ -322,7 +340,7 @@ export async function save(id = get().active, opts: { as?: boolean; format?: For
     void api().historyAdd(path!, JSON.stringify(editor.getJSON()), !!opts.auto)
     if (!opts.auto) {
       await addRecent(path!, `${title}.${EXT[format]}`)
-      void captureThumbnail(id, path!)
+      if (thumb) set({ recents: await api().recentUpdate(path!, { thumbnail: `data:image/png;base64,${toBase64(thumb)}` }).catch(() => get().recents) })
     }
     return true
   } catch (e) {
@@ -396,6 +414,7 @@ export function closeTab(id: string, force = false) {
     editors.get(id)?.destroy()
     editors.delete(id)
     carries.delete(id)
+    thumbs.delete(id)
     const ps = pdfSessions.get(id)
     if (ps) void pdf.close(ps.doc)
     pdfSessions.delete(id)

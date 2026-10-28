@@ -473,7 +473,8 @@ function namedStylesXml(styles: StyleMap, tocLevels: Set<number>, contentWidth: 
   return out
 }
 
-export function exportOdt(doc: JSONContent): ExportResult {
+/** `thumbnail`: a PNG of page 1, the preview file managers show for the file. */
+export function exportOdt(doc: JSONContent, thumbnail?: Uint8Array): ExportResult {
   const page = (doc.attrs?.page as PageSetup | undefined) ?? makePageSetup()
   const styles: StyleMap = { ...defaultStyles(), ...((doc.attrs?.styles as StyleMap | undefined) ?? {}) }
   const meta = (doc.attrs?.meta ?? {}) as DocMeta
@@ -521,7 +522,7 @@ export function exportOdt(doc: JSONContent): ExportResult {
   const metaXml = `<?xml version="1.0" encoding="UTF-8"?>\n<office:document-meta ${ODF_DECL} office:version="1.3"><office:meta><meta:generator>Simple Docs</meta:generator>${tag('dc:title', meta.title)}${tag('dc:subject', meta.subject)}${tag('meta:initial-creator', meta.author)}${tag('dc:creator', meta.author)}${tag('meta:keyword', meta.keywords)}${tag('dc:description', meta.description)}<meta:creation-date>${x((meta.created ?? now).replace(/\.\d+Z$|Z$/, ''))}</meta:creation-date><dc:date>${now}</dc:date></office:meta></office:document-meta>`
   const manifest = `<?xml version="1.0" encoding="UTF-8"?>\n<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.3"><manifest:file-entry manifest:full-path="/" manifest:version="1.3" manifest:media-type="application/vnd.oasis.opendocument.text"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/>${Object.keys(wr.pictures)
     .map((p) => `<manifest:file-entry manifest:full-path="${p}" manifest:media-type="${wr.pictureTypes[p]}"/>`)
-    .join('')}</manifest:manifest>`
+    .join('')}${thumbnail ? '<manifest:file-entry manifest:full-path="Thumbnails/thumbnail.png" manifest:media-type="image/png"/>' : ''}</manifest:manifest>`
 
   const files: Record<string, Uint8Array | [Uint8Array, { level: 0 }]> = {
     mimetype: [strToU8('application/vnd.oasis.opendocument.text'), { level: 0 }],
@@ -531,5 +532,6 @@ export function exportOdt(doc: JSONContent): ExportResult {
     'META-INF/manifest.xml': strToU8(manifest),
     ...wr.pictures
   }
+  if (thumbnail) files['Thumbnails/thumbnail.png'] = thumbnail
   return { data: zipSync(files as never, { level: 6 }), warnings: wr.w.list() }
 }

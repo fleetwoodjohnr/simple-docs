@@ -283,7 +283,8 @@ function registerIpc() {
   handle('capture-page', async (e, rect: { x: number; y: number; width: number; height: number }) => {
     const r = Object.fromEntries(['x', 'y', 'width', 'height'].map((k) => [k, Math.max(0, Math.round(Number((rect as never)[k]) || 0))]))
     const img = await e.sender.capturePage(r as never)
-    return 'data:image/jpeg;base64,' + img.resize({ width: 220 }).toJPEG(82).toString('base64')
+    // 256 px wide PNG: the preview embedded in saved files (and the recents thumbnail). Hidden windows capture nothing.
+    return img.isEmpty() ? null : new Uint8Array(img.resize({ width: 256, quality: 'best' }).toPNG())
   })
 
   handle('asset:read', async (_e, url: unknown) => {

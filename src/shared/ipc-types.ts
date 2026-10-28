@@ -108,7 +108,8 @@ export interface SimpleDocsApi {
 
   exportPdf(options: PdfOptions): Promise<Uint8Array>
   print(): Promise<boolean>
-  capturePage(rect: { x: number; y: number; width: number; height: number }): Promise<string>
+  /** A 256 px wide PNG of that part of the window, or null when nothing could be captured. */
+  capturePage(rect: { x: number; y: number; width: number; height: number }): Promise<Uint8Array | null>
 
   /** Read a bundled renderer asset (file:// URL inside the app) — used for the PDFium WASM binary. */
   readAsset(url: string): Promise<Uint8Array>
