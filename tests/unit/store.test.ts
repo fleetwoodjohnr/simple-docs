@@ -1,5 +1,5 @@
-import { afterAll, describe, expect, it } from 'vitest'
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { afterAll, describe, expect, it, vi } from 'vitest'
+import { mkdtempSync, promises, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { atomicWrite } from '@/main/store'
@@ -30,5 +30,26 @@ describe('atomic saves', () => {
     await Promise.all(bodies.map((b) => atomicWrite(f, b)))
     expect(bodies).toContain(readFileSync(f, 'utf8'))
     expect(readdirSync(dir).filter((n) => n.includes('c.txt'))).toEqual(['c.txt'])
+  })
+
+  it('on Windows, retries a replace refused while the file is open elsewhere', async () => {
+    const f = path.join(dir, 'd.docx')
+    writeFileSync(f, 'old')
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform')!
+    const rename = promises.rename
+    let refusals = 2
+    const spy = vi.spyOn(promises, 'rename').mockImplementation(async (a, b) => {
+      if (refusals-- > 0) throw Object.assign(new Error('EPERM: operation not permitted, rename'), { code: 'EPERM' })
+      return rename(a, b)
+    })
+    Object.defineProperty(process, 'platform', { value: 'win32' })
+    try {
+      await atomicWrite(f, 'new')
+      expect(spy).toHaveBeenCalledTimes(3)
+    } finally {
+      Object.defineProperty(process, 'platform', platform)
+      spy.mockRestore()
+    }
+    expect(readFileSync(f, 'utf8')).toBe('new')
   })
 })

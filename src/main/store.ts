@@ -26,7 +26,7 @@ export async function atomicWrite(target: string, data: Uint8Array | string): Pr
     } finally {
       await fh.close()
     }
-    await fs.rename(tmp, target)
+    await replace(tmp, target)
   } catch (err) {
     // A failed write (disk full, permissions…) leaves the original untouched and no temp file behind.
     await fs.rm(tmp, { force: true })
@@ -37,6 +37,18 @@ export async function atomicWrite(target: string, data: Uint8Array | string): Pr
     const d = await fs.open(dir, 'r').catch(() => null)
     await d?.sync().catch(() => {})
     await d?.close()
+  }
+}
+
+/** Windows refuses to replace a file that something else (antivirus, the search indexer, another save) has open for a moment: retry for ~3 s. */
+async function replace(from: string, to: string): Promise<void> {
+  for (let wait = 10; ; wait += 10) {
+    try {
+      return await fs.rename(from, to)
+    } catch (e) {
+      if (process.platform !== 'win32' || wait > 250 || !['EPERM', 'EACCES', 'EBUSY'].includes((e as NodeJS.ErrnoException).code ?? '')) throw e
+      await new Promise((r) => setTimeout(r, wait))
+    }
   }
 }
 
