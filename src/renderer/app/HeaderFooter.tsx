@@ -68,9 +68,7 @@ export function HFEditor({ body, page, kind, index }: { body: Editor; page: Page
       setHF(body, { ...cur, [kind]: { ...cur[kind], [variant]: empty ? null : json } })
     }
     editor.on('update', commit)
-    // Tiptap's focus() moves DOM focus a frame later; keys typed right after opening must land here, not in the body.
     editor.commands.focus('end')
-    editor.view.focus()
     return () => {
       editor.off('update', commit)
       if (hfEditor.current === editor) hfEditor.current = null

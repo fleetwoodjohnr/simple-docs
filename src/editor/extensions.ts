@@ -1,4 +1,4 @@
-import { Extension, Mark, Node, mergeAttributes, type Extensions } from '@tiptap/core'
+import { Extension, Mark, Node, commands as coreCommands, mergeAttributes, type Extensions } from '@tiptap/core'
 import { Plugin, TextSelection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import Heading from '@tiptap/extension-heading'
@@ -452,6 +452,24 @@ export interface ExtensionOptions {
 }
 
 /** All schema + behaviour extensions. Safe to call in Node (no DOM needed to build the schema). */
+/**
+ * Tiptap's focus() moves DOM focus on the next frame, so keys typed right after a ribbon click or a menu choice went to the
+ * button or menu item (a space clicked it again). Focus once the command's transaction is applied; inside the command, the
+ * focus event's own transaction would interleave with it.
+ */
+const FocusAtOnce = Extension.create({
+  name: 'focusAtOnce',
+  addCommands() {
+    return {
+      focus: (position, options) => (props) => {
+        const done = coreCommands.focus(position, options)(props)
+        if (done && props.dispatch && position !== false) queueMicrotask(() => !props.editor.isDestroyed && props.view.focus())
+        return done
+      }
+    }
+  }
+})
+
 export function createExtensions(opts: ExtensionOptions = {}): Extensions {
   return [
     StarterKit.configure({
@@ -470,6 +488,7 @@ export function createExtensions(opts: ExtensionOptions = {}): Extensions {
       },
       dropcursor: { color: 'var(--accent)', width: 2 }
     }),
+    FocusAtOnce,
     SdDocument,
     SdHeading,
     SdBulletList,
