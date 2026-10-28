@@ -9,8 +9,8 @@ _Last updated: 2026-10-27 · Milestones 1–5 complete, plus the follow-up work 
 | Suite | Result |
 |---|---|
 | `npm run typecheck` (strict, main + renderer) | ✅ clean |
-| `npm test` (vitest) | ✅ 191 / 191 (incl. 35 golden round trips in the compatibility corpus + 2 LibreOffice re-save checks) |
-| `npm run e2e:headless` (Playwright + Electron) | ✅ 33 / 33 + 1 packaged-only (every test also fails on any Content-Security-Policy violation) |
+| `npm test` (vitest) | ✅ 194 / 194 (incl. 35 golden round trips in the compatibility corpus + 2 LibreOffice re-save checks) |
+| `npm run e2e:headless` (Playwright + Electron) | ✅ 33 / 33 + 2 packaged-only (every test also fails on any Content-Security-Policy violation) |
 | Same E2E suite against the **packaged** app (`SD_PACKAGED=release/linux-unpacked/simple-docs`) | ✅ 34 / 34 |
 | AppImage smoke test (DOCX, spelling, equations, PDF export, PDFium, OCR) | ✅ |
 | deb: installed in clean Ubuntu 22.04 and 24.04 containers, every shared library resolved; smoke test on its binary | ✅ |
@@ -286,6 +286,15 @@ The five open items from the 0.1.0 report, plus the bugs that came up while doin
   - uploads the installers; a `v*` tag drafts a GitHub release.
 
   Builds are unsigned by decision; macOS builds are signed ad hoc so Apple Silicon runs them. The tests were made portable for it: tools are found on PATH, shortcuts use ⌘ on macOS, line and document end use the macOS keys, and LF line endings are enforced.
+- **File previews.** Saved DOCX and ODT files embed a 256 px PNG of page 1 (DOCX: `docProps/thumbnail.png` through the package thumbnail relationship; ODT: `Thumbnails/thumbnail.png`), which GNOME's thumbnailer, Finder (QuickLook) and Word use.
+  - Only what is on screen can be captured, so page 1 is captured whenever it is visible: on open, at the idle recovery snapshot and on save. Scrolled away, the last capture is used; edits further down rarely change page 1.
+  - The capture is clipped to the visible document area, so the ruler and status bar never show. The text cursor can.
+  - Tests: both packages, GNOME's `gsf-office-thumbnailer` reads them (`thumbnail.test.ts`), and the E2E save checks the 256 px picture in the file.
+- **Updates from GitHub Releases** (`src/main/updater.ts`, electron-updater 6.8.10).
+  - Checked ~10 s after startup, at most once a day; Settings → Updates turns it off and has *Check now* (also a command, and the macOS app menu). The automatic check is silent unless there is an update.
+  - Nothing downloads until Install. Downloads are verified against the sha512 in the release's `latest*.yml`. *Restart now* goes through the usual unsaved-documents check.
+  - Windows (NSIS), AppImage, rpm and deb install in place (rpm/deb through `pkexec`). macOS opens the release page instead, because ad-hoc-signed apps can't apply updates.
+  - Tests: a packaged E2E serves a 99.0.0 release from a local feed and checks the prompt, the verified download and the restart prompt. All other tests point the updater at a closed local port, so no test contacts GitHub.
 
 ### Bugs found and fixed on the way
 - **Re-saving a DOCX written by Simple Docs duplicated relationship ids.** Word reports such files as damaged. Generated ids and part names now skip the original's, and carried parts that nothing references any more (a replaced image or chart) are dropped instead of piling up.
@@ -295,7 +304,8 @@ The five open items from the 0.1.0 report, plus the bugs that came up while doin
 - **CSV delimiter detection counted delimiters inside quoted header fields.**
 
 ### Still open
-- **Windows and macOS installers have not run yet.** CI runs them once the repository is pushed; failures there are expected to need fixes.
+- **The first CI runs failed.** Linux: LibreOffice Calc was missing for the chart-workbook test. macOS: a test expected Ctrl+Y for redo, which is ⌘⇧Z on Mac. Both are fixed. Windows: the E2E step failed, and its log needs sign-in, so the E2E failures are now published as annotations for the next run.
+- **The updater's final install step** (installer, pkexec) runs for real only once a second updater-enabled release exists.
 - **No code signing** (by decision), so SmartScreen and Gatekeeper warn.
 - **Form fields can't be created on rotated PDF pages** (see the M3 limits).
 - **ODT charts and shapes are pictures.**

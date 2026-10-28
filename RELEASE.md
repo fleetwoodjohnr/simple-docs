@@ -43,6 +43,20 @@ What each OS produces:
 
 **Releasing:** push a tag `v<version>`. After all three jobs pass, the `release` job creates a **draft** GitHub release. The draft contains every installer, and its notes are the newest `CHANGELOG.md` section. Review the draft and publish it.
 
+## Updates (electron-updater)
+
+Installed copies check the newest **published** release of `fleetwoodjohnr/simple-docs` (the `publish` block in `electron-builder.yml`). Drafts and pre-releases are invisible to them, so **publishing the draft is what ships the update**.
+
+- **What the updater reads.** The release must carry `latest.yml` (Windows), `latest-mac.yml` and `latest-linux.yml`, plus the blockmaps. They list each installer with its sha512, which is checked after download. CI uploads them, and the release job renames assets so spaces become dashes, as those files expect. Don't rename or delete release assets by hand.
+- **The version must go up** (semver). An installed copy only offers a release with a higher version than its own.
+- **What happens per platform** when the user clicks Install, then Restart:
+  - Windows: the NSIS installer runs silently, then the app relaunches.
+  - AppImage: the file is replaced, then the app relaunches.
+  - rpm / deb: `pkexec dnf install` (or apt) asks for the admin password, then the app relaunches.
+  - macOS: the release page opens in the browser instead, because macOS only applies updates to apps with a Developer ID signature, and ours are signed ad hoc. With signing in place, this branch in `src/main/updater.ts` can go.
+- **Users of 0.1.0** have no updater, so they install 0.2.0 by hand once.
+- **Test.** `tests/e2e/update.spec.ts` runs against the packaged app (part of the packaged E2E on every OS). It serves a 99.0.0 release from a local feed and checks the prompt, the verified download and the restart prompt. The only part not exercised automatically is the final install step (installer, pkexec); check it by hand when the second updater-enabled release ships.
+
 ## 4. Test locally (verified on Linux)
 
 ```bash
@@ -101,7 +115,8 @@ Results so far:
 - **Files from other apps.** Open a real-world DOCX from Word and an ODT from LibreOffice, save each, then reopen the result in Word or LibreOffice. In Word, check a chart made in Simple Docs: *Edit Data* should open its workbook.
 - **Print and PDF.** Print one page to a real printer. Export a PDF and open it in another viewer.
 - **AI assistant.** Turn it on with a real key, run one request, then turn it off again.
-- **Privacy.** With the assistant off, no network traffic leaves the app (check with, for example, `nethogs` or Little Snitch).
+- **Updates.** With the previous release installed, publish the new one, then use Settings → Updates → *Check now*: Install, then Restart, should bring up the new version.
+- **Privacy.** With the assistant and the update check off, no network traffic leaves the app (check with, for example, `nethogs` or Little Snitch).
 - **Windows and macOS.** Install the CI-built installers once by hand: file associations, the first-launch warning for unsigned builds, and the window controls.
 
 ## 8. Publish
