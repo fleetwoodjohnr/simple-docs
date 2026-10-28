@@ -276,7 +276,7 @@ The five open items from the 0.1.0 report, plus the bugs that came up while doin
   - Charts from Word or LibreOffice, and shapes with explicit colours, open as editable drawings and are written back unchanged unless edited.
   - Tests: every chart and shape type round-trips. LibreOffice renders our charts as charts (title and labels come out as PDF text), reads the embedded workbook, and keeps both the chart and the shape when it re-saves our DOCX.
 - **deb and rpm.**
-  - Maintainer `fleetwoodjohnr@gmail.com`. The homepage is still the placeholder `https://github.com/OWNER/simple-docs`: replace it before publishing.
+  - Maintainer `fleetwoodjohnr@gmail.com`, homepage `https://github.com/fleetwoodjohnr/simple-docs`.
   - Built in a Fedora 44 container, because fpm needs `libcrypt.so.1` and `rpmbuild`, which the build host lacks (RELEASE.md).
   - Installing in clean containers found missing dependencies: `libgbm1` and ALSA for the deb, and ALSA, GBM and libsecret for the rpm. All are now declared.
 - **Windows and macOS through CI.** `.github/workflows/ci.yml` runs on Linux, Windows and macOS:
@@ -302,7 +302,7 @@ The five open items from the 0.1.0 report, plus the bugs that came up while doin
 
 ## Next recommended tasks
 
-1. Push to GitHub, replace the `OWNER` placeholder in `package.json`, and fix whatever the first Windows and macOS CI runs report.
+1. Fix whatever the first Windows and macOS CI runs report.
 2. Do screen-reader and keyboard-only passes.
 3. Per-section page setup in the layout engine (displayed landscape sections).
 4. PDF: moving and resizing annotations, a warning before editing digitally signed files, and form fields on rotated pages (needs writing the widget's `/MK` dictionary).

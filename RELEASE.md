@@ -6,7 +6,7 @@ This is the checklist for producing installers.
 
 ## 1. Before the first release
 
-- **Homepage placeholder.** Replace `https://github.com/OWNER/simple-docs` in `package.json` (`homepage`) with the real repository URL. The deb and rpm packages publish it.
+- **Homepage.** `homepage` in `package.json` (`https://github.com/fleetwoodjohnr/simple-docs`) is published by the deb and rpm packages.
 - **Maintainer.** The deb maintainer and rpm packager come from `author` in `package.json` (`Simple Docs <fleetwoodjohnr@gmail.com>`).
 - **Signing.** Builds are **unsigned** by decision, so Windows SmartScreen and macOS Gatekeeper warn users on first launch.
   - macOS builds are signed *ad hoc* (`mac.identity: "-"`, `hardenedRuntime: false` in `electron-builder.yml`), because Apple Silicon refuses to run code with no signature at all.

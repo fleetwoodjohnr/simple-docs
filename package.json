@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "A fast, modern word processor and document editor",
   "main": "out/main/index.js",
-  "homepage": "https://github.com/OWNER/simple-docs",
+  "homepage": "https://github.com/fleetwoodjohnr/simple-docs",
   "author": {
     "name": "Simple Docs",
     "email": "fleetwoodjohnr@gmail.com"
