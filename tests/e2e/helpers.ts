@@ -52,13 +52,23 @@ export async function dblclickRight(l: Locator) {
   await l.dblclick({ position: { x: b.width * 0.85, y: b.height / 2 } })
 }
 
-/** Delay animation frames by 200 ms, as on a busy machine: what is typed meanwhile must not depend on a frame having run. Returns the undo. */
+/**
+ * Delay animation frames by 200 ms and the start of CSS animations by 1 s, as on a busy machine: what is typed or clicked
+ * meanwhile must not depend on a frame having run or an animation having started. Returns the undo.
+ */
 export async function slowFrames(page: Page): Promise<() => Promise<unknown>> {
   await page.evaluate(() => {
     const raf = window.requestAnimationFrame.bind(window)
     Object.assign(window, { sdRaf: raf, requestAnimationFrame: (f: FrameRequestCallback) => (setTimeout(() => raf(f), 200), 0) })
+    const s = document.styleSheets[0]
+    s.insertRule('* { animation-delay: 1s !important }', s.cssRules.length)
   })
-  return () => page.evaluate(() => Object.assign(window, { requestAnimationFrame: (window as unknown as { sdRaf: typeof requestAnimationFrame }).sdRaf }))
+  return () =>
+    page.evaluate(() => {
+      Object.assign(window, { requestAnimationFrame: (window as unknown as { sdRaf: typeof requestAnimationFrame }).sdRaf })
+      const s = document.styleSheets[0]
+      s.deleteRule(s.cssRules.length - 1)
+    })
 }
 
 const mac = process.platform === 'darwin'

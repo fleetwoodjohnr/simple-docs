@@ -547,6 +547,11 @@ body {
 .slide-up {
   animation: slideUp 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+/* Radix keeps a closing element mounted until its animation ends. With no animation it unmounts at once. Otherwise a menu
+   chosen before its open animation started stayed mounted, trapping focus or closing the next menu as it opened. */
+:is(.pop-in, .fade-in, .dialog-in)[data-state='closed'] {
+  animation: none;
+}
 
 /* ================= markdown preview ================= */
 .md-preview h1 { font-size: 1.9em; font-weight: 700; margin: 0 0 0.5em; letter-spacing: -0.02em; }

@@ -19,6 +19,7 @@
   - Markdown import kept SVG images as text.
   - ODT and Markdown exports turned charts into pictures without a warning.
   - CSV header detection miscounted delimiters inside quotes.
+  - A menu item chosen very quickly after the menu opened could leave the menu stuck, swallowing the next key or click.
 
 ## 0.1.0 — 2026-10-27
 

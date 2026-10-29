@@ -172,6 +172,9 @@ test('mail merge: CSV recipients, insert fields, preview, merge into a new docum
     await stubDialogs(app, { open: [path.join(__dirname, '../fixtures/recipients.csv')] })
     await page.getByRole('button', { name: 'Recipients…' }).click()
     await expect(page.getByText(/3 recipients with fields Name, City/)).toBeVisible()
+    // Slow frames from the first menu on: choosing a field before the menu's open animation has started must not leave it
+    // mounted (it trapped focus, or closed the next menu as it opened).
+    const restore = await slowFrames(page)
     // Right after choosing a field, in the same task (before any timer or the next key), focus is in the text.
     await page.getByRole('button', { name: 'Insert merge field' }).click()
     const focused = await page.getByRole('menuitem', { name: 'Name' }).evaluate(async (item: HTMLElement) => {
@@ -180,8 +183,7 @@ test('mail merge: CSV recipients, insert fields, preview, merge into a new docum
       return document.activeElement?.getAttribute('aria-label')
     })
     expect(focused).toBe('Document body')
-    // And keys typed right after choosing a field go into the text, even when frames are slow.
-    const restore = await slowFrames(page)
+    // And keys typed right after choosing a field go into the text.
     await page.keyboard.type(' of ')
     await page.getByRole('button', { name: 'Insert merge field' }).click()
     await page.getByRole('menuitem', { name: 'City' }).click()
