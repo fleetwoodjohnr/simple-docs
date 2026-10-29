@@ -88,7 +88,9 @@ export const Kbd = ({ children }: { children: ReactNode }) => (
 
 // ---------- menus ----------
 
-export const Menu = DropdownMenu.Root
+// Command menus don't trap focus. A modal menu pulls back the focus an item's action moves to the document until the close
+// has rendered and Radix's own refocus (a timer) has run; keys typed meanwhile went to the menu (a space chose the item again).
+export const Menu = (p: ComponentProps<typeof DropdownMenu.Root>) => <DropdownMenu.Root modal={false} {...p} />
 export const MenuTrigger = DropdownMenu.Trigger
 
 const surface = 'pop-in z-[90] min-w-[180px] overflow-hidden rounded-xl border border-border bg-elev p-1 text-[13px] text-text shadow-[var(--shadow-pop)] outline-none'
@@ -113,8 +115,7 @@ export function MenuContent({ children, className, align = 'start', onCloseAutoF
           onCloseAutoFocus?.(e)
           if (e.defaultPrevented || escaped.current) return
           e.preventDefault()
-          // Now, not a frame later: until then keys went to the closed menu (its focus trap pulls back focus that an item's
-          // action moved), and by then another menu may be open, which moving focus would close.
+          // Now, not a frame later: by then another menu may be open, which moving focus would close.
           const a = document.activeElement
           if (a && a !== document.body && !a.closest('[role=menu]')) return
           const docEl = [...document.querySelectorAll<HTMLElement>('.doc-host .ProseMirror')].find((el) => el.offsetParent !== null)
@@ -175,7 +176,7 @@ export function SubMenu({ label, icon, children }: { label: ReactNode; icon?: Re
 
 // ---------- context menu ----------
 
-export const CtxMenu = ContextMenu.Root
+export const CtxMenu = (p: ComponentProps<typeof ContextMenu.Root>) => <ContextMenu.Root modal={false} {...p} />
 export const CtxTrigger = ContextMenu.Trigger
 export function CtxContent({ children }: { children: ReactNode }) {
   return (
