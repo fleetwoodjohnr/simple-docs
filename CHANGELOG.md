@@ -2,7 +2,7 @@
 
 ## 0.2.0 — 2026-10-28
 
-Coming from 0.1.0? Download and install this version by hand once ([how](README.md#download-and-install)). From now on, Simple Docs offers new versions itself.
+Coming from 0.1.0? Download and install this version by hand once ([how](https://github.com/fleetwoodjohnr/simple-docs#download-and-install)). From now on, Simple Docs offers new versions itself.
 
 - **File previews.** Saved DOCX and ODT files carry a picture of page 1, so the desktop, file managers, Finder and Word show the page instead of a generic icon.
 - **Updates from GitHub.** Simple Docs checks once a day whether a newer version has been released (Settings → Updates turns this off; *Check now* works any time). Nothing downloads until you click Install; the download is checked against the release's checksum, and Restart installs it. On Linux the rpm or deb update asks for your admin password. On macOS the download page opens instead, because unsigned apps can't update themselves.
