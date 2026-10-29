@@ -1,6 +1,6 @@
 # Implementation status
 
-_Last updated: 2026-10-28 · Milestones 1–5 complete, plus the follow-up work in [After 0.1.0](#after-010-unreleased) · Windows/macOS: built and tested in CI · version 0.1.0 + unreleased changes._
+_Last updated: 2026-10-28 · Milestones 1–5 complete, plus the follow-up work in [After 0.1.0](#after-010-released-as-020) · Windows/macOS: built and tested in CI · version 0.2.0._
 
 "Done" means implemented **and** covered by a passing automated test or a manual check recorded below. A button existing in the UI does not count.
 
@@ -162,7 +162,7 @@ PDF files open in their own workspace tab, built on PDFium compiled to WebAssemb
 ### Known limitations (M3)
 - **Text edits are line-level and do not reflow.** Replacement text is the same size and position as the line it replaces. Longer text runs past the line and nothing moves out of its way.
 - **The substitute standard fonts only cover Latin-1 (WinAnsi).** Characters outside it, such as Greek, Cyrillic or CJK, cannot be typed into a substituted line. Text is not auto-fitted either: a substituted font of a different width changes the line length.
-- **Rotated pages: no new form fields.** Selection, markup, text editing, new text, signatures and OCR work on rotated pages ([After 0.1.0](#after-010-unreleased)). Form fields can't be added there: this PDFium build can't set a widget's rotation (`/MK /R`), so the value would read sideways in other viewers. The Field tool says so. Text drawn at angles other than quarter turns is not grouped into lines.
+- **Rotated pages: no new form fields.** Selection, markup, text editing, new text, signatures and OCR work on rotated pages ([After 0.1.0](#after-010-released-as-020)). Form fields can't be added there: this PDFium build can't set a widget's rotation (`/MK /R`), so the value would read sideways in other viewers. The Field tool says so. Text drawn at angles other than quarter turns is not grouped into lines.
 - **Redaction coverage is partly verified.** Removing text is tested. Removing images and vector graphics under a redaction area is left to PDFium's redaction routine, which no test of ours covers yet.
 - **Annotations can only be added or deleted.** Existing annotations cannot be moved, resized or edited, and comment threads (replies) are not supported.
 - **Only text and checkbox form fields are editable.** Radio buttons, combo boxes and list boxes are shown read-only, and form JavaScript is never run.
@@ -187,9 +187,9 @@ Every E2E test fails if Chromium reports a CSP violation. A test also confirms t
 - **Compare documents** (Review → Compare, or from Version history). Blocks are aligned first, then paired paragraphs are compared word by word, and lists and tables are compared recursively. Tables keep their shape. The result opens in a new tab as tracked changes, so Accept and Reject work on it as usual. The current file is compared against a saved file or a saved version. Accepting or rejecting a change that covers a whole paragraph removes the paragraph. Tested on the DOCX fixture (an edit gives exactly 1 insertion and 1 deletion, with no spurious changes).
 - **Version history** (File → Version history). A compressed snapshot is kept on every save; with AutoSave, at most one every 10 minutes. Identical saves are skipped, and up to 100 versions are kept per file, stored only on this computer. Each version has a text preview and can be restored (Ctrl+Z undoes the restore), opened as a copy, or compared with the current text.
 - **Citations and bibliography** (References). Each document has its own list of sources: books, articles, websites and reports. In-text citations and the reference list are formatted in APA 7, MLA 9 or Chicago author-date. Changing the style or editing a source updates every citation and the bibliography. DOCX round trip uses Word's own model, CITATION fields plus `customXml` `b:Sources`, and LibreOffice renders our output correctly.
-- **Mail merge** (Tools). Recipients come from CSV: quotes, embedded newlines, `,` `;` or tab delimiters, BOM. «Field» placeholders preview each recipient in place. Finish & merge creates one document with a copy per recipient, separated by page breaks. Fields round-trip as Word MERGEFIELDs. The recipient list is saved with the document ([After 0.1.0](#after-010-unreleased)).
+- **Mail merge** (Tools). Recipients come from CSV: quotes, embedded newlines, `,` `;` or tab delimiters, BOM. «Field» placeholders preview each recipient in place. Finish & merge creates one document with a copy per recipient, separated by page breaks. Fields round-trip as Word MERGEFIELDs. The recipient list is saved with the document ([After 0.1.0](#after-010-released-as-020)).
 - **Equations** (Insert → Equation, Alt+=). Equations are written in LaTeX with a palette and a live preview, rendered by KaTeX with MathML for screen readers, and exported to PDF as real text. In DOCX they become **native Word equations (OMML)**. **Word equations in opened files are now displayed and editable**: OMML is converted to LaTeX, and unedited equations are written back byte-for-byte. LibreOffice renders our OMML correctly: fractions, radicals, sums and integrals with limits, matrices, accents. In Markdown they are `$…$` and `$$…$$`.
-- **Charts and shapes** (Insert). Column, bar, line and pie charts are built from pasted data. Eight shape types take fill, outline and text. In the editor both are 3× resolution pictures that keep their data for double-click editing, with alt text generated from the data. In DOCX they are **native Word charts and shapes** (see [After 0.1.0](#after-010-unreleased)).
+- **Charts and shapes** (Insert). Column, bar, line and pie charts are built from pasted data. Eight shape types take fill, outline and text. In the editor both are 3× resolution pictures that keep their data for double-click editing, with alt text generated from the data. In DOCX they are **native Word charts and shapes** (see [After 0.1.0](#after-010-released-as-020)).
 - **Cover pages** (Insert → Cover page): Classic, Color band and Minimal. They are filled in from the document properties and built from ordinary styles, so they round-trip.
 - **Restrict editing** (Review → Protect): read only, comments only, or tracked changes only. A transaction filter enforces it and a banner shows it. DOCX round trip is `w:documentProtection`; LibreOffice opens it.
 - **Accessibility checker** (Review → Accessibility). It checks:
@@ -255,7 +255,7 @@ Every E2E test fails if Chromium reports a CSP violation. A test also confirms t
 - **Windows and macOS installers are tested in CI only** (the E2E suite against the packaged app). The by-hand checks in RELEASE.md §7 still apply before publishing. Builds are unsigned by decision.
 - **Accessibility.** axe covers automated WCAG checks only. Screen-reader passes (NVDA, VoiceOver, Orca) and a keyboard-only walkthrough of every dialog are still to do.
 
-## After 0.1.0 (unreleased)
+## After 0.1.0 (released as 0.2.0)
 
 The five open items from the 0.1.0 report, plus the bugs that came up while doing them.
 

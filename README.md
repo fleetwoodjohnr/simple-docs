@@ -1,83 +1,150 @@
 # Simple Docs
 
-A fast, modern, offline word processor for Windows, macOS and Linux. It lays text out on real pages, round-trips DOCX with its own OOXML engine, exports PDF from the same layout you see, and edits Markdown both visually and as source.
+A fast, private word processor for Windows, macOS and Linux. Write on real pages, open and save Word (DOCX) and LibreOffice (ODT) files, export PDFs that look exactly like the screen, and edit PDFs too. It works offline, with no account.
 
-> Status: version 0.1.0 plus unreleased changes (see [CHANGELOG.md](CHANGELOG.md)). Milestones 1–5 are complete. The Linux AppImage, deb and rpm are built and tested. Windows and macOS installers are built and tested by the GitHub Actions workflow, which also installs the deb and rpm into clean Ubuntu and Fedora containers; see [RELEASE.md](RELEASE.md). M3 added the PDF workspace; M4 added compare, version history, citations, mail merge, equations, charts, protection, an accessibility checker and the optional AI assistant. For what works today, what is partial, and what is next, see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). [COMPATIBILITY.md](COMPATIBILITY.md) shows, per file format, which elements are kept.
+## Download and install
 
-## Quick start
+Download the newest version from the **[Releases page](https://github.com/fleetwoodjohnr/simple-docs/releases/latest)**. Under *Assets*, pick the file for your system:
 
-```bash
-npm install                 # Node 24+; Electron downloads its binary on first run
-npm run dev                 # development (hot reload)
-npm run build && npm start  # production build
-```
-
-| Script | What it does |
+| System | File to download |
 |---|---|
-| `npm run typecheck` | Strict TypeScript for main, preload and renderer |
-| `npm test` | Unit tests (vitest), including the compatibility corpus (golden round trips in `tests/unit/__corpus__/`) |
-| `npm run e2e` | Build, then Playwright drives the real Electron app (acceptance tests, ODT/RTF bridge, 240-page performance) |
-| `npm run e2e:headless` | Same, under `xvfb-run` (Linux CI / no display) |
-| `npm run fixtures` | Regenerate `tests/fixtures/complex.{docx,odt,rtf,pdf}`, `protected.pdf` and `scanned.pdf` from `tests/fixtures/src/*.fodt` (LibreOffice, poppler, ImageMagick) |
-| `npm run icons` | Regenerate `resources/icon.png` and the macOS `icon-mac.png` from `resources/icon.svg` (ImageMagick with librsvg) |
-| `npm run dist` | Build installers with electron-builder (AppImage, deb and rpm on Linux; NSIS on Windows; dmg and zip on macOS). See [RELEASE.md](RELEASE.md) |
-| `SD_PACKAGED=release/linux-unpacked/simple-docs npx playwright test` | Run the E2E suite against a packaged build |
+| Windows 10 or 11 (64-bit) | `Simple-Docs-Setup-<version>.exe` |
+| Mac with Apple silicon (M1 and later) | `Simple-Docs-<version>-arm64.dmg` |
+| Mac with an Intel processor | `Simple-Docs-<version>.dmg` |
+| Ubuntu, Debian, Linux Mint | `simple-docs_<version>_amd64.deb` |
+| Fedora, RHEL, openSUSE | `simple-docs-<version>.x86_64.rpm` |
+| Any other 64-bit Linux | `Simple-Docs-<version>.AppImage` |
 
-### Optional: LibreOffice
+The other files on the page (`.zip`, `.blockmap`, `.yml`) are for automatic updates. You don't need them.
 
-DOCX, **ODT**, Markdown, HTML, plain text and PDF export need nothing extra (DOCX and ODT use built-in engines). **RTF and legacy `.doc`** are converted through a locally installed LibreOffice (`soffice`). The app finds LibreOffice on `PATH` and in the standard install locations, and runs it headless with an isolated temporary profile. LibreOffice is not bundled, because it would add more than 300 MB. When it is missing, the app says so plainly when you open one of those formats.
+**First launch warnings.** Simple Docs is not code-signed yet, so Windows and macOS warn you the first time you open it.
 
-## Architecture
+### Windows
 
-```
-src/main/       Electron main: window, secure IPC (validated, granted-paths only), atomic saves,
-                settings/recents/recovery store, printToPDF/print, LibreOffice bridge
-src/preload/    contextBridge API (typed in src/shared/ipc-types.ts); no raw ipcRenderer exposure
-src/editor/     Tiptap/ProseMirror schema + extensions, document model (page setup, named styles),
-                list numbering, find/replace, templates
-src/layout/     Pagination engine: breaks.ts (pure algorithm) + plugin.ts (DOM measurement → spacer decorations)
-src/formats/    Pure format adapters (bytes ⇄ editor JSON + warnings): docx/ (own OOXML reader/writer),
-                odt/ (own ODF reader/writer), markdown, html, text, registry (incl. LibreOffice bridge)
-src/export/     Print/PDF: slices the paginated DOM into fixed-size pages
-src/pdf/        PDF engine on PDFium WASM: render, text runs, text editing, redaction, annotations, forms, pages
-src/main/ocr.ts Offline OCR (tesseract.js, bundled English model) on a worker thread
-src/main/ai.ts  Optional AI assistant (Claude API via @anthropic-ai/sdk); off by default, consent per request
-src/main/updater.ts  Updates from GitHub Releases (electron-updater): daily check, install on request
-src/renderer/   React UI: title bar, ribbon, panels, dashboard, dialogs, command registry, state;
-                pdf/ = PDF workspace (PDFium runs in a Web Worker)
-tests/          unit/ (vitest) · e2e/ (Playwright + Electron) · fixtures/
-```
+1. Run `Simple-Docs-Setup-<version>.exe`.
+2. If you see "Windows protected your PC", click **More info**, then **Run anyway**.
+3. Choose whether to install for just you or for everyone, and where. Simple Docs then appears in the Start menu.
 
-### Key decisions
+### macOS
 
-- **Real pagination, with a clean document model.** Pages are a layout result and never appear as nodes in the document. The layout engine measures every line box, chooses page breaks with widow/orphan control, keep-with-next, keep-lines-together and page-break-before, and splits paragraphs between lines and tables between rows. It then inserts spacer decorations so the content physically flows onto the next sheet. PDF export and printing slice that same layout, so the PDF has the same pages as the editor, and the tests assert it.
-- **Own DOCX engine.** DOCX-to-HTML converters intentionally discard formatting. Ours maps styles (including their basedOn chains), numbering, tables (merges, shading, widths), images, links, page setup and metadata into the editor. Anything it can't edit yet — headers/footers, footnotes, charts, shapes, equations, OLE objects — it keeps as raw XML plus the package parts that XML references, and writes it all back on save. It is never discarded silently.
-- **Offline and private.** No account and no telemetry. Links you open are handed to your browser. Two features use the network:
-  - **The update check.** Once a day it asks GitHub whether a newer version has been released. It sends no document data, and Settings → Updates turns it off. Nothing downloads until you click Install.
-  - **The optional AI assistant.** It is off by default, and the main process refuses requests while it is off. When it is on, each request shows exactly what will be sent to Anthropic and goes out only when you click Send.
-- **Real PDF editing.** PDFs are edited through PDFium. Existing text is changed in the page's content stream, not covered with an overlay. Redaction removes the content, and OCR adds a real invisible text layer. The limits, such as no reflow and font substitution, are listed in the docs.
-- **Security.** `contextIsolation` and `sandbox` are on and `nodeIntegration` is off. The packaged renderer runs under a strict Content-Security-Policy: no inline scripts and no `eval`. Navigation and new windows are blocked. The main process reads or writes only files you granted through a dialog, recents, drag-and-drop or the command line. Pasted and imported HTML is sanitized and parsed through the schema.
+1. Open the `.dmg` and drag **Simple Docs** into **Applications**.
+2. Open it from Applications. macOS says it can't verify the app. Click **Done** (on older macOS: **Cancel**).
+3. Go to **System Settings → Privacy & Security**, scroll down to the message about Simple Docs, click **Open Anyway** and confirm. On macOS 14 and earlier you can instead Control-click the app and choose **Open**.
 
-## Third-party licenses
+You only do this once. Alternatively, run `xattr -dr com.apple.quarantine "/Applications/Simple Docs.app"` in Terminal.
 
-All runtime dependencies are permissively licensed.
+### Linux
 
-| Component | License |
-|---|---|
-| Electron, React, Tiptap/ProseMirror, fflate, @xmldom/xmldom, markdown-it, CodeMirror, Radix UI, zustand, Tailwind CSS | MIT |
-| lucide-react | ISC |
-| DOMPurify | MPL-2.0 OR Apache-2.0 (used under Apache-2.0) |
-| Inter (UI font) | SIL OFL 1.1 |
-| Carlito, Liberation Sans/Serif/Mono (bundled metric-compatible document fonts) | SIL OFL 1.1 |
-| Caladea (bundled) | Apache-2.0 |
-| PDFium via `@embedpdf/pdfium` (WASM build) | BSD-3-Clause (PDFium), MIT (package) |
-| tesseract.js, tesseract.js-core | Apache-2.0 |
-| KaTeX (equation rendering, bundled fonts) | MIT |
-| @anthropic-ai/sdk (optional AI assistant) | Apache-2.0 |
-| electron-updater and its dependencies (updates from GitHub Releases) | MIT; semver: ISC; sax: BlueOak-1.0.0 |
-| English OCR model (`@tesseract.js-data/eng`, from tessdata) | Apache-2.0 (model), MIT (package) |
-| nspell | MIT |
-| dictionary-en, dictionary-en-gb (Hunspell dictionaries) | MIT AND BSD |
-| LibreOffice (optional, not bundled) | MPL-2.0 |
+- **deb** (Ubuntu, Debian, Mint): `sudo apt install ./simple-docs_*_amd64.deb`
+- **rpm** (Fedora and others): `sudo dnf install ./simple-docs-*.x86_64.rpm`
+- **AppImage**: make it executable (`chmod +x Simple-Docs-*.AppImage`), then double-click it or run it from a terminal. If it doesn't start, your system may lack FUSE 2. Install `libfuse2` (`libfuse2t64` on Ubuntu 24.04 and later), or run the file with `--appimage-extract-and-run`.
 
-No commercial SDK is used. MuPDF was ruled out as the PDF engine because it is AGPL.
+The deb and rpm add Simple Docs to your applications menu and register it for `.docx`, `.odt`, `.md`, `.rtf`, `.txt` and `.pdf` files.
+
+### Updates
+
+Simple Docs checks once a day whether a new version is out. If one is, it asks before downloading anything. Click **Install**, then **Restart**.
+
+- On Linux, a deb or rpm update asks for your password.
+- On macOS, the download page opens instead, because unsigned apps can't update themselves. Install the new `.dmg` the same way as the first one.
+- **Settings → Updates** turns the daily check off. *Check now* works at any time.
+
+Coming from 0.1.0? That version has no updater, so install 0.2.0 by hand once.
+
+### Uninstall
+
+- **Windows:** Settings → Apps → Simple Docs → Uninstall.
+- **macOS:** drag Simple Docs from Applications to the Trash.
+- **Linux:** `sudo apt remove simple-docs` or `sudo dnf remove simple-docs`. For the AppImage, delete the file.
+
+Your settings and recovery data stay in your user profile's app-data folder. Delete that folder too for a clean removal.
+
+## Using Simple Docs
+
+### Getting started
+
+- **Start screen.** Create a blank document, start from a template, or reopen a recent file.
+- **Opening files.** Press <kbd>Ctrl</kbd>+<kbd>O</kbd>, drag a file onto the window, or double-click a file in your file manager. Several documents open as tabs.
+- **The ribbon.** Commands are grouped on tabs, like in Word. **File** has save, export, print and version history; the other tabs:
+
+  | Tab | What's on it |
+  |---|---|
+  | **Home** | Fonts, paragraph formatting, styles, lists, find and replace |
+  | **Insert** | Tables, images, charts and shapes, equations, links, page breaks, headers and footers, cover pages |
+  | **Layout** | Page size, orientation, margins, indents and spacing |
+  | **References** | Table of contents, footnotes and endnotes, citations and bibliography (APA, MLA, Chicago) |
+  | **Review** | Word count, read aloud, accessibility checker, comments, track changes, compare documents, restrict editing |
+  | **View** | Zoom, formatting marks, focus mode, ruler, Markdown source |
+  | **Tools** | Mail merge, AI assistant, keyboard shortcuts, settings |
+
+- **Spelling** is checked as you type, offline, in US or UK English (**Settings → Editor**).
+- **Keyboard shortcuts.** They are the familiar ones: <kbd>Ctrl</kbd>+<kbd>B</kbd> for bold, <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo, and so on. On a Mac, use <kbd>⌘</kbd> instead of <kbd>Ctrl</kbd>. Press <kbd>Ctrl</kbd>+<kbd>/</kbd> to see them all; you can change them in **Settings → Editor**.
+
+### Saving, exporting and printing
+
+- **Save** with <kbd>Ctrl</kbd>+<kbd>S</kbd>. A document saves in the format it was opened in. New documents save as DOCX, unless you choose another format with **Save as** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) or in **Settings → New documents**.
+- **AutoSave.** Once a document has been saved, it is saved again automatically 30 seconds after your last edit. You can change or turn this off in **Settings → Saving & recovery**.
+- **Crash recovery.** Unsaved work is kept every few seconds. If the app or your computer crashes, Simple Docs offers your work back the next time it starts.
+- **Version history.** Saved versions are kept on this computer, up to 100 per file. Restore, open or compare one from **File → Version history**.
+- **PDF and printing.** Export a PDF with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>, or print with <kbd>Ctrl</kbd>+<kbd>P</kbd>. Pages come out exactly as you see them on screen.
+
+### File formats
+
+| Format | Open | Save | Notes |
+|---|---|---|---|
+| Word (`.docx`) | ✅ | ✅ | Content that Simple Docs can't edit yet is kept and written back unchanged |
+| OpenDocument (`.odt`) | ✅ | ✅ | |
+| Markdown (`.md`) | ✅ | ✅ | Edit visually, or as source (View → Markdown source) |
+| HTML, plain text | ✅ | ✅ | |
+| Rich Text (`.rtf`) | ✅ | ✅ | Needs [LibreOffice](https://www.libreoffice.org) installed |
+| Old Word (`.doc`) | ✅ | — | Needs LibreOffice; save as DOCX |
+| PDF | ✅ | ✅ | Opens in the PDF editor (below); any document can be exported as PDF |
+
+If a file contains something a format can't hold, Simple Docs tells you what will change before it saves. For element-by-element details, see [COMPATIBILITY.md](COMPATIBILITY.md).
+
+### Editing PDFs
+
+Opening a PDF switches to the PDF editor. There you can:
+- highlight, underline, strike out, add notes and draw
+- change existing text, add new text and sign
+- permanently remove (redact) text and images
+- fill in and create form fields
+- reorder, rotate, crop, insert and delete pages; merge PDFs, split one, or extract a page
+- make scanned pages searchable with offline text recognition (OCR, English)
+- open password-protected files
+
+### Mail merge
+
+1. On **Tools**, choose **Recipients…** and pick a CSV file with one row per recipient.
+2. Place fields in your letter with **Insert field**.
+3. Use **Preview** to step through the recipients.
+4. **Finish & merge** creates one document with a copy per recipient.
+
+The recipient list is saved with the document.
+
+### AI assistant (optional)
+
+The assistant can rewrite, proofread, shorten or summarize selected text, using Anthropic's Claude.
+- It is **off** by default. Turn it on in **Settings → AI assistant** and paste your own [Anthropic API key](https://console.anthropic.com).
+- Nothing is sent automatically. Each request shows exactly what will be sent, and goes out only when you click **Send**.
+
+### Privacy
+
+No account and no telemetry. Simple Docs only uses the network for:
+- **The daily update check**, which asks GitHub whether there is a new version. It sends none of your documents and can be turned off in **Settings → Updates**.
+- **The AI assistant**, when you turn it on and click **Send**.
+
+Links you click open in your web browser.
+
+## Help and feedback
+
+Found a bug or missing a feature? [Open an issue](https://github.com/fleetwoodjohnr/simple-docs/issues). Please attach a sample file if you can.
+
+- What changed in each version: [CHANGELOG.md](CHANGELOG.md)
+- What works today and what is planned: [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)
+
+## Building from source
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for building, testing, the architecture and third-party licenses. [RELEASE.md](RELEASE.md) describes how releases are made.
+
+Simple Docs is released under the MIT license.

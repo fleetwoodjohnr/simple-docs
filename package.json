@@ -1,7 +1,7 @@
 {
   "name": "simple-docs",
   "productName": "Simple Docs",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A fast, modern word processor and document editor",
   "main": "out/main/index.js",
   "homepage": "https://github.com/fleetwoodjohnr/simple-docs",
