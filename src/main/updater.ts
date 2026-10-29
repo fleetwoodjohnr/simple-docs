@@ -26,6 +26,26 @@ function updater() {
   return autoUpdater
 }
 
+const OFFLINE = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENETUNREACH']
+
+/**
+ * What to tell the user about a failed check or download. electron-updater's messages carry the whole HTTP response
+ * (headers, cookies, page), so they are never shown. null: GitHub has no published release, so nothing is newer.
+ * electron-updater 6.8 wraps a failed /releases/latest lookup (no published release, or offline at that step) in
+ * ERR_UPDATER_INVALID_RELEASE_FEED; only the text of the wrapped error tells which, so that is what is matched.
+ */
+export function updateErrorMessage(e: unknown): string | null {
+  const { code, statusCode, message = '' } = (e ?? {}) as { code?: string; statusCode?: number; message?: string }
+  if (code === 'ERR_UPDATER_NO_PUBLISHED_VERSIONS' || /production release exists: HttpError: 40[46]\b/.test(message)) return null
+  if (OFFLINE.includes(code ?? '') || /net::ERR_|\b(ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENETUNREACH)\b/.test(message)) {
+    return 'Couldn’t reach GitHub. Check your internet connection, then try again.'
+  }
+  if (statusCode === 403 || statusCode === 429 || /HttpError: 4(03|29)\b/.test(message)) return 'GitHub is limiting update checks right now. Try again in an hour.'
+  if (code === 'ERR_CHECKSUM_MISMATCH') return 'The download was incomplete or damaged, so nothing was installed. Try again.'
+  if (code === 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND') return 'The newest release has no update information for this system. Download it from the releases page instead.'
+  return 'Something went wrong while updating. Try again later, or download the newest version from the releases page.'
+}
+
 /** Asks GitHub for a newer version. A manual check always reports the outcome; the automatic one speaks only if there is an update. */
 export async function checkForUpdates(win: BrowserWindow | null, manual: boolean): Promise<void> {
   const box = (o: MessageBoxOptions) => (win && !win.isDestroyed() ? dialog.showMessageBox(win, o) : dialog.showMessageBox(o))
@@ -70,7 +90,12 @@ export async function checkForUpdates(win: BrowserWindow | null, manual: boolean
       win?.close()
     }
   } catch (e) {
-    if (report) await box({ type: 'error', message: 'Couldn’t update Simple Docs', detail: (e as Error).message })
+    console.error('Update failed:', e)
+    if (!report) return
+    const detail = updateErrorMessage(e)
+    if (detail === null) return void (await box({ type: 'info', message: 'Simple Docs is up to date', detail: `Version ${app.getVersion()}. No newer version has been published.` }))
+    const { response } = await box({ type: 'error', message: 'Couldn’t update Simple Docs', detail, buttons: ['Open download page', 'OK'], defaultId: 1, cancelId: 1 })
+    if (response === 0) await shell.openExternal(RELEASES)
   } finally {
     busy = false
   }

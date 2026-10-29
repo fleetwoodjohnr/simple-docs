@@ -22,6 +22,7 @@ Coming from 0.1.0? Download and install this version by hand once ([how](https:/
   - ODT and Markdown exports turned charts into pictures without a warning.
   - CSV header detection miscounted delimiters inside quotes.
   - A menu item chosen very quickly after the menu opened could leave the menu stuck, swallowing the next key or click.
+  - Update errors are short and readable, with a link to the download page, instead of the raw server response.
 
 ## 0.1.0 — 2026-10-27
 
