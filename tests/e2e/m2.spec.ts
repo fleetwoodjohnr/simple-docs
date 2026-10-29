@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
 import { existsSync, statSync } from 'node:fs'
 import path from 'node:path'
-import { LINE_END, doc, launch, quit, settle, stubDialogs, tempDir, withEditor } from './helpers'
+import { LINE_END, doc, launch, quit, settle, slowFrames, stubDialogs, tempDir, withEditor } from './helpers'
 
 const pdfText = (file: string, page: number) => execFileSync('pdftotext', ['-f', String(page), '-l', String(page), '-layout', file, '-']).toString()
 
@@ -114,14 +114,11 @@ test('footnotes: insert, edit, reserve space on the reference page, export', asy
       e.commands.focus('end')
     }`)
     await settle(page, 500)
-    // Slow frames (a busy machine): the note editor has focus before the next frame, so no typed key is lost.
-    await page.evaluate(() => {
-      const raf = window.requestAnimationFrame.bind(window)
-      Object.assign(window, { sdRaf: raf, requestAnimationFrame: (f: FrameRequestCallback) => (setTimeout(() => raf(f), 200), 0) })
-    })
+    // With slow frames the note editor still has focus before the first key, and keeps it.
+    const restore = await slowFrames(page)
     await page.keyboard.press('ControlOrMeta+Alt+f')
     await page.keyboard.type('Primary source, 2024.')
-    await page.evaluate(() => Object.assign(window, { requestAnimationFrame: (window as unknown as { sdRaf: typeof requestAnimationFrame }).sdRaf }))
+    await restore()
     await expect(page.getByTestId('note-editor')).toBeVisible()
     await page.keyboard.press('Escape')
     await settle(page, 600)

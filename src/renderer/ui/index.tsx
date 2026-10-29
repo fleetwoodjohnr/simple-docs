@@ -113,12 +113,12 @@ export function MenuContent({ children, className, align = 'start', onCloseAutoF
           onCloseAutoFocus?.(e)
           if (e.defaultPrevented || escaped.current) return
           e.preventDefault()
-          requestAnimationFrame(() => {
-            const a = document.activeElement
-            if (a && a !== document.body && !a.closest('[role=menu]')) return
-            const docEl = [...document.querySelectorAll<HTMLElement>('.doc-host .ProseMirror')].find((el) => el.offsetParent !== null)
-            ;(docEl ?? (opener?.isConnected ? opener : null))?.focus()
-          })
+          // Now, not a frame later: until then keys went to the closed menu (its focus trap pulls back focus that an item's
+          // action moved), and by then another menu may be open, which moving focus would close.
+          const a = document.activeElement
+          if (a && a !== document.body && !a.closest('[role=menu]')) return
+          const docEl = [...document.querySelectorAll<HTMLElement>('.doc-host .ProseMirror')].find((el) => el.offsetParent !== null)
+          ;(docEl ?? (opener?.isConnected ? opener : null))?.focus()
         }}
         {...p}
         className={cx(surface, className)}

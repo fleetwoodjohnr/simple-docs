@@ -52,6 +52,15 @@ export async function dblclickRight(l: Locator) {
   await l.dblclick({ position: { x: b.width * 0.85, y: b.height / 2 } })
 }
 
+/** Delay animation frames by 200 ms, as on a busy machine: what is typed meanwhile must not depend on a frame having run. Returns the undo. */
+export async function slowFrames(page: Page): Promise<() => Promise<unknown>> {
+  await page.evaluate(() => {
+    const raf = window.requestAnimationFrame.bind(window)
+    Object.assign(window, { sdRaf: raf, requestAnimationFrame: (f: FrameRequestCallback) => (setTimeout(() => raf(f), 200), 0) })
+  })
+  return () => page.evaluate(() => Object.assign(window, { requestAnimationFrame: (window as unknown as { sdRaf: typeof requestAnimationFrame }).sdRaf }))
+}
+
 const mac = process.platform === 'darwin'
 /** Caret to the end of the line / of the document (on macOS, End scrolls instead). */
 export const LINE_END = mac ? 'Meta+ArrowRight' : 'End'

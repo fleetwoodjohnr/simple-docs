@@ -3,7 +3,7 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { strFromU8, unzipSync } from 'fflate'
-import { LINE_END, dblclickRight, doc, launch, quit, settle, stubDialogs, tempDir, withEditor } from './helpers'
+import { LINE_END, dblclickRight, doc, launch, quit, settle, slowFrames, stubDialogs, tempDir, withEditor } from './helpers'
 
 test('accessibility checker finds issues and fixes them in place', async () => {
   const { app, page } = await launch()
@@ -172,11 +172,14 @@ test('mail merge: CSV recipients, insert fields, preview, merge into a new docum
     await stubDialogs(app, { open: [path.join(__dirname, '../fixtures/recipients.csv')] })
     await page.getByRole('button', { name: 'Recipients…' }).click()
     await expect(page.getByText(/3 recipients with fields Name, City/)).toBeVisible()
+    // Keys typed right after choosing a field go into the text, even when frames are slow.
+    const restore = await slowFrames(page)
     await page.getByRole('button', { name: 'Insert merge field' }).click()
     await page.getByRole('menuitem', { name: 'Name' }).click()
     await page.keyboard.type(' of ')
     await page.getByRole('button', { name: 'Insert merge field' }).click()
     await page.getByRole('menuitem', { name: 'City' }).click()
+    await restore()
     await expect(doc(page)).toHaveText('Dear «Name» of «City»')
     await page.getByRole('button', { name: 'Preview', exact: true }).click()
     await expect(doc(page)).toHaveText('Dear Lovelace, Ada of London', { useInnerText: true })

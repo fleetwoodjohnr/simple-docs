@@ -216,13 +216,18 @@ test('acceptance 18: autosave and crash recovery', async () => {
     await doc(page).click()
     await page.keyboard.type('Unsaved recovery text')
     await expect.poll(() => (existsSync(path.join(userData, 'recovery')) ? readdirSync(path.join(userData, 'recovery')).length : 0), { timeout: 10_000 }).toBeGreaterThan(0)
-    // Relaunch once the single-instance lock is free. On Windows it is the profile's `lockfile`, deleted only after the
-    // killed process and its helpers have let go of it; until then a new instance quits at once.
-    const crashed = app.process()
-    const exited = new Promise((r) => crashed.once('exit', r))
-    crashed.kill('SIGKILL')
-    await exited
-    await expect.poll(() => existsSync(path.join(userData, 'lockfile')), { timeout: 20_000 }).toBe(false)
+    // Kill the app's main process itself (on Windows, app.process() is a launcher whose child outlives it), and relaunch
+    // once it is gone: while it runs, a new instance hands over to it and quits.
+    const pid = await app.evaluate(() => process.pid)
+    process.kill(pid, 'SIGKILL')
+    const alive = () => {
+      try {
+        return process.kill(pid, 0)
+      } catch {
+        return false
+      }
+    }
+    await expect.poll(alive).toBe(false)
     ;({ app, page } = await launch({ userData }))
     await expect(page.getByTestId('recovery')).toBeVisible()
     await page.getByRole('button', { name: 'Restore' }).first().click()
