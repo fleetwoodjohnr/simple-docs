@@ -18,6 +18,7 @@ npm run build && npm start  # production build
 | `npm run e2e:headless` | Same, under `xvfb-run` (Linux CI / no display) |
 | `npm run fixtures` | Regenerate `tests/fixtures/complex.{docx,odt,rtf,pdf}`, `protected.pdf` and `scanned.pdf` from `tests/fixtures/src/*.fodt` (LibreOffice, poppler, ImageMagick) |
 | `npm run icons` | Regenerate `resources/icon.png` and the macOS `icon-mac.png` from `resources/icon.svg` (ImageMagick with librsvg) |
+| `npm run screenshots` | Regenerate the README screenshots in `docs/screenshots/` from the built app (on Linux without a display: `xvfb-run -a -s "-screen 0 1920x1080x24" npm run screenshots`) |
 | `npm run dist` | Build installers with electron-builder (AppImage, deb and rpm on Linux; NSIS on Windows; dmg and zip on macOS). See [RELEASE.md](RELEASE.md) |
 | `SD_PACKAGED=release/linux-unpacked/simple-docs npx playwright test` | Run the E2E suite against a packaged build |
 

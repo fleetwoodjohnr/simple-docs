@@ -2,6 +2,8 @@
 
 A fast, private word processor for Windows, macOS and Linux. Write on real pages, open and save Word (DOCX) and LibreOffice (ODT) files, export PDFs that look exactly like the screen, and edit PDFs too. It works offline, with no account.
 
+![Simple Docs editing a report: the ribbon, an outline of the headings, and the document laid out on a page](docs/screenshots/editor.png)
+
 ## Download and install
 
 Download the newest version from the **[Releases page](https://github.com/fleetwoodjohnr/simple-docs/releases/latest)**. Under *Assets*, pick the file for your system:
@@ -63,6 +65,8 @@ Your settings and recovery data stay in your user profile's app-data folder. Del
 
 ### Getting started
 
+![The start screen: a blank document, five templates and the recent files](docs/screenshots/start.png)
+
 - **Start screen.** Create a blank document, start from a template, or reopen a recent file.
 - **Opening files.** Press <kbd>Ctrl</kbd>+<kbd>O</kbd>, drag a file onto the window, or double-click a file in your file manager. Several documents open as tabs.
 - **The ribbon.** Commands are grouped on tabs, like in Word. **File** has save, export, print and version history; the other tabs:
@@ -76,6 +80,10 @@ Your settings and recovery data stay in your user profile's app-data folder. Del
   | **Review** | Word count, read aloud, accessibility checker, comments, track changes, compare documents, restrict editing |
   | **View** | Zoom, formatting marks, focus mode, ruler, Markdown source |
   | **Tools** | Mail merge, AI assistant, keyboard shortcuts, settings |
+
+- **Dark mode** follows your system, or switch it with the moon icon at the top right.
+
+  ![The same report in dark mode, with the Insert tab and the Format panel open](docs/screenshots/dark.png)
 
 - **Spelling** is checked as you type, offline, in US or UK English (**Settings → Editor**).
 - **Keyboard shortcuts.** They are the familiar ones: <kbd>Ctrl</kbd>+<kbd>B</kbd> for bold, <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo, and so on. On a Mac, use <kbd>⌘</kbd> instead of <kbd>Ctrl</kbd>. Press <kbd>Ctrl</kbd>+<kbd>/</kbd> to see them all; you can change them in **Settings → Editor**.
@@ -104,7 +112,11 @@ If a file contains something a format can't hold, Simple Docs tells you what wil
 
 ### Editing PDFs
 
-Opening a PDF switches to the PDF editor. There you can:
+Opening a PDF switches to the PDF editor:
+
+![The PDF editor with the page thumbnails, the markup tools and the comments panel](docs/screenshots/pdf.png)
+
+There you can:
 - highlight, underline, strike out, add notes and draw
 - change existing text, add new text and sign
 - permanently remove (redact) text and images
