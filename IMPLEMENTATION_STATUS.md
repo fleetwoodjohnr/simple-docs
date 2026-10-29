@@ -1,6 +1,6 @@
 # Implementation status
 
-_Last updated: 2026-10-27 · Milestones 1–5 complete, plus the follow-up work in [After 0.1.0](#after-010-unreleased) · Windows/macOS: CI configured, not yet run · version 0.1.0 + unreleased changes._
+_Last updated: 2026-10-28 · Milestones 1–5 complete, plus the follow-up work in [After 0.1.0](#after-010-unreleased) · Windows/macOS: built and tested in CI · version 0.1.0 + unreleased changes._
 
 "Done" means implemented **and** covered by a passing automated test or a manual check recorded below. A button existing in the UI does not count.
 
@@ -13,9 +13,9 @@ _Last updated: 2026-10-27 · Milestones 1–5 complete, plus the follow-up work 
 | `npm run e2e:headless` (Playwright + Electron) | ✅ 33 / 33 + 2 packaged-only (every test also fails on any Content-Security-Policy violation) |
 | Same E2E suite against the **packaged** app (`SD_PACKAGED=release/linux-unpacked/simple-docs`) | ✅ 34 / 34 |
 | AppImage smoke test (DOCX, spelling, equations, PDF export, PDFium, OCR) | ✅ |
-| deb: installed in clean Ubuntu 22.04 and 24.04 containers, every shared library resolved; smoke test on its binary | ✅ |
-| rpm: installed in a Fedora 44 container, every shared library resolved | ✅ |
-| Windows (NSIS) and macOS (dmg, zip): build + unit + E2E + packaged E2E in GitHub Actions | ⏳ workflow written, not run yet (needs the repo on GitHub) |
+| deb: installed in clean Ubuntu 22.04, 24.04 and 26.04 containers, every shared library resolved (CI, every push); smoke test on its binary | ✅ |
+| rpm: installed in a Fedora 44 container, every shared library resolved (CI, every push) | ✅ |
+| Windows (NSIS) and macOS (dmg, zip): build + unit + E2E + packaged E2E in GitHub Actions | ✅ green in GitHub Actions |
 | axe-core WCAG 2.2 AA (dashboard, editor + all ribbon tabs, settings, PDF workspace; light and dark) | ✅ 0 violations |
 | Independent consumer: our DOCX → LibreOffice → PDF | ✅ (in `docx.test.ts`; native charts in `docx-drawing.test.ts`: their labels come out as PDF text, and the embedded workbook reads back as the chart data) |
 | Independent consumer: our edited PDFs → poppler (`pdftotext`, `pdfinfo`) | ✅ (in `pdf.test.ts`, `ocr.test.ts`, e2e `pdf.spec.ts`) |
@@ -252,7 +252,7 @@ Every E2E test fails if Chromium reports a CSP violation. A test also confirms t
 - **Release documentation.** [RELEASE.md](RELEASE.md) is the build, test, smoke-test and publish checklist, and [CHANGELOG.md](CHANGELOG.md) records the changes.
 
 ### Not done / partial (M5)
-- **Windows and macOS installers have not run anywhere yet.** The CI workflow that builds and tests them is written ([After 0.1.0](#after-010-unreleased)) but needs the repository on GitHub. Builds are unsigned by decision.
+- **Windows and macOS installers are tested in CI only** (the E2E suite against the packaged app). The by-hand checks in RELEASE.md §7 still apply before publishing. Builds are unsigned by decision.
 - **Accessibility.** axe covers automated WCAG checks only. Screen-reader passes (NVDA, VoiceOver, Orca) and a keyboard-only walkthrough of every dialog are still to do.
 
 ## After 0.1.0 (unreleased)
@@ -302,9 +302,9 @@ The five open items from the 0.1.0 report, plus the bugs that came up while doin
 - **Markdown re-import turned SVG images into literal text.** markdown-it rejects SVG data URLs; they are now accepted, and the HTML is still sanitized.
 - **ODT and Markdown exports turned charts and shapes into pictures without a warning.**
 - **CSV delimiter detection counted delimiters inside quoted header fields.**
+- **A menu item chosen right after the menu opened could leave the menu stuck** (it kept CI red on every OS). Radix keeps a closing menu or dialog mounted until its exit animation ends, and took an open animation that had not started yet for one. The stuck menu trapped focus or closed the next menu as it opened. Closed surfaces now have no animation; the E2E helper `slowFrames` also delays CSS animations, which reproduces it.
 
 ### Still open
-- **The first CI runs failed.** Linux: LibreOffice Calc was missing for the chart-workbook test. macOS: a test expected Ctrl+Y for redo, which is ⌘⇧Z on Mac. Both are fixed. Windows: the E2E step failed, and its log needs sign-in, so the E2E failures are now published as annotations for the next run.
 - **The updater's final install step** (installer, pkexec) runs for real only once a second updater-enabled release exists.
 - **No code signing** (by decision), so SmartScreen and Gatekeeper warn.
 - **Form fields can't be created on rotated PDF pages** (see the M3 limits).
@@ -312,8 +312,7 @@ The five open items from the 0.1.0 report, plus the bugs that came up while doin
 
 ## Next recommended tasks
 
-1. Fix whatever the first Windows and macOS CI runs report.
-2. Do screen-reader and keyboard-only passes.
-3. Per-section page setup in the layout engine (displayed landscape sections).
-4. PDF: moving and resizing annotations, a warning before editing digitally signed files, and form fields on rotated pages (needs writing the widget's `/MK` dictionary).
-5. Native ODF charts, and signing once certificates exist.
+1. Do screen-reader and keyboard-only passes.
+2. Per-section page setup in the layout engine (displayed landscape sections).
+3. PDF: moving and resizing annotations, a warning before editing digitally signed files, and form fields on rotated pages (needs writing the widget's `/MK` dictionary).
+4. Native ODF charts, and signing once certificates exist.

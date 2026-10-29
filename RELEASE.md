@@ -2,7 +2,7 @@
 
 This is the checklist for producing installers.
 - **Linux** (Fedora, x86-64): steps marked **verified** were run there.
-- **Windows and macOS:** built and tested by GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)). That workflow **has not run yet**: it needs the repository on GitHub.
+- **Windows and macOS:** built and tested by GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) on every push.
 
 ## 1. Before the first release
 
@@ -31,6 +31,8 @@ Every push runs the `CI` workflow on `ubuntu-latest`, `windows-latest` and `maco
 6. the E2E suite again against the packaged app
 7. upload of the installers as artifacts
 
+Then the `linux-install` job installs the deb into clean Ubuntu 22.04, 24.04 and 26.04 containers and the rpm into Fedora 44, and fails if `ldd` reports a library that doesn't resolve. A newer push to the same branch cancels the run in progress; tag runs always finish.
+
 The test tools are installed per OS: poppler everywhere, plus LibreOffice and `rpm` on Linux. On Windows, poppler comes from the runner's MSYS2. A failed job uploads `test-results/`, with Playwright traces.
 
 What each OS produces:
@@ -41,7 +43,7 @@ What each OS produces:
 | Windows | `Simple Docs Setup <v>.exe` (NSIS, x64, per-user or per-machine, choice of folder) |
 | macOS | `Simple Docs-<v>-arm64.dmg`, `Simple Docs-<v>.dmg` (x64), and zips of both |
 
-**Releasing:** push a tag `v<version>`. After all three jobs pass, the `release` job creates a **draft** GitHub release. The draft contains every installer, and its notes are the newest `CHANGELOG.md` section. Review the draft and publish it.
+**Releasing:** push a tag `v<version>`. After the build and install jobs pass, the `release` job creates a **draft** GitHub release. The draft contains every installer, and its notes are the newest `CHANGELOG.md` section. Review the draft and publish it.
 
 ## Updates (electron-updater)
 
@@ -98,7 +100,7 @@ podman run --rm --security-opt label=disable -v "$PWD":/src -v "$HOME/.cache/ele
 SD_PACKAGED=$PWD/release/linux-unpacked/simple-docs xvfb-run -a npx playwright test
 # the AppImage itself (no FUSE needed)
 APPIMAGE_EXTRACT_AND_RUN=1 SD_PACKAGED="$PWD/release/Simple Docs-<version>.AppImage" xvfb-run -a npx playwright test packaged
-# deb / rpm: install into clean containers and check that every shared library resolves
+# deb / rpm: install into clean containers and check that every shared library resolves (CI does this on every push)
 podman run --rm -v "$PWD/release":/rel:ro quay.io/toolbx/ubuntu-toolbox:24.04 bash -c \
   'apt-get update -qq && apt-get install -y /rel/simple-docs_<version>_amd64.deb && ldd "/opt/Simple Docs/simple-docs" | grep "not found"; true'
 podman run --rm -v "$PWD/release":/rel:ro registry.fedoraproject.org/fedora-toolbox:44 bash -c \
@@ -108,7 +110,7 @@ podman run --rm -v "$PWD/release":/rel:ro registry.fedoraproject.org/fedora-tool
 Results so far:
 - All 34 E2E tests pass against `linux-unpacked`.
 - The packaged test passes against the AppImage and against the binary from the deb.
-- The deb installs with every library resolved on Ubuntu 22.04 and 24.04, and the rpm on Fedora 44.
+- The deb installs with every library resolved on Ubuntu 22.04, 24.04 and 26.04, and the rpm on Fedora 44.
 
 ## 7. Manual checks before publishing
 

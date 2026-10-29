@@ -2,7 +2,7 @@
 
 A fast, modern, offline word processor for Windows, macOS and Linux. It lays text out on real pages, round-trips DOCX with its own OOXML engine, exports PDF from the same layout you see, and edits Markdown both visually and as source.
 
-> Status: version 0.1.0 plus unreleased changes (see [CHANGELOG.md](CHANGELOG.md)). Milestones 1–5 are complete. The Linux AppImage, deb and rpm are built and tested. Windows and macOS installers are built and tested by the GitHub Actions workflow, which has not run yet; see [RELEASE.md](RELEASE.md). M3 added the PDF workspace; M4 added compare, version history, citations, mail merge, equations, charts, protection, an accessibility checker and the optional AI assistant. For what works today, what is partial, and what is next, see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). [COMPATIBILITY.md](COMPATIBILITY.md) shows, per file format, which elements are kept.
+> Status: version 0.1.0 plus unreleased changes (see [CHANGELOG.md](CHANGELOG.md)). Milestones 1–5 are complete. The Linux AppImage, deb and rpm are built and tested. Windows and macOS installers are built and tested by the GitHub Actions workflow, which also installs the deb and rpm into clean Ubuntu and Fedora containers; see [RELEASE.md](RELEASE.md). M3 added the PDF workspace; M4 added compare, version history, citations, mail merge, equations, charts, protection, an accessibility checker and the optional AI assistant. For what works today, what is partial, and what is next, see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md). [COMPATIBILITY.md](COMPATIBILITY.md) shows, per file format, which elements are kept.
 
 ## Quick start
 
