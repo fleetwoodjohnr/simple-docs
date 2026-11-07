@@ -21,8 +21,10 @@ for (const action of ['Cancel', 'Don’t save', 'Save']) {
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
       await expect(page.getByRole('dialog')).toContainText('2 documents')
       if (action === 'Save') await stubDialogs(app, { save: file })
-      await page.getByRole('button', { name: action, exact: true }).click().catch(error => {
-        if (!page.isClosed()) throw error // successful quit can close the transport before click returns
+      await page.getByRole('button', { name: action, exact: true }).click().catch(async error => {
+        if (action === 'Cancel') throw error
+        // Closing the transport can precede Playwright's page-closed event. Require real process exit.
+        await expect.poll(() => exited).toBe(true)
       })
       if (action === 'Cancel') {
         await expect(doc(page)).toContainText('Document 1')
