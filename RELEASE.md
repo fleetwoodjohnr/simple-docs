@@ -43,11 +43,15 @@ What each OS produces:
 | Windows | `Simple Docs Setup <v>.exe` (NSIS, x64, per-user or per-machine, choice of folder) |
 | macOS | `Simple Docs-<v>-arm64.dmg`, `Simple Docs-<v>.dmg` (x64), and zips of both |
 
-**Releasing:** push a tag `v<version>`. After the build and install jobs pass, the `release` job creates a **draft** GitHub release. The draft contains every installer, and its notes are the newest `CHANGELOG.md` section. Review the draft and publish it.
+**Releasing:** push a tag `v<version>` matching `package.json`. After every build and install job passes, the `release` job automatically publishes the GitHub release. Branch pushes and pull requests do not publish releases.
+
+The release stays a draft during uploads. Before publishing, CI checks that all six installers (Windows x64, Apple silicon and Intel Macs, Linux AppImage/deb/rpm), both Mac ZIPs, updater manifests and blockmaps are attached and nonempty. Notes come from the newest `CHANGELOG.md` section. Installer filenames retain the names expected by the updater.
+
+If downloads are missing, open **Actions → CI → the version-tag run**. Check failed build or installation jobs, or the **release → Publish complete release** step. Fix the cause and rerun failed jobs: a partial draft resumes uploading; a complete published release is left unchanged. Do not publish an incomplete draft manually.
 
 ## Updates (electron-updater)
 
-Installed copies check the newest **published** release of `fleetwoodjohnr/simple-docs` (the `publish` block in `electron-builder.yml`). Drafts and pre-releases are invisible to them, so **publishing the draft is what ships the update**.
+Installed copies check the newest **published** release of `fleetwoodjohnr/simple-docs` (the `publish` block in `electron-builder.yml`). Drafts and pre-releases are invisible to them. CI publishes automatically only after the complete upload is verified.
 
 - **What the updater reads.** The release must carry `latest.yml` (Windows), `latest-mac.yml` and `latest-linux.yml`, plus the blockmaps. They list each installer with its sha512, which is checked after download. CI uploads them, and the release job renames assets so spaces become dashes, as those files expect. Don't rename or delete release assets by hand.
 - **The version must go up** (semver). An installed copy only offers a release with a higher version than its own.
@@ -123,4 +127,4 @@ Results so far:
 
 ## 8. Publish
 
-Publish the draft release that CI created, or attach the installers to a release by hand with the `CHANGELOG.md` section. Link `COMPATIBILITY.md` for what each format keeps.
+Push the version tag after completing the checks above. CI publishes the complete release automatically. Confirm that the public [latest release](https://github.com/fleetwoodjohnr/simple-docs/releases/latest) shows all six installers. Link `COMPATIBILITY.md` for what each format keeps.
