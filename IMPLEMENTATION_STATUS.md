@@ -1,8 +1,12 @@
 # Implementation status
 
-_Last updated: 2026-10-28 · Milestones 1–5 complete, plus the follow-up work in [After 0.1.0](#after-010-released-as-020) · Windows/macOS: built and tested in CI · version 0.2.0._
+_Last updated: 2026-11-06 · Milestones 1–5 complete, plus the follow-up work in [After 0.1.0](#after-010-released-as-020) · Windows/macOS: built and tested in CI · version 0.2.1._
 
 "Done" means implemented **and** covered by a passing automated test or a manual check recorded below. A button existing in the UI does not count.
+
+## 0.2.1 reliability fixes
+
+The unsaved-changes dialog subscribes to a stable tab array, avoiding the Zustand selector render loop that left the window blank. Closing the last window exits on all platforms. Installed fonts use weight/style-specific faces rather than the regular face for every variant. Regression tests exercise normal process exit, save/cancel/error paths, rendered formatting, and DOCX/ODT persistence; Windows CI additionally installs over 0.2.0. Release publication validates updater hashes and sizes.
 
 ## Test results (current)
 
