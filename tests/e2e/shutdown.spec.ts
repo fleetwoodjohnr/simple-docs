@@ -21,7 +21,7 @@ for (const action of ['Cancel', 'Don’t save', 'Save']) {
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
       await expect(page.getByRole('dialog')).toContainText('2 documents')
       if (action === 'Save') await stubDialogs(app, { save: file })
-      await page.getByRole('button', { name: action, exact: true }).click().catch(async error => {
+      await page.getByRole('dialog').getByRole('button', { name: action, exact: true }).click().catch(async error => {
         if (action === 'Cancel') throw error
         // Closing the transport can precede Playwright's page-closed event. Require real process exit.
         await expect.poll(() => exited).toBe(true)
@@ -58,12 +58,12 @@ test('canceling Save As or a failed save leaves the document open', async () => 
       dialog.showSaveDialog = (async () => ({ canceled: true, filePath: undefined })) as never
       BrowserWindow.getAllWindows()[0].close()
     })
-    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await stubDialogs(app, { save: path.join(tempDir(), 'missing', 'fail.docx') })
-    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByText(/Save failed:/)).toBeVisible()
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click()
     await expect(doc(page)).toContainText('Keep my work')
   } finally { await quit(app) }
 })
