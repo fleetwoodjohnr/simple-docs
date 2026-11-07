@@ -57,7 +57,10 @@ export function Dialogs() {
 }
 
 function ConfirmClose({ d }: { d: Extract<Dialog, { kind: 'confirm-close' }> }) {
-  const tabs = useApp((s) => s.tabs.filter((t) => d.tabIds.includes(t.id)))
+  // Subscribe to the stable array; filtering inside a Zustand v5 selector loops forever.
+  const allTabs = useApp((s) => s.tabs)
+  const tabs = allTabs.filter((t) => d.tabIds.includes(t.id))
+  const [saving, setSaving] = useState(false)
   const many = tabs.length > 1
   const finish = () => {
     close()
@@ -66,7 +69,7 @@ function ConfirmClose({ d }: { d: Extract<Dialog, { kind: 'confirm-close' }> }) 
   return (
     <Modal
       open
-      onOpenChange={(o) => !o && close()}
+      onOpenChange={(o) => !o && !saving && close()}
       title={many ? `Save changes to ${tabs.length} documents?` : `Save changes to “${tabs[0]?.title}”?`}
       description="Your changes will be lost if you don’t save them."
       width={440}
@@ -74,6 +77,7 @@ function ConfirmClose({ d }: { d: Extract<Dialog, { kind: 'confirm-close' }> }) 
         <>
           <Btn
             variant="ghost"
+            disabled={saving}
             onClick={() => {
               tabs.forEach((t) => docs.closeTab(t.id, true))
               finish()
@@ -81,17 +85,22 @@ function ConfirmClose({ d }: { d: Extract<Dialog, { kind: 'confirm-close' }> }) 
           >
             Don’t save
           </Btn>
-          <Btn onClick={close}>Cancel</Btn>
+          <Btn disabled={saving} onClick={close}>Cancel</Btn>
           <Btn
             variant="primary"
             autoFocus
+            disabled={saving}
             onClick={async () => {
-              for (const t of tabs) {
-                docs.activate(t.id)
-                if (!(await docs.save(t.id))) return
-                docs.closeTab(t.id, true)
-              }
-              finish()
+              if (saving) return
+              setSaving(true)
+              try {
+                for (const t of tabs) {
+                  docs.activate(t.id)
+                  if (!(await docs.save(t.id))) return
+                  docs.closeTab(t.id, true)
+                }
+                finish()
+              } finally { setSaving(false) }
             }}
           >
             Save

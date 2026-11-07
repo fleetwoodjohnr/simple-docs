@@ -14,6 +14,10 @@ This is the checklist for producing installers.
   - To sign later on macOS, remove the two ad-hoc lines, provide a Developer ID Application certificate, and set `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` for notarization.
   - For both, add the values as repository secrets and pass them to the "Installers" step, then drop `CSC_IDENTITY_AUTO_DISCOVERY: 'false'`.
 
+## 0.2.1 verification
+
+CI includes normal shutdown and visible formatting tests (including actual font-face inspection), and installs the Windows NSIS package over 0.2.0 with settings and a saved document preserved. The release step validates updater sizes and SHA-512 checksums. Closing the last window now quits on macOS as well.
+
 ## 2. Version
 
 1. Bump `version` in `package.json`.

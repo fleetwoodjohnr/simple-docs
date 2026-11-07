@@ -23,6 +23,7 @@ export async function launch(opts: { userData?: string; settings?: Record<string
   const app = await electron.launch({ ...(packaged ? { executablePath: packaged, args: [] } : { args: ['.'] }), env: { ...process.env, SD_UPDATE_URL: 'http://127.0.0.1:9', ...opts.env, SIMPLE_DOCS_USER_DATA: userData } })
   const page = await app.firstWindow()
   const violations: string[] = []
+  page.on('pageerror', e => violations.push(`Renderer error: ${e.message}`))
   page.on('console', (m) => /Content.Security.Policy/i.test(m.text()) && violations.push(m.text()))
   cspViolations.set(app, violations)
   await page.waitForSelector('[data-testid=dashboard], [data-testid=ribbon]')

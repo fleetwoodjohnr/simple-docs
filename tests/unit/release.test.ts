@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve, join } from 'node:path'
+import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 
 const script = resolve('scripts/release.mjs')
@@ -25,6 +26,10 @@ function fixture(initial: object[] = [], mode = '') {
   writeFileSync(join(cwd, 'package.json'), JSON.stringify({ version: '0.2.0' }))
   writeFileSync(join(cwd, 'CHANGELOG.md'), '## 0.2.0\n\nRelease notes\n\n## 0.1.0\nOld notes\n')
   for (const name of names) writeFileSync(join(cwd, 'dist', name), 'installer')
+  for (const [manifest, asset] of [['latest.yml', names[0]], ['latest-linux.yml', names[10]], ['latest-mac.yml', names[6]]]) {
+    const sha = createHash('sha512').update('installer').digest('base64')
+    writeFileSync(join(cwd, 'dist', manifest), `version: 0.2.0\nfiles:\n  - url: ${asset}\n    size: 9\n    sha512: ${sha}\n`)
+  }
   const state = join(cwd, 'state.json')
   writeFileSync(state, JSON.stringify(initial))
   // Stateful GitHub substitute: models drafts, partial uploads, and publication.
@@ -90,6 +95,13 @@ describe.skipIf(process.platform === 'win32')('release publication (Linux releas
     expect(f.run().status).not.toBe(0)
     expect(f.state()).toHaveLength(1)
     expect(f.state()[0].draft).toBe(true)
+  })
+
+  it('rejects updater metadata with incorrect checksums', () => {
+    const f = fixture()
+    writeFileSync(join(f.cwd, 'dist', names[0]), 'damaged installer')
+    expect(f.run().status).not.toBe(0)
+    expect(f.state()).toEqual([])
   })
 
   it('resumes a partial draft', () => {

@@ -422,6 +422,7 @@ export function closeTab(id: string, force = false) {
 }
 
 export function requestQuit() {
+  if (get().dialog?.kind === 'confirm-close') return
   const dirty = get().tabs.filter((t) => t.dirty).map((t) => t.id)
   if (dirty.length) set({ dialog: { kind: 'confirm-close', tabIds: dirty, then: 'quit' } })
   else quitNow()

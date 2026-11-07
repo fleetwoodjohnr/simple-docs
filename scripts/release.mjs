@@ -1,5 +1,7 @@
 import { readFileSync, readdirSync, renameSync, statSync, writeFileSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, basename } from 'node:path'
+import { createHash } from 'node:crypto'
+import yaml from 'js-yaml'
 import { execFileSync } from 'node:child_process'
 
 // Run only after every platform's build and installation checks have succeeded.
@@ -31,6 +33,22 @@ for (const name of expected) {
   const file = join(directory, name)
   if (!existsSync(file) || !statSync(file).isFile() || statSync(file).size === 0) {
     throw new Error(`Missing or empty release asset: ${name}`)
+  }
+}
+
+// Validate the bytes the installed updater will download, not just asset names.
+for (const name of ['latest.yml', 'latest-linux.yml', 'latest-mac.yml']) {
+  const manifest = yaml.load(readFileSync(join(directory, name), 'utf8'))
+  if (manifest?.version !== version || !Array.isArray(manifest.files) || !manifest.files.length) {
+    throw new Error(`Invalid updater manifest: ${name}`)
+  }
+  for (const entry of manifest.files) {
+    const file = decodeURIComponent(entry.url ?? '')
+    if (file !== basename(file) || !expected.includes(file)) throw new Error(`Unknown updater asset: ${file}`)
+    const bytes = readFileSync(join(directory, file))
+    if (entry.size !== bytes.length || entry.sha512 !== createHash('sha512').update(bytes).digest('base64')) {
+      throw new Error(`Updater checksum or size mismatch: ${file}`)
+    }
   }
 }
 

@@ -400,7 +400,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.on('window-all-closed', () => {
     if (installIfRequested()) return
-    if (!isMac) app.quit()
+    app.quit()
   })
   app.on('will-quit', () => void stopOcr())
 }

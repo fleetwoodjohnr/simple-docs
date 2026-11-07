@@ -1,53 +1,53 @@
-/* Metric-compatible open fonts (OFL / Apache-2.0) used when the named font is not installed. Generated. */
-@font-face{font-family:"Calibri";src:local("Calibri"), url("./assets/fonts/Carlito-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:"Calibri";src:local("Calibri"), url("./assets/fonts/Carlito-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:"Calibri";src:local("Calibri"), url("./assets/fonts/Carlito-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:"Calibri";src:local("Calibri"), url("./assets/fonts/Carlito-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
-@font-face{font-family:"Carlito";src:local("Carlito"), url("./assets/fonts/Carlito-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:"Carlito";src:local("Carlito"), url("./assets/fonts/Carlito-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:"Carlito";src:local("Carlito"), url("./assets/fonts/Carlito-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:"Carlito";src:local("Carlito"), url("./assets/fonts/Carlito-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
-@font-face{font-family:"Cambria";src:local("Cambria"), url("./assets/fonts/Caladea-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:"Cambria";src:local("Cambria"), url("./assets/fonts/Caladea-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:"Cambria";src:local("Cambria"), url("./assets/fonts/Caladea-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:"Cambria";src:local("Cambria"), url("./assets/fonts/Caladea-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
-@font-face{font-family:"Caladea";src:local("Caladea"), url("./assets/fonts/Caladea-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:"Caladea";src:local("Caladea"), url("./assets/fonts/Caladea-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:"Caladea";src:local("Caladea"), url("./assets/fonts/Caladea-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:"Caladea";src:local("Caladea"), url("./assets/fonts/Caladea-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
-@font-face{font-family:"Arial";src:local("Arial"), url("./assets/fonts/LiberationSans-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:"Arial";src:local("Arial"), url("./assets/fonts/LiberationSans-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:"Arial";src:local("Arial"), url("./assets/fonts/LiberationSans-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:"Arial";src:local("Arial"), url("./assets/fonts/LiberationSans-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
-@font-face{font-family:"Helvetica";src:local("Helvetica"), url("./assets/fonts/LiberationSans-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:"Helvetica";src:local("Helvetica"), url("./assets/fonts/LiberationSans-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:"Helvetica";src:local("Helvetica"), url("./assets/fonts/LiberationSans-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:"Helvetica";src:local("Helvetica"), url("./assets/fonts/LiberationSans-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
-@font-face{font-family:"Liberation Sans";src:local("Liberation Sans"), url("./assets/fonts/LiberationSans-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:"Liberation Sans";src:local("Liberation Sans"), url("./assets/fonts/LiberationSans-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:"Liberation Sans";src:local("Liberation Sans"), url("./assets/fonts/LiberationSans-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:"Liberation Sans";src:local("Liberation Sans"), url("./assets/fonts/LiberationSans-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
-@font-face{font-family:"Times New Roman";src:local("Times New Roman"), url("./assets/fonts/LiberationSerif-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:"Times New Roman";src:local("Times New Roman"), url("./assets/fonts/LiberationSerif-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:"Times New Roman";src:local("Times New Roman"), url("./assets/fonts/LiberationSerif-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:"Times New Roman";src:local("Times New Roman"), url("./assets/fonts/LiberationSerif-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
-@font-face{font-family:"Times";src:local("Times"), url("./assets/fonts/LiberationSerif-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:"Times";src:local("Times"), url("./assets/fonts/LiberationSerif-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:"Times";src:local("Times"), url("./assets/fonts/LiberationSerif-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:"Times";src:local("Times"), url("./assets/fonts/LiberationSerif-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
-@font-face{font-family:"Liberation Serif";src:local("Liberation Serif"), url("./assets/fonts/LiberationSerif-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:"Liberation Serif";src:local("Liberation Serif"), url("./assets/fonts/LiberationSerif-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:"Liberation Serif";src:local("Liberation Serif"), url("./assets/fonts/LiberationSerif-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:"Liberation Serif";src:local("Liberation Serif"), url("./assets/fonts/LiberationSerif-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
-@font-face{font-family:"Courier New";src:local("Courier New"), url("./assets/fonts/LiberationMono-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:"Courier New";src:local("Courier New"), url("./assets/fonts/LiberationMono-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:"Courier New";src:local("Courier New"), url("./assets/fonts/LiberationMono-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:"Courier New";src:local("Courier New"), url("./assets/fonts/LiberationMono-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
-@font-face{font-family:"Courier";src:local("Courier"), url("./assets/fonts/LiberationMono-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:"Courier";src:local("Courier"), url("./assets/fonts/LiberationMono-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:"Courier";src:local("Courier"), url("./assets/fonts/LiberationMono-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:"Courier";src:local("Courier"), url("./assets/fonts/LiberationMono-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
-@font-face{font-family:"Liberation Mono";src:local("Liberation Mono"), url("./assets/fonts/LiberationMono-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:"Liberation Mono";src:local("Liberation Mono"), url("./assets/fonts/LiberationMono-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:"Liberation Mono";src:local("Liberation Mono"), url("./assets/fonts/LiberationMono-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:"Liberation Mono";src:local("Liberation Mono"), url("./assets/fonts/LiberationMono-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
+/* Metric-compatible open fonts (OFL / Apache-2.0) used when the named font is not installed. Each local source names a specific face, including its weight and style. */
+@font-face{font-family:"Calibri";src:local("Calibri"), local("Calibri"), url("./assets/fonts/Carlito-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Calibri";src:local("Calibri Bold"), local("Calibri-Bold"), url("./assets/fonts/Carlito-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Calibri";src:local("Calibri Italic"), local("Calibri-Italic"), url("./assets/fonts/Carlito-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Calibri";src:local("Calibri Bold Italic"), local("Calibri-BoldItalic"), url("./assets/fonts/Carlito-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:"Carlito";src:local("Carlito"), local("Carlito"), url("./assets/fonts/Carlito-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Carlito";src:local("Carlito Bold"), local("Carlito-Bold"), url("./assets/fonts/Carlito-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Carlito";src:local("Carlito Italic"), local("Carlito-Italic"), url("./assets/fonts/Carlito-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Carlito";src:local("Carlito Bold Italic"), local("Carlito-BoldItalic"), url("./assets/fonts/Carlito-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:"Cambria";src:local("Cambria"), local("Cambria"), url("./assets/fonts/Caladea-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Cambria";src:local("Cambria Bold"), local("Cambria-Bold"), url("./assets/fonts/Caladea-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Cambria";src:local("Cambria Italic"), local("Cambria-Italic"), url("./assets/fonts/Caladea-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Cambria";src:local("Cambria Bold Italic"), local("Cambria-BoldItalic"), url("./assets/fonts/Caladea-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:"Caladea";src:local("Caladea"), local("Caladea"), url("./assets/fonts/Caladea-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Caladea";src:local("Caladea Bold"), local("Caladea-Bold"), url("./assets/fonts/Caladea-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Caladea";src:local("Caladea Italic"), local("Caladea-Italic"), url("./assets/fonts/Caladea-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Caladea";src:local("Caladea Bold Italic"), local("Caladea-BoldItalic"), url("./assets/fonts/Caladea-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:"Arial";src:local("Arial"), local("Arial"), url("./assets/fonts/LiberationSans-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Arial";src:local("Arial Bold"), local("Arial-Bold"), url("./assets/fonts/LiberationSans-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Arial";src:local("Arial Italic"), local("Arial-Italic"), url("./assets/fonts/LiberationSans-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Arial";src:local("Arial Bold Italic"), local("Arial-BoldItalic"), url("./assets/fonts/LiberationSans-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:"Helvetica";src:local("Helvetica"), local("Helvetica"), url("./assets/fonts/LiberationSans-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Helvetica";src:local("Helvetica Bold"), local("Helvetica-Bold"), url("./assets/fonts/LiberationSans-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Helvetica";src:local("Helvetica Italic"), local("Helvetica-Italic"), url("./assets/fonts/LiberationSans-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Helvetica";src:local("Helvetica Bold Italic"), local("Helvetica-BoldItalic"), url("./assets/fonts/LiberationSans-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:"Liberation Sans";src:local("Liberation Sans"), local("LiberationSans"), url("./assets/fonts/LiberationSans-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Liberation Sans";src:local("Liberation Sans Bold"), local("LiberationSans-Bold"), url("./assets/fonts/LiberationSans-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Liberation Sans";src:local("Liberation Sans Italic"), local("LiberationSans-Italic"), url("./assets/fonts/LiberationSans-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Liberation Sans";src:local("Liberation Sans Bold Italic"), local("LiberationSans-BoldItalic"), url("./assets/fonts/LiberationSans-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:"Times New Roman";src:local("Times New Roman"), local("TimesNewRoman"), url("./assets/fonts/LiberationSerif-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Times New Roman";src:local("Times New Roman Bold"), local("TimesNewRoman-Bold"), url("./assets/fonts/LiberationSerif-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Times New Roman";src:local("Times New Roman Italic"), local("TimesNewRoman-Italic"), url("./assets/fonts/LiberationSerif-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Times New Roman";src:local("Times New Roman Bold Italic"), local("TimesNewRoman-BoldItalic"), url("./assets/fonts/LiberationSerif-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:"Times";src:local("Times"), local("Times"), url("./assets/fonts/LiberationSerif-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Times";src:local("Times Bold"), local("Times-Bold"), url("./assets/fonts/LiberationSerif-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Times";src:local("Times Italic"), local("Times-Italic"), url("./assets/fonts/LiberationSerif-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Times";src:local("Times Bold Italic"), local("Times-BoldItalic"), url("./assets/fonts/LiberationSerif-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:"Liberation Serif";src:local("Liberation Serif"), local("LiberationSerif"), url("./assets/fonts/LiberationSerif-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Liberation Serif";src:local("Liberation Serif Bold"), local("LiberationSerif-Bold"), url("./assets/fonts/LiberationSerif-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Liberation Serif";src:local("Liberation Serif Italic"), local("LiberationSerif-Italic"), url("./assets/fonts/LiberationSerif-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Liberation Serif";src:local("Liberation Serif Bold Italic"), local("LiberationSerif-BoldItalic"), url("./assets/fonts/LiberationSerif-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:"Courier New";src:local("Courier New"), local("CourierNew"), url("./assets/fonts/LiberationMono-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Courier New";src:local("Courier New Bold"), local("CourierNew-Bold"), url("./assets/fonts/LiberationMono-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Courier New";src:local("Courier New Italic"), local("CourierNew-Italic"), url("./assets/fonts/LiberationMono-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Courier New";src:local("Courier New Bold Italic"), local("CourierNew-BoldItalic"), url("./assets/fonts/LiberationMono-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:"Courier";src:local("Courier"), local("Courier"), url("./assets/fonts/LiberationMono-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Courier";src:local("Courier Bold"), local("Courier-Bold"), url("./assets/fonts/LiberationMono-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Courier";src:local("Courier Italic"), local("Courier-Italic"), url("./assets/fonts/LiberationMono-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Courier";src:local("Courier Bold Italic"), local("Courier-BoldItalic"), url("./assets/fonts/LiberationMono-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:"Liberation Mono";src:local("Liberation Mono"), local("LiberationMono"), url("./assets/fonts/LiberationMono-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Liberation Mono";src:local("Liberation Mono Bold"), local("LiberationMono-Bold"), url("./assets/fonts/LiberationMono-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Liberation Mono";src:local("Liberation Mono Italic"), local("LiberationMono-Italic"), url("./assets/fonts/LiberationMono-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Liberation Mono";src:local("Liberation Mono Bold Italic"), local("LiberationMono-BoldItalic"), url("./assets/fonts/LiberationMono-BoldItalic.ttf") format("truetype");font-weight:700;font-style:italic;font-display:swap}

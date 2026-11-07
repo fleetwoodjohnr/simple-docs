@@ -51,7 +51,9 @@ Simple Docs checks once a day whether a new version is out. If one is, it asks b
 - On macOS, the download page opens instead, because unsigned apps can't update themselves. Install the new `.dmg` the same way as the first one.
 - **Settings → Updates** turns the daily check off. *Check now* works at any time.
 
-Coming from 0.1.0? That version has no updater, so install 0.2.0 by hand once.
+Coming from 0.1.0? That version has no updater, so install the latest release by hand once.
+
+If an older version becomes blank while closing, end its process and reopen it. Restore any recovery documents and save your work before updating. You can install the newest release manually over the existing installation.
 
 ### Uninstall
 

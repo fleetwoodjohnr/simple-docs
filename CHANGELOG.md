@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.1 — 2026-11-06
+
+### Fixed
+- Closing edited documents now shows the save prompt instead of leaving a blank window. Save, Don't save and Cancel work for multiple documents.
+- Closing the last window fully quits Simple Docs on Windows, macOS and Linux.
+- Bold, italic and bold-italic text use the correct installed font faces, including Windows fonts, with bundled offline fallbacks.
+- Repeated close requests and save clicks no longer start overlapping close operations.
+
+### Installer verification
+- Added visible bold/italic/underline and normal shutdown regression checks, plus Windows NSIS installation and upgrade checks from 0.2.0.
+- Release publication verifies updater file sizes and SHA-512 checksums before making downloads available.
+
+**Updating:** Save your documents before choosing Install and Restart. If 0.2.0 already shows a blank window, end its process, reopen it and restore any offered recovery documents, then save them. You can also install this release from the [downloads page](https://github.com/fleetwoodjohnr/simple-docs/releases/latest). Version 0.1.0 and unsigned macOS installations require a manual install. Existing settings and documents are retained.
+
 ## 0.2.0 — 2026-10-28
 
 Coming from 0.1.0? Download and install this version by hand once ([how](https://github.com/fleetwoodjohnr/simple-docs#download-and-install)). From now on, Simple Docs offers new versions itself.
